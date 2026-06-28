@@ -72,6 +72,35 @@
     font-family: inherit;
   }
   .chip .act:hover { background: #2d3543; color: #d7f3db; }
+  #inputbar { display: flex; gap: 8px; margin-top: 8px; }
+  #cmdInput {
+    flex: 1; min-width: 0; background: #14161b; color: #e6ebf2;
+    border: 1px solid #2e3440; border-radius: 8px; padding: 10px 12px;
+    font-size: 16px; /* >=16px prevents iOS zoom-on-focus */
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  #cmdInput:focus { outline: none; border-color: #3a4250; }
+  #sendBtn {
+    background: #1f6f3a; color: #dff5e4; border: 1px solid #2c8a4b;
+    border-radius: 8px; padding: 0 18px; font-size: 15px; cursor: pointer;
+    font-family: inherit;
+  }
+  #sendBtn:hover { background: #247a42; }
+  @media (max-width: 640px) {
+    header { padding: 14px 10px 4px; }
+    h1 { font-size: 23px; }
+    .tag { font-size: 12px; }
+    #shell { padding: 8px 10px 0; }
+    #terminal { height: 44vh; min-height: 220px; padding: 8px 4px 4px 8px; }
+    #statusbar { gap: 10px 14px; font-size: 12px; padding: 6px 9px; }
+    #hpbar { width: 70px; }
+    .hint { font-size: 12px; }
+    .btn { padding: 8px 12px; font-size: 13px; }
+    .chip { padding: 6px 8px; }
+    .chip .name { font-size: 13px; }
+    .chip .act { padding: 7px 12px; font-size: 13px; }
+    footer { font-size: 11px; padding: 12px 10px 22px; }
+  }
 </style>
 </head>
 <body>
@@ -89,9 +118,15 @@
       <span class="lbl" id="st-style"></span>
     </div>
     <div id="terminal" aria-label="Game terminal"></div>
-    <p class="hint">Type commands, or use the buttons below. Try <b>help</b>,
-      <b>look</b>, <b>map</b>, <b>fight</b>. Progress auto-saves here;
-      <b>save export</b> / <b>save import</b> moves it between devices.</p>
+    <div id="inputbar">
+      <input id="cmdInput" type="text" placeholder="Type a command, e.g. look"
+             autocomplete="off" autocorrect="off" autocapitalize="off"
+             spellcheck="false" enterkeyhint="send" aria-label="Command input">
+      <button id="sendBtn">Send</button>
+    </div>
+    <p class="hint">Type a command above and press <b>Send</b> (or tap the buttons
+      below). Try <b>help</b>, <b>look</b>, <b>map</b>, <b>fight</b>. Progress
+      auto-saves here; <b>save export</b> / <b>save import</b> moves it between devices.</p>
     <div id="quickbar"></div>
     <div id="actions"></div>
   </main>
@@ -116,9 +151,11 @@
     const SAVE_KEY = IS_BETA ? "onlyrunes_save_beta" : "onlyrunes_save_v1";
     const PROMPT = "\x1b[92m\x1b[1m> \x1b[0m";
 
+    const isMobile = window.matchMedia("(max-width: 640px)").matches
+      || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     const term = new Terminal({
       fontFamily: "ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace",
-      fontSize: 14, cursorBlink: true, convertEol: false,
+      fontSize: isMobile ? 12 : 14, cursorBlink: true, convertEol: false,
       theme: {
         background: "#14161b", foreground: "#c8cdd6", cursor: "#6ee36e",
         black: "#14161b", red: "#d64f4f", green: "#3fa34d", yellow: "#caa53a",
@@ -132,8 +169,11 @@
     term.loadAddon(fit);
     term.open(document.getElementById("terminal"));
     fit.fit();
-    window.addEventListener("resize", () => { try { fit.fit(); } catch (e) {} });
-    term.focus();
+    const refit = () => { try { fit.fit(); } catch (e) {} };
+    window.addEventListener("resize", refit);
+    window.addEventListener("orientationchange", () => setTimeout(refit, 300));
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", refit);
+    if (!isMobile) term.focus();
 
     const w = (s) => term.write(String(s).replace(/\n/g, "\r\n"));
 
@@ -178,7 +218,6 @@
       term.write(cmd + "\r\n");
       handleLine(cmd);
       refreshUI();
-      term.focus();
     };
 
     const renderStatus = (st) => {
@@ -233,6 +272,27 @@
         qb.appendChild(b);
       }
     })();
+
+    // ---- input box (reliable typing, esp. on mobile) ----
+    const submitInput = (text) => {
+      text = (text || "").trim();
+      if (!text || mode === "loading" || mode === "ended") return;
+      term.write(text + "\r\n");   // echo onto the prompt line
+      buffer = "";
+      handleLine(text);
+      refreshUI();
+    };
+    const cmdInput = document.getElementById("cmdInput");
+    const submitFromBox = () => {
+      const v = cmdInput.value;
+      cmdInput.value = "";
+      submitInput(v);
+      cmdInput.focus();
+    };
+    cmdInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); submitFromBox(); }
+    });
+    document.getElementById("sendBtn").addEventListener("click", submitFromBox);
 
     const saveCode = () => btoa(unescape(encodeURIComponent(mod.player_to_json(player))));
 
@@ -363,6 +423,7 @@
       window.__onlyrunes = {
         feed: (s) => handleLine(s),
         run: (s) => runCommand(s),
+        submit: (s) => submitInput(s),
         refresh: () => refreshUI(),
         saveCode: () => saveCode(),
         loadFromCode: (c) => loadFromCode(c),
