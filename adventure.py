@@ -2455,8 +2455,11 @@ def _grind_fight(p, target, count):
         for i, v in loot.items():
             total_loot[i] = total_loot.get(i, 0) + v
         loot_str = ", ".join(f"{i} x{v}" for i, v in loot.items()) or "no loot"
+        hp_col = "bgreen" if p.hp > p.max_hp * 0.5 else \
+            ("byellow" if p.hp > p.max_hp * 0.3 else "bred")
         print(f"  [{n}/{count}] slew the {target}  "
-              + paint(f"+{gx} xp", "bcyan") + "  " + paint(loot_str, "byellow"))
+              + paint(f"+{gx} xp", "bcyan") + "  " + paint(loot_str, "byellow")
+              + "  " + paint(f"HP {max(p.hp,0)}/{p.max_hp}", hp_col))
         if ups:
             print("       " + paint("LEVEL UP: "
                   + ", ".join(f"{s} {p.lvl(s)}" for s in ups), "byellow", "bold"))
