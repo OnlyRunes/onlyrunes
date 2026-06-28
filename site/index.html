@@ -41,7 +41,7 @@
 </head>
 <body>
   <header>
-    <h1><span class="of">Only</span>Runes</h1>
+    <h1><span class="of">Only</span>Runes<sup id="betaTag" style="display:none;color:#ff9e3d;font-size:14px;font-weight:600;margin-left:6px;letter-spacing:1px;">BETA</sup></h1>
     <p class="tag">A free-to-play text adventure in a world that's totally not Gielinor</p>
   </header>
 
@@ -64,7 +64,13 @@
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
   <script>
   (async () => {
-    const SAVE_KEY = "onlyrunes_save_v1";
+    const IS_BETA = /^beta\.|onlyrunes-beta/.test(location.hostname);
+    if (IS_BETA) {
+      const t = document.getElementById("betaTag");
+      if (t) t.style.display = "inline";
+      document.title = "OnlyRunes BETA";
+    }
+    const SAVE_KEY = IS_BETA ? "onlyrunes_save_beta" : "onlyrunes_save_v1";
     const PROMPT = "\x1b[92m\x1b[1m> \x1b[0m";
 
     const term = new Terminal({

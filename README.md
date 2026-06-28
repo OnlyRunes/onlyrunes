@@ -52,6 +52,30 @@ npx --yes wrangler login   # one time
 
 Or connect this repo to Cloudflare for automatic deploys on `git push`.
 
+## Environments: beta vs live
+
+| | Branch | Worker | URL |
+|---|---|---|---|
+| **live** | `main` | `onlyrunes` | https://onlyrunes.net |
+| **beta** | `beta` | `onlyrunes-beta` | https://beta.onlyrunes.net |
+
+The beta site shows a `BETA` badge and uses a separate save slot.
+
+Typical flow:
+
+```bash
+git switch beta
+# ...make changes, commit...
+git push                 # -> auto-deploys to beta.onlyrunes.net
+
+# happy with it? promote to live:
+git switch main
+git merge beta
+git push                 # -> auto-deploys to onlyrunes.net
+```
+
+Manual deploys: `./deploy.sh` (live) or `./deploy.sh beta`.
+
 ## Saves
 
 Browser progress auto-saves to `localStorage`. Use `save export` to download a
