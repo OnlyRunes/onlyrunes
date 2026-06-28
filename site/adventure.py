@@ -305,7 +305,10 @@ SKILLS = [
     "attack", "strength", "defence", "hitpoints", "ranged", "prayer", "magic",
     "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
     "mining", "runecrafting",
+    # members skills
+    "thieving", "agility",
 ]
+MEMBERS_SKILLS = {"thieving", "agility"}
 
 
 # ===========================================================================
@@ -602,6 +605,14 @@ PRAYERS = {
     "protect from melee":  (43, 0.60, {}, "melee"),
 }
 
+# Thieving pickpocket targets: name -> (level, xp, max_coins, fail_damage)
+PICKPOCKET = {
+    "man": (1, 8, 12, 1), "woman": (1, 8, 12, 1),
+    "farmer": (10, 15, 30, 2), "guard": (40, 47, 60, 3),
+}
+# Agility: course-name -> (level, xp, fail_damage)
+AGILITY_COURSE = (1, 8, 2)  # (min level, xp per lap, fall damage)
+
 
 # ===========================================================================
 #  MONSTERS
@@ -698,7 +709,7 @@ ROOMS = {
         name="Lumbridge Farm",
         desc="Chickens, a cow, a wheat field and sheep. Farmer Fred is here.",
         exits={"west": "general_store", "north": "windmill"},
-        monsters=["chicken"], npc="sheep_shearer"),
+        monsters=["chicken"], npc="sheep_shearer", pickpocket=["farmer"]),
     "windmill": dict(
         name="Lumbridge Windmill",
         desc="Grain becomes flour here if you have an empty pot.",
@@ -731,7 +742,7 @@ ROOMS = {
         exits={"west": "al_kharid_gate", "north": "al_kharid_mine",
                "east": "al_kharid_palace"},
         bank=True, furnace=True, range=True, tanner=True, shop="scimitar",
-        monsters=["scorpion"]),
+        monsters=["scorpion"], pickpocket=["man"]),
     "al_kharid_mine": dict(
         name="Al Kharid Mine",
         desc="A rich mine: iron, silver, coal, gold, mithril and adamantite.",
@@ -766,10 +777,11 @@ ROOMS = {
         exits={"south": "lumbridge_forest", "north": "varrock_square"}),
     "varrock_square": dict(
         name="Varrock Square",
-        desc="A bustling plaza with a fountain. Romeo paces, lovesick.",
+        desc="A bustling plaza with a fountain. Romeo paces, lovesick, and "
+             "townsfolk mill about.",
         exits={"south": "varrock_gate", "west": "varrock_west_bank",
                "east": "varrock_east_bank", "north": "varrock_palace"},
-        npc="romeo_juliet"),
+        npc="romeo_juliet", pickpocket=["man", "woman"]),
     "varrock_west_bank": dict(
         name="West Varrock",
         desc="A bank, the sword shop, an anvil for smithing, and Aubury's rune "
@@ -789,7 +801,7 @@ ROOMS = {
         name="Varrock Palace",
         desc="King Roald's palace, patrolled by guards.",
         exits={"south": "varrock_square", "down": "varrock_sewers"},
-        monsters=["guard"]),
+        monsters=["guard"], pickpocket=["guard"]),
     "essence_mine": dict(
         name="Rune Essence Mine",
         desc="A mystical cavern of pure rune essence. A portal leads back out.",
@@ -800,7 +812,8 @@ ROOMS = {
         desc="Rowdy barbarians, a mine, and a river for fly fishing trout and "
              "salmon.",
         exits={"east": "varrock_west_bank", "west": "falador_east",
-               "north": "edgeville", "down": "stronghold_security"},
+               "north": "edgeville", "down": "stronghold_security",
+               "agility": "agility_course"},
         rocks=["copper", "tin", "iron", "coal"], fish_tools=["fly"],
         monsters=["barbarian"]),
     "edgeville": dict(
@@ -906,6 +919,11 @@ ROOMS = {
              "broods over a hoard of treasure. (members)",
         exits={"out": "wilderness_edge"},
         monsters=["king black dragon"], members=True),
+    "agility_course": dict(
+        name="Barbarian Agility Course",
+        desc="A rickety obstacle course of ropes, beams and ledges. Run laps to "
+             "train agility. (members)",
+        exits={"out": "barbarian_village"}, members=True, agility_course=True),
 }
 
 
@@ -1291,7 +1309,7 @@ REGIONS = {
     "lumbridge_church": "Lumbridge", "varrock_sewers": "Varrock",
     "wizard_tower": "Draynor", "stronghold_security": "Barbarian",
     "air_altar": "Falador", "members_dungeon": "Edgeville",
-    "kbd_lair": "Wilderness",
+    "kbd_lair": "Wilderness", "agility_course": "Barbarian",
 }
 
 REGION_MAP = r"""
@@ -1457,6 +1475,59 @@ def cmd_pray(p, arg):
     say(f"You activate {arg}.", "bmagenta", "bold")
 
 
+def cmd_pickpocket(p, arg):
+    if not getattr(p, "members", False):
+        say("Thieving is a members skill. Type 'membership' to unlock it.",
+            "bmagenta")
+        return
+    targets = ROOMS[p.location].get("pickpocket", [])
+    if not targets:
+        say("There's no one here worth pickpocketing.")
+        return
+    target = arg.strip().lower() or targets[0]
+    if target not in targets:
+        say(f"You can't pickpocket a {target} here. Targets: {', '.join(targets)}")
+        return
+    lvl, xp, maxc, dmg = PICKPOCKET[target]
+    if p.lvl("thieving") < lvl:
+        say(f"You need thieving level {lvl} to pickpocket the {target}.")
+        return
+    chance = clamp(0.5 + (p.lvl("thieving") - lvl) * 0.02, 0.4, 0.95)
+    if random.random() < chance:
+        coins = random.randint(1, maxc)
+        p.add("coins", coins)
+        say(f"You slip a hand into the {target}'s pocket and lift {coins} coins.",
+            "bgreen")
+        p.gain_xp("thieving", xp)
+    else:
+        p.hp = max(0, p.hp - dmg)
+        say(f"The {target} catches you! You're stunned for {dmg} damage. "
+            f"(HP: {max(p.hp,0)}/{p.max_hp})", "bred")
+        if p.hp <= 0:
+            _handle_death(p)
+
+
+def cmd_agility(p, arg):
+    if not getattr(p, "members", False):
+        say("Agility is a members skill. Type 'membership' to unlock it.",
+            "bmagenta")
+        return
+    if not ROOMS[p.location].get("agility_course"):
+        say("You need an agility course (the one at Barbarian Village).")
+        return
+    lvl, xp, dmg = AGILITY_COURSE
+    if random.random() < clamp(0.6 + p.lvl("agility") * 0.01, 0.6, 0.97):
+        say("You vault the obstacles and complete a clean lap!", "bgreen")
+        p.gain_xp("agility", xp)
+    else:
+        p.hp = max(0, p.hp - dmg)
+        say(f"You slip and take {dmg} damage, but pick yourself up. "
+            f"(HP: {max(p.hp,0)}/{p.max_hp})", "bred")
+        p.gain_xp("agility", xp // 2)
+        if p.hp <= 0:
+            _handle_death(p)
+
+
 def cmd_look(p, _a):
     r = ROOMS[p.location]
     banner(r["name"], color="bcyan", line_color="teal")
@@ -1518,6 +1589,7 @@ SKILL_COLOR = {
     "magic": "bblue", "cooking": "orange", "woodcutting": "bgreen",
     "fishing": "bcyan", "firemaking": "orange", "crafting": "brown",
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
+    "thieving": "purple", "agility": "lime",
 }
 
 
@@ -2700,6 +2772,8 @@ HANDLERS = {
     "examine": cmd_examine,
     "map": cmd_map, "automap": cmd_automap, "membership": cmd_membership,
     "pray": cmd_pray, "prayer": cmd_pray, "prayers": cmd_pray,
+    "pickpocket": cmd_pickpocket, "thieve": cmd_pickpocket, "steal": cmd_pickpocket,
+    "agility": cmd_agility, "lap": cmd_agility, "course": cmd_agility,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
 }
@@ -2872,6 +2946,12 @@ def web_room_actions(player):
     if r.get("npc"):
         out.append({"name": "someone to talk to", "kind": "npc",
                     "actions": [{"label": "Talk", "cmd": "talk"}]})
+    for tgt in r.get("pickpocket", []):
+        out.append({"name": tgt, "kind": "npc",
+                    "actions": [{"label": "Pickpocket", "cmd": f"pickpocket {tgt}"}]})
+    if r.get("agility_course"):
+        out.append({"name": "obstacle course", "kind": "gather",
+                    "actions": [{"label": "Run a lap", "cmd": "agility"}]})
     # location-specific gathering
     specials = {
         "lumbridge_farm": [
