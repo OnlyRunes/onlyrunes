@@ -450,6 +450,50 @@ for st in ["air", "water", "earth", "fire"]:
 add_item("wizard hat", 20, equip={"slot": "head", "magic": 2})
 add_item("wizard robe", 20, equip={"slot": "body", "magic": 3})
 
+# --- Amulets, capes, gloves, boots, rings (extra equipment slots) ---------
+add_item("amulet of accuracy", 500, equip={"slot": "amulet", "att": 4})
+add_item("amulet of defence", 600, equip={"slot": "amulet", "def": 4})
+add_item("amulet of magic", 1000, equip={"slot": "amulet", "magic": 10})
+add_item("amulet of power", 1500, equip={"slot": "amulet", "att": 6, "str": 6,
+         "def": 6, "ranged": 6})
+add_item("amulet of strength", 1800, equip={"slot": "amulet", "str": 10})
+add_item("holy symbol", 800, equip={"slot": "amulet", "prayer": 8})
+for col in ["blue", "black", "red", "green", "yellow", "purple"]:
+    add_item(f"{col} cape", 20, equip={"slot": "cape", "def": 1})
+add_item("team cape", 50, equip={"slot": "cape", "def": 2})
+add_item("cape of legends", 1200, members=True,
+         equip={"slot": "cape", "def": 4, "str": 1})
+add_item("leather gloves", 12, equip={"slot": "gloves", "def": 1})
+add_item("hardleather gloves", 30, equip={"slot": "gloves", "def": 2})
+add_item("leather boots", 12, equip={"slot": "boots", "def": 1})
+add_item("climbing boots", 120, members=True,
+         equip={"slot": "boots", "def": 2, "str": 2})
+add_item("gold ring", 350, equip={"slot": "ring"})
+add_item("ring of recoil", 500, members=True, equip={"slot": "ring", "def": 1})
+
+# --- Uncut gems (crafting / drops) ----------------------------------------
+for gem, val in [("uncut sapphire", 100), ("uncut emerald", 200),
+                 ("uncut ruby", 600), ("uncut diamond", 1200),
+                 ("sapphire", 250), ("emerald", 400), ("ruby", 1000),
+                 ("diamond", 2000)]:
+    add_item(gem, val)
+
+# --- Misc / quest / drop items --------------------------------------------
+add_item("raw rat meat", 1)
+add_item("cooked rat meat", 3, heal=3)
+add_item("ashes", 1)
+add_item("red bead", 2)
+add_item("yellow bead", 2)
+add_item("black bead", 2)
+add_item("white bead", 2)
+add_item("ranarr seed", 1500, members=True)
+add_item("dragon med helm", 60000, members=True,
+         equip={"slot": "head", "def": 30, "req": {"defence": 60}})
+add_item("dragon dagger", 30000, members=True,
+         equip={"slot": "weapon", "att": 25, "str": 24, "req": {"attack": 60}})
+RAW_TO_COOKED["raw rat meat"] = ("cooked rat meat", "burnt meat", 1)
+COOK_XP["raw rat meat"] = 30
+
 
 def low_alch(name):
     return int(ITEMS[name]["value"] * 0.4)
@@ -862,7 +906,8 @@ SHOPS = {
 # ===========================================================================
 #  PLAYER
 # ===========================================================================
-EQUIP_SLOTS = ["weapon", "shield", "head", "body", "legs", "ammo"]
+EQUIP_SLOTS = ["weapon", "shield", "head", "body", "legs", "ammo",
+               "cape", "amulet", "gloves", "boots", "ring"]
 
 
 class Player:
@@ -966,6 +1011,9 @@ class Player:
         if not eq:
             if not silent:
                 say(f"You can't equip {item}.")
+            return False
+        if info.get("members") and not getattr(self, "members", False):
+            say(f"{item} is members-only. Type 'membership' to unlock it.")
             return False
         for skill, req in eq.get("req", {}).items():
             if self.lvl(skill) < req:
@@ -2280,7 +2328,9 @@ def deserialize(data):
     p.hp = data["hp"]
     p.inventory = data["inventory"]
     p.bank = data.get("bank", {})
-    p.equipment = data.get("equipment", p.equipment)
+    eq = {slot: None for slot in EQUIP_SLOTS}
+    eq.update(data.get("equipment", {}))
+    p.equipment = eq
     p.style = data.get("style", "melee")
     p.autocast = data.get("autocast", "wind strike")
     p.quests = data.get("quests", {})
