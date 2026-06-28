@@ -118,6 +118,7 @@
       <span><span class="lbl">Lvl</span> <b id="st-cb">1</b></span>
       <span><span class="lbl">HP</span> <span id="hpbar"><span id="hpfill"></span></span> <b id="st-hp">10/10</b></span>
       <span><span class="lbl">GP</span> <b id="st-gp">0</b></span>
+      <span><span class="lbl">Run</span> <b id="st-energy">100</b></span>
       <span><span class="lbl">at</span> <b id="st-loc">—</b></span>
       <span class="lbl" id="st-style"></span>
     </div>
@@ -231,7 +232,8 @@
       document.getElementById("st-hp").textContent = st.hp + "/" + st.max_hp;
       document.getElementById("st-gp").textContent = (st.coins || 0).toLocaleString();
       document.getElementById("st-loc").textContent = st.location;
-      document.getElementById("st-style").textContent = st.style;
+      document.getElementById("st-style").textContent = st.style + (st.members ? " · member" : "");
+      document.getElementById("st-energy").textContent = (st.energy ?? 100) + "%";
       const ratio = st.max_hp ? st.hp / st.max_hp : 0;
       const fill = document.getElementById("hpfill");
       fill.style.width = Math.round(ratio * 100) + "%";

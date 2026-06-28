@@ -677,6 +677,34 @@ MONSTERS = {
                              ("ranarr seed", 1, 3, 0.3)], members=True, boss=True),
 }
 
+# Difficulty rank per monster (drives auto-kill caps). Bosses set below.
+MONSTER_RANK = {
+    # easy
+    "chicken": "easy", "cow": "easy", "goblin": "easy", "giant rat": "easy",
+    "man": "easy", "zombie rat": "easy", "imp": "easy",
+    # medium
+    "scorpion": "medium", "giant spider": "medium", "dwarf": "medium",
+    "minotaur": "medium", "barbarian": "medium", "thug": "medium",
+    "skeleton": "medium", "zombie": "medium", "dark wizard": "medium",
+    "flesh crawler": "medium",
+    # hard
+    "guard": "hard", "hobgoblin": "hard", "dark warrior": "hard",
+    "hill giant": "hard",
+    # elite
+    "moss giant": "elite", "ice giant": "elite", "lesser demon": "elite",
+    "greater demon": "elite",
+}
+_BOSSES = {"king black dragon", "count draynor"}
+for _name, _m in MONSTERS.items():
+    _m["rank"] = "boss" if _name in _BOSSES else MONSTER_RANK.get(_name, "medium")
+    if _name in _BOSSES:
+        _m["boss"] = True
+
+# How many of each rank you may auto-fight in one go. Bosses: none.
+RANK_CAP = {"easy": 30, "medium": 20, "hard": 10, "elite": 5}
+RANK_COLOR = {"easy": "bgreen", "medium": "byellow", "hard": "orange",
+              "elite": "bred", "boss": "bmagenta"}
+
 
 # ===========================================================================
 #  WORLD MAP
@@ -968,6 +996,7 @@ class Player:
         self.prayer_points = 1    # current prayer points (max = prayer level)
         self.active_prayers = []  # names of currently-active prayers
         self.combat = None        # interactive-combat state (None = not fighting)
+        self.run_energy = 100     # 0-100; spent travelling, regained by acting
         # starter kit
         for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
                       ("bronze axe", 1), ("small fishing net", 1),
@@ -1641,6 +1670,91 @@ def cmd_agility(p, arg):
             _handle_death(p)
 
 
+# ===========================================================================
+#  TRAVEL & RUN ENERGY
+# ===========================================================================
+TRAVEL_HUBS = {
+    "lumbridge": "lumbridge_castle", "varrock": "varrock_square",
+    "falador": "falador_square", "al kharid": "al_kharid_square",
+    "alkharid": "al_kharid_square", "draynor": "draynor_village",
+    "edgeville": "edgeville", "barbarian village": "barbarian_village",
+    "barbarian": "barbarian_village", "port sarim": "port_sarim",
+    "portsarim": "port_sarim", "rimmington": "rimmington",
+    "karamja": "karamja_port",
+}
+TRAVEL_NAMES = ["Lumbridge", "Varrock", "Falador", "Al Kharid", "Draynor",
+                "Edgeville", "Barbarian Village", "Port Sarim", "Rimmington",
+                "Karamja"]
+ENERGY_REGEN = 5   # gained per non-travel action
+
+
+def _travel_cost(p):
+    # higher agility = cheaper running (30 down to a floor of 10)
+    return int(clamp(30 - p.lvl("agility") * 0.25, 10, 30))
+
+
+def _teleport_for(dest_room):
+    for name, s in SPELLS.items():
+        if s.get("type") == "tele" and s.get("dest") == dest_room:
+            return name
+    return None
+
+
+def _regen_energy(p):
+    if getattr(p, "run_energy", 100) < 100:
+        p.run_energy = min(100, p.run_energy + ENERGY_REGEN)
+
+
+def cmd_travel(p, arg):
+    dest = arg.strip().lower()
+    if not dest:
+        say("Travel to which city? " + ", ".join(TRAVEL_NAMES), "bcyan")
+        say(f"Run energy: {int(getattr(p,'run_energy',100))}/100. Walking with "
+            "n/s/e/w is always free.", "grey")
+        return
+    room = TRAVEL_HUBS.get(dest)
+    if not room:
+        say(f"You don't know the way to '{arg}'. Cities: "
+            + ", ".join(TRAVEL_NAMES))
+        return
+    if p.location == room:
+        say(f"You're already in {ROOMS[room]['name']}.")
+        return
+    # use a teleport spell if you can (runes + magic level) — no energy cost
+    tp = _teleport_for(room)
+    if tp:
+        s = SPELLS[tp]
+        if p.lvl("magic") >= s["lvl"] and _consume_runes(p, s["runes"]):
+            p.location = room
+            p.gain_xp("magic", s["xp"])
+            say(f"You cast {tp} and vanish in a flash of light!", "bblue")
+            cmd_look(p, "")
+            return
+    # otherwise run there, spending energy (cheaper with agility)
+    cost = _travel_cost(p)
+    if getattr(p, "run_energy", 100) < cost:
+        say(f"You're too winded to run that far (need {cost} energy, have "
+            f"{int(p.run_energy)}). 'rest' in a city, or walk with n/s/e/w.",
+            "byellow")
+        return
+    p.run_energy -= cost
+    say(f"You set off and travel to {ROOMS[room]['name']}.  "
+        + paint(f"(-{cost} energy → {int(p.run_energy)}/100)", "grey"), "bgreen")
+    p.location = room
+    cmd_look(p, "")
+
+
+def cmd_rest(p, _a):
+    if p.location not in set(TRAVEL_HUBS.values()):
+        say("You can only rest in a major city.", "grey")
+        return
+    if getattr(p, "run_energy", 100) >= 100:
+        say("You're already fully rested.", "grey")
+        return
+    p.run_energy = 100
+    say("You rest a while in the city and recover all your run energy.", "bgreen")
+
+
 def cmd_look(p, _a):
     r = ROOMS[p.location]
     banner(r["name"], color="bcyan", line_color="teal")
@@ -1714,7 +1828,10 @@ def cmd_stats(p, _a):
     style_str = paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold")
     if p.style == "magic":
         style_str += paint(f" ({p.autocast})", "grey")
-    print("  " + paint("Style: ", "white") + style_str)
+    print("  " + paint("Style: ", "white") + style_str
+          + paint("    Run energy ", "white")
+          + bar_meter(int(getattr(p, "run_energy", 100)), 100, 16, fill_color="lime")
+          + (paint("   [member]", "bmagenta") if p.members else ""))
     say()
     total = 0
     cols = []
@@ -2290,63 +2407,66 @@ def _handle_death(p):
 
 
 def _grind_fight(p, target, count):
-    """Fight `count` of a monster quietly, then print a tally summary."""
-    before_xp = {s: p.skills[s] for s in SKILLS}
-    before_lvl = {s: p.lvl(s) for s in SKILLS}
-    before_inv = {i: q for i, q in p.inventory.items()}
+    """Auto-fight up to `count`, one kill at a time (shown), auto-chaining."""
+    rank = MONSTERS[target].get("rank", "medium")
+    banner(f"Auto-fight: {target} ×{count}", color="gold", line_color="brown")
+    print("  " + paint(f"rank: {rank}", RANK_COLOR.get(rank, "white"))
+          + paint("   (one at a time, automatically)", "grey"))
+    total_xp = {}
+    total_loot = {}
     kills = 0
-    died = False
-    stopped = False
-    retreated = False
-    for _ in range(count):
+    outcome = "done"
+    for n in range(1, count + 1):
+        before_xp = {s: p.skills[s] for s in SKILLS}
+        before_inv = {i: q for i, q in p.inventory.items()}
+        before_lvls = {s: p.lvl(s) for s in SKILLS}
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             res = fight_auto(p, target)
             if res == "won":
                 _quest_on_kill(p, target)
-        if res == "won":
-            kills += 1
-            if p.hp <= p.max_hp * 0.3:   # auto-fight won't suicide you
-                retreated = True
-                break
-        elif res == "died":
-            died = True
+        if res == "died":
+            outcome = "died"
             break
-        else:
-            stopped = True  # disengaged: out of arrows/runes
+        if res == "noattack":
+            outcome = "stopped"
+            break
+        kills += 1
+        gained = {s: p.skills[s] - before_xp[s] for s in SKILLS}
+        gx = int(sum(gained.values()))
+        ups = [s for s in SKILLS if p.lvl(s) > before_lvls[s]]
+        loot = {i: p.count(i) - before_inv.get(i, 0) for i in p.inventory
+                if p.count(i) - before_inv.get(i, 0) > 0}
+        for s, v in gained.items():
+            if v:
+                total_xp[s] = total_xp.get(s, 0) + v
+        for i, v in loot.items():
+            total_loot[i] = total_loot.get(i, 0) + v
+        loot_str = ", ".join(f"{i} x{v}" for i, v in loot.items()) or "no loot"
+        print(f"  [{n}/{count}] slew the {target}  "
+              + paint(f"+{gx} xp", "bcyan") + "  " + paint(loot_str, "byellow"))
+        if ups:
+            print("       " + paint("LEVEL UP: "
+                  + ", ".join(f"{s} {p.lvl(s)}" for s in ups), "byellow", "bold"))
+        if p.hp <= p.max_hp * 0.3:
+            outcome = "retreat"
             break
 
-    banner(f"Hunted {target}  ×{kills}", color="gold", line_color="brown")
-    # xp gained
-    xp_lines = []
-    for s in SKILLS:
-        gained = p.skills[s] - before_xp[s]
-        if gained > 0:
-            up = ("  →  level " + str(p.lvl(s))) if p.lvl(s) > before_lvl[s] else ""
-            xp_lines.append(f"  {s:11} +{gained} xp"
-                            + (paint(up, "byellow", "bold") if up else ""))
-    if xp_lines:
-        print(paint("  XP gained:", "bcyan"))
-        for ln in xp_lines:
-            print(ln)
-    # loot gained
-    loot = []
-    for i, q in p.inventory.items():
-        diff = q - before_inv.get(i, 0)
-        if diff > 0:
-            loot.append((i, diff))
-    if loot:
-        print(paint("  Loot:", "byellow"))
-        for i, q in sorted(loot):
-            tint = "gold" if i == "coins" else "byellow"
-            print("    " + paint(f"{i} x{q}", tint))
-    print("  " + paint(f"HP: {max(p.hp,0)}/{p.max_hp}", "white"))
-    if stopped:
-        say("  You stopped early (out of ammo or runes).", "grey")
-    if retreated:
-        say("  You break off the assault, badly wounded — heal up before more.",
+    print()
+    print(paint(f"  Defeated {kills} {target}(s).", "bgreen", "bold")
+          + paint(f"    HP {max(p.hp,0)}/{p.max_hp}", "white"))
+    if total_xp:
+        print("  " + paint("Total XP: ", "bcyan")
+              + ", ".join(f"{s} +{int(v)}" for s, v in total_xp.items()))
+    if total_loot:
+        print("  " + paint("Total loot: ", "byellow")
+              + ", ".join(f"{i} x{v}" for i, v in sorted(total_loot.items())))
+    if outcome == "retreat":
+        say("  You break off, badly wounded — rest or heal before continuing.",
             "byellow")
-    if died:
+    elif outcome == "stopped":
+        say("  You stopped (out of ammo or runes).", "grey")
+    elif outcome == "died":
         say(f"  You were slain after {kills} kill(s).", "bred")
         _handle_death(p)
 
@@ -2366,21 +2486,32 @@ def cmd_fight(p, arg):
             auto = True
         elif t == "all":
             auto = True
-            count = 50
+            count = 999
         elif t.isdigit():
             auto = True
             count = int(t)
         else:
             words.append(t)
-    count = clamp(count, 1, 200)
     target = " ".join(words) or monsters[0]
     if target not in monsters:
         say(f"No {target} here. Monsters: {', '.join(monsters)}")
         return
 
+    rank = MONSTERS[target].get("rank", "medium")
+    if MONSTERS[target].get("boss"):
+        if auto:
+            say(f"The {target} is a BOSS — bosses can't be auto-fought. "
+                "Face it yourself!", "bmagenta")
+        return _start_combat(p, target)       # bosses are always interactive
+
     if not auto:
-        _start_combat(p, target)              # interactive turn-based
-    elif count == 1:
+        return _start_combat(p, target)       # interactive turn-based
+
+    cap = RANK_CAP.get(rank, 20)
+    if count > cap:
+        say(f"Auto-fight is capped at {cap} for {rank}-rank monsters.", "grey")
+    count = clamp(count, 1, cap)
+    if count == 1:
         res = fight_auto(p, target)
         if res == "died":
             _handle_death(p)
@@ -2781,7 +2912,8 @@ def serialize(p):
             "hp": p.hp, "inventory": p.inventory, "bank": p.bank,
             "equipment": p.equipment, "style": p.style, "autocast": p.autocast,
             "quests": p.quests, "members": p.members,
-            "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers}
+            "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
+            "run_energy": p.run_energy}
 
 
 def deserialize(data):
@@ -2801,6 +2933,7 @@ def deserialize(data):
     p.members = data.get("members", False)
     p.prayer_points = data.get("prayer_points", 1)
     p.active_prayers = data.get("equipped_prayers", [])
+    p.run_energy = data.get("run_energy", 100)
     # restore quest-spawned monster
     if p.quests.get("vampyre_slayer") == "started" and \
             "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
@@ -2902,6 +3035,7 @@ HANDLERS = {
     "pray": cmd_pray, "prayer": cmd_pray, "prayers": cmd_pray,
     "pickpocket": cmd_pickpocket, "thieve": cmd_pickpocket, "steal": cmd_pickpocket,
     "agility": cmd_agility, "lap": cmd_agility, "course": cmd_agility,
+    "travel": cmd_travel, "rest": cmd_rest,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
 }
@@ -2916,6 +3050,7 @@ def dispatch(player, raw):
             say("Farewell, adventurer. May your bank be ever full.", "gold")
             return False
         combat_action(player, raw)
+        _regen_energy(player)
         return True
     if not raw:
         return True
@@ -2935,6 +3070,9 @@ def dispatch(player, raw):
             handler(player, arg)
         else:
             say("You don't know how to do that. Type 'help'.")
+    # acting (anything but travelling) slowly restores run energy
+    if verb not in ("travel", "rest"):
+        _regen_energy(player)
     return True
 
 
@@ -3055,6 +3193,8 @@ def web_status(player):
         "total": sum(player.lvl(s) for s in SKILLS),
         "location": ROOMS[player.location]["name"],
         "style": player.style,
+        "energy": int(getattr(player, "run_energy", 100)),
+        "members": bool(getattr(player, "members", False)),
     })
 
 
@@ -3124,6 +3264,9 @@ def web_room_actions(player):
     if r.get("prayer_altar"):
         out.append({"name": "prayer altar", "kind": "service",
                     "actions": [{"label": "Recharge prayer", "cmd": "pray recharge"}]})
+    if player.location in set(TRAVEL_HUBS.values()):
+        out.append({"name": "rest spot", "kind": "service",
+                    "actions": [{"label": "Rest (restore energy)", "cmd": "rest"}]})
     return json.dumps(out)
 
 
