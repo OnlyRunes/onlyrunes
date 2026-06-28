@@ -37,6 +37,41 @@
     font-size: 12px; color: #5a616e; text-align: center; line-height: 1.6;
   }
   footer a { color: #7f8794; }
+  #statusbar {
+    display: none; flex-wrap: wrap; gap: 16px; align-items: center;
+    margin-bottom: 8px; padding: 7px 12px; background: #14161b;
+    border: 1px solid #262a33; border-radius: 10px; font-size: 13px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  #statusbar b { color: #e6ebf2; font-weight: 600; }
+  #statusbar .lbl { color: #6b7280; margin-right: 2px; }
+  #hpbar { display: inline-block; width: 110px; height: 9px; background: #2a2f3a;
+    border-radius: 5px; overflow: hidden; vertical-align: middle; }
+  #hpfill { display: block; height: 100%; width: 100%; background: #3fa34d; }
+  #quickbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 2px 0; }
+  #actions { margin: 10px 2px 4px; }
+  .panel-title { font-size: 12px; color: #6b7280; margin: 0 0 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    background: #1b1f27; color: #c8cdd6; border: 1px solid #2e3440;
+    border-radius: 8px; padding: 5px 11px; font-size: 12.5px; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn:hover { background: #252b35; border-color: #3a4250; }
+  .chip {
+    display: flex; align-items: center; gap: 4px; background: #161a21;
+    border: 1px solid #2a3040; border-radius: 10px; padding: 5px 7px;
+  }
+  .chip .name { font-size: 12.5px; color: #e2c275; margin: 0 4px; }
+  .chip.monster .name { color: #ff8a8a; }
+  .chip.service .name { color: #d59be0; }
+  .chip.npc .name { color: #ffe24a; }
+  .chip .act {
+    background: #232a36; border: 1px solid #343d4d; color: #bfe3c4;
+    border-radius: 6px; padding: 3px 9px; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  .chip .act:hover { background: #2d3543; color: #d7f3db; }
 </style>
 </head>
 <body>
@@ -46,11 +81,19 @@
   </header>
 
   <main id="shell">
+    <div id="statusbar">
+      <span><span class="lbl">Lvl</span> <b id="st-cb">1</b></span>
+      <span><span class="lbl">HP</span> <span id="hpbar"><span id="hpfill"></span></span> <b id="st-hp">10/10</b></span>
+      <span><span class="lbl">GP</span> <b id="st-gp">0</b></span>
+      <span><span class="lbl">at</span> <b id="st-loc">—</b></span>
+      <span class="lbl" id="st-style"></span>
+    </div>
     <div id="terminal" aria-label="Game terminal"></div>
-    <p class="hint">Click the window and type. Try <b>help</b>, <b>look</b>,
-      <b>stats</b>, <b>fight</b>, <b>chop</b>. Your progress auto-saves in this
-      browser. To move to another device, type <b>save export</b> (downloads a
-      file) and <b>save import</b> on the other device.</p>
+    <p class="hint">Type commands, or use the buttons below. Try <b>help</b>,
+      <b>look</b>, <b>map</b>, <b>fight</b>. Progress auto-saves here;
+      <b>save export</b> / <b>save import</b> moves it between devices.</p>
+    <div id="quickbar"></div>
+    <div id="actions"></div>
   </main>
 
   <footer>
@@ -122,8 +165,74 @@
     const askName = () => { w("\r\nWhat is your name, adventurer? "); mode = "name"; };
     const beginPlay = (p) => {
       player = p; w(mod.web_welcome(player)); mode = "play"; persist();
-      w("\r\n"); prompt();
+      w("\r\n"); prompt(); refreshUI();
     };
+
+    // ---- live status bar + clickable action panel ----
+    const esc = (s) => String(s).replace(/[&<>]/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+    const runCommand = (cmd) => {
+      if (mode !== "play") return;
+      buffer = "";
+      term.write(cmd + "\r\n");
+      handleLine(cmd);
+      refreshUI();
+      term.focus();
+    };
+
+    const renderStatus = (st) => {
+      const sb = document.getElementById("statusbar");
+      sb.style.display = "flex";
+      document.getElementById("st-cb").textContent = st.combat;
+      document.getElementById("st-hp").textContent = st.hp + "/" + st.max_hp;
+      document.getElementById("st-gp").textContent = (st.coins || 0).toLocaleString();
+      document.getElementById("st-loc").textContent = st.location;
+      document.getElementById("st-style").textContent = st.style;
+      const ratio = st.max_hp ? st.hp / st.max_hp : 0;
+      const fill = document.getElementById("hpfill");
+      fill.style.width = Math.round(ratio * 100) + "%";
+      fill.style.background = ratio > 0.5 ? "#3fa34d" : ratio > 0.25 ? "#caa53a" : "#d64f4f";
+    };
+
+    const renderActions = (list) => {
+      const box = document.getElementById("actions");
+      if (!list || !list.length) { box.innerHTML = ""; return; }
+      let html = '<p class="panel-title">Things you can do here</p><div class="chips">';
+      for (const e of list) {
+        html += '<span class="chip ' + (e.kind || "") + '"><span class="name">'
+              + esc(e.name) + '</span>';
+        for (const a of e.actions) {
+          html += '<button class="act" data-cmd="' + esc(a.cmd).replace(/"/g, "&quot;")
+                + '">' + esc(a.label) + '</button>';
+        }
+        html += '</span>';
+      }
+      box.innerHTML = html + '</div>';
+      box.querySelectorAll(".act").forEach(b =>
+        b.addEventListener("click", () => runCommand(b.getAttribute("data-cmd"))));
+    };
+
+    const refreshUI = () => {
+      if (!player || !mod) return;
+      try { renderStatus(JSON.parse(mod.web_status(player))); } catch (e) {}
+      try {
+        renderActions(mode === "play" ? JSON.parse(mod.web_room_actions(player)) : []);
+      } catch (e) {}
+    };
+
+    (() => {
+      const qb = document.getElementById("quickbar");
+      const cmds = [["Look", "look"], ["Stats", "stats"], ["Inventory", "inventory"],
+                    ["Equipment", "equipment"], ["Map", "map"], ["Quests", "quests"],
+                    ["Help", "help"]];
+      for (const [label, cmd] of cmds) {
+        const b = document.createElement("button");
+        b.className = "btn"; b.textContent = label;
+        b.addEventListener("click", () => runCommand(cmd));
+        qb.appendChild(b);
+      }
+    })();
 
     const saveCode = () => btoa(unescape(encodeURIComponent(mod.player_to_json(player))));
 
@@ -154,8 +263,8 @@
       }
       try {
         player = mod.player_from_json(json); persist();
-        w("\r\n\x1b[92mSave loaded! Welcome back, " + player.name + ".\x1b[0m\r\n");
-        w(JSON.parse(mod.web_command(player, "look")).text);
+        w("\r\n");
+        w(mod.web_resume(player));
       } catch (e) {
         w("\r\n\x1b[91mCouldn't load that save: " + e + "\x1b[0m\r\n");
       }
@@ -168,7 +277,7 @@
         const f = inp.files && inp.files[0];
         if (!f) { w("\r\nNo file chosen.\r\n"); mode = "play"; prompt(); return; }
         const reader = new FileReader();
-        reader.onload = () => { loadFromCode(reader.result); mode = "play"; prompt(); };
+        reader.onload = () => { loadFromCode(reader.result); mode = "play"; prompt(); refreshUI(); };
         reader.readAsText(f);
       };
       inp.click();
@@ -179,8 +288,10 @@
         if (line.trim().toLowerCase().startsWith("y")) {
           try {
             player = mod.player_from_json(localStorage.getItem(SAVE_KEY));
-            w("\r\n\x1b[92mWelcome back, " + player.name + ".\x1b[0m\r\n");
-            mode = "play"; prompt();
+            mode = "play";
+            w(mod.web_resume(player));
+            prompt();
+            refreshUI();
           } catch (e) {
             w("\r\n\x1b[90mThat save was unreadable; starting fresh.\x1b[0m\r\n");
             askName();
@@ -197,7 +308,7 @@
         if (low === "" || low === "cancel") { w("\r\nImport cancelled.\r\n"); }
         else if (low === "file" || low === "upload") { pickFile(); return; }
         else { loadFromCode(v); }
-        mode = "play"; prompt(); return;
+        mode = "play"; prompt(); refreshUI(); return;
       }
       if (mode === "play") {
         const cmd = line.trim();
@@ -236,7 +347,7 @@
       for (const ch of data) {
         if (ch === "\r" || ch === "\n") {        // Enter
           term.write("\r\n");
-          const line = buffer; buffer = ""; handleLine(line);
+          const line = buffer; buffer = ""; handleLine(line); refreshUI();
         } else if (ch === "\x7f" || ch === "\b") { // Backspace / Delete
           if (buffer.length) { buffer = buffer.slice(0, -1); term.write("\b \b"); }
         } else if (ch === "\x03") {              // Ctrl-C
@@ -251,10 +362,15 @@
     if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
       window.__onlyrunes = {
         feed: (s) => handleLine(s),
+        run: (s) => runCommand(s),
+        refresh: () => refreshUI(),
         saveCode: () => saveCode(),
         loadFromCode: (c) => loadFromCode(c),
         screen: () => [...document.querySelectorAll(".xterm-rows > div")]
           .map(r => r.textContent.replace(/\s+$/, "")).filter(Boolean).join("\n"),
+        status: () => document.getElementById("statusbar").style.display,
+        chips: () => [...document.querySelectorAll("#actions .chip .name")].map(n => n.textContent),
+        actBtns: () => [...document.querySelectorAll("#actions .act")].map(b => b.textContent),
         get mode() { return mode; },
         get player() { return player; }
       };
