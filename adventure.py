@@ -1242,6 +1242,9 @@ def _victory(p, m):
     say(f"You have defeated the {m['name']}!", "bgreen", "bold")
     _award_combat_xp(p, m["hp"])
     _roll_drops(p, m)
+    if p.hp < p.max_hp:          # a kill always restores 1 HP
+        p.hp = min(p.max_hp, p.hp + 1)
+        print("  " + paint("You recover 1 HP from the victory.", "grey"))
 
 
 def fight_auto(p, mname):
