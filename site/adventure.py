@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-RuneScape Text Adventure  —  Free-to-Play Gielinor
-==================================================
-A terminal text adventure inspired by Old School RuneScape's free-to-play
-worlds. Explore the cities of Misthalin, Asgarnia and the Kharidian Desert,
-train all 15 F2P skills, fight monsters, bank your loot, trade on the Grand
-Exchange, and complete a handful of classic quests.
+OnlyRunes  —  A Text Adventure in Gielinor
+==========================================
+A terminal text adventure inspired by Old School RuneScape. Explore the cities
+of Misthalin, Asgarnia and the Kharidian Desert, train your skills, fight
+monsters, bank your loot, trade on the Grand Exchange, unlock members content,
+and complete classic quests.
 
-This is a faithful *slice* of F2P OSRS — not every item, monster or quest, but
-a broad, coherent world built to be easy to extend (see the data tables below).
+A love letter to Old School RuneScape — not every item, monster or quest, but a
+broad, coherent world built to be easy to extend (see the data tables below).
 
 Run with:  python3 adventure.py
 """
@@ -306,9 +306,9 @@ SKILLS = [
     "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
     "mining", "runecrafting",
     # members skills
-    "thieving", "agility",
+    "thieving", "agility", "slayer",
 ]
-MEMBERS_SKILLS = {"thieving", "agility"}
+MEMBERS_SKILLS = {"thieving", "agility", "slayer"}
 
 
 # ===========================================================================
@@ -512,7 +512,7 @@ def high_alch(name):
 
 
 # ===========================================================================
-#  SPELLS  (standard F2P spellbook)
+#  SPELLS  (standard spellbook)
 # ===========================================================================
 # combat spells: max_hit + rune cost + magic level + xp
 SPELLS = {
@@ -613,6 +613,12 @@ PICKPOCKET = {
 # Agility: course-name -> (level, xp, fail_damage)
 AGILITY_COURSE = (1, 8, 2)  # (min level, xp per lap, fall damage)
 
+# Monsters a Slayer Master may assign (all reachable). Slayer xp per kill = hp.
+SLAYER_TARGETS = ["goblin", "cow", "giant rat", "scorpion", "skeleton",
+                  "zombie", "giant spider", "minotaur", "flesh crawler",
+                  "barbarian", "hobgoblin", "guard", "hill giant"]
+SLAYER_POINTS = {"easy": 3, "medium": 5, "hard": 8, "elite": 12}
+
 
 # ===========================================================================
 #  MONSTERS
@@ -645,7 +651,7 @@ MONSTERS = {
                                       ("steel platelegs", 1, 1, 0.05),
                                       ("law rune", 1, 3, 0.1)]),
     "count draynor": mob(30, 12, 8, 4, [("bones", 1, 1, 1.0)], weak="stake"),
-    # --- additional F2P monsters ---
+    # --- additional monsters ---
     "giant spider": mob(20, 12, 8, 2, [("bones", 1, 1, 1.0), ("coins", 1, 15, 0.5)]),
     "dwarf": mob(14, 8, 6, 2, [("bones", 1, 1, 1.0), ("coins", 3, 25, 0.9)]),
     "minotaur": mob(18, 10, 7, 3, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.9),
@@ -846,11 +852,12 @@ ROOMS = {
         monsters=["barbarian"]),
     "edgeville": dict(
         name="Edgeville",
-        desc="A frontier town with a bank and furnace. A dungeon lies below, "
-             "and the Wilderness ditch is to the north.",
+        desc="A frontier town with a bank and furnace. Vannaka the Slayer "
+             "Master is here. A dungeon lies below, and the Wilderness ditch "
+             "is to the north.",
         exits={"south": "barbarian_village", "north": "wilderness_edge",
                "down": "edgeville_dungeon"},
-        bank=True, furnace=True),
+        bank=True, furnace=True, npc="slayer_master"),
     "edgeville_dungeon": dict(
         name="Edgeville Dungeon",
         desc="A dank dungeon. Hobgoblins and hill giants prowl the dark.",
@@ -903,7 +910,7 @@ ROOMS = {
         desc="A tropical island port. Fishing spots line the docks; a volcano "
              "smokes in the distance.",
         exits={"north": "port_sarim"}, fish_tools=["net", "rod"]),
-    # ---- New F2P areas ---------------------------------------------------
+    # ---- New areas ---------------------------------------------------
     "lumbridge_church": dict(
         name="Lumbridge Church",
         desc="A quiet stone church with a graveyard out back. Father Aereck "
@@ -997,6 +1004,8 @@ class Player:
         self.active_prayers = []  # names of currently-active prayers
         self.combat = None        # interactive-combat state (None = not fighting)
         self.run_energy = 100     # 0-100; spent travelling, regained by acting
+        self.slayer_task = None   # {"monster","amount","remaining"} or None
+        self.slayer_points = 0
         # starter kit
         for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
                       ("bronze axe", 1), ("small fishing net", 1),
@@ -1560,7 +1569,7 @@ def cmd_membership(p, arg):
     say("Welcome, member! You can now reach members areas (Deep Dungeon, the "
         "King Black Dragon's lair) and train members skills (thieving, "
         "agility). This tribute game grants it free.", "bmagenta")
-    say("(Type 'membership off' to go back to free-to-play.)", "grey")
+    say("(Type 'membership off' to disable members content.)", "grey")
 
 
 def cmd_pray(p, arg):
@@ -1819,7 +1828,7 @@ SKILL_COLOR = {
     "magic": "bblue", "cooking": "orange", "woodcutting": "bgreen",
     "fishing": "bcyan", "firemaking": "orange", "crafting": "brown",
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
-    "thieving": "purple", "agility": "lime",
+    "thieving": "purple", "agility": "lime", "slayer": "teal",
 }
 
 
@@ -2176,7 +2185,7 @@ def cmd_craftrune(p, _a):
         return
     rune = altar + " rune"
     if rune not in RUNECRAFT:
-        say("You can't craft that rune in F2P.")
+        say("You can't craft that rune here.")
         return
     if not p.has("rune essence"):
         say("You need rune essence.")
@@ -2838,6 +2847,28 @@ def talk_oddenstein(p):
         say("Oddenstein: \"Ernest is most grateful to you!\"")
 
 
+def talk_slayer_master(p):
+    if not getattr(p, "members", False):
+        say("Vannaka: \"Slayer is a members art, friend. Get membership and "
+            "I'll set you a task.\"", "bmagenta")
+        return
+    task = p.slayer_task
+    if task and task["remaining"] > 0:
+        say(f"Vannaka: \"You're still on the hunt — {task['remaining']} of "
+            f"{task['amount']} {task['monster']}s to go. Get to it!\"", "teal")
+        return
+    mon = random.choice(SLAYER_TARGETS)
+    amt = random.randint(10, 25)
+    p.slayer_task = {"monster": mon, "amount": amt, "remaining": amt}
+    banner("Slayer Assignment", color="teal", line_color="teal")
+    say(f"Vannaka: \"Your task: slay {amt} {mon}s.\"", "teal")
+    locs = sorted({ROOMS[k]["name"] for k, r in ROOMS.items()
+                   if mon in r.get("monsters", [])})
+    if locs:
+        say("  Find them at: " + ", ".join(locs[:4]), "grey")
+    say("  (Check progress with 'task'.)", "grey")
+
+
 QUEST_TALK = {
     "cooks_assistant": talk_cook,
     "sheep_shearer": talk_farmer,
@@ -2849,6 +2880,7 @@ QUEST_TALK = {
     "imp_catcher": talk_mizgog,
     "witch_potion": talk_aggie,
     "ernest_chicken": talk_oddenstein,
+    "slayer_master": talk_slayer_master,
 }
 
 
@@ -2861,6 +2893,22 @@ def _quest_on_kill(p, target):
         p.gain_xp("attack", 4825)
         p.quests["vampyre_slayer"] = "complete"
         ROOMS["draynor_manor"]["monsters"].remove("count draynor")
+    # slayer task progress
+    task = getattr(p, "slayer_task", None)
+    if task and target == task["monster"] and task["remaining"] > 0:
+        p.gain_xp("slayer", MONSTERS[target]["hp"])
+        task["remaining"] -= 1
+        if task["remaining"] <= 0:
+            pts = SLAYER_POINTS.get(MONSTERS[target].get("rank", "medium"), 5)
+            p.slayer_points += pts
+            banner("SLAYER TASK COMPLETE", color="teal", line_color="teal")
+            say(f"You finish your task of {task['amount']} {target}s! "
+                f"+{pts} Slayer points (total {p.slayer_points}). See a Slayer "
+                "Master for another.", "teal", "bold")
+            p.slayer_task = None
+        else:
+            print("  " + paint(f"Slayer: {task['remaining']} {target}s to go.",
+                               "teal"))
 
 
 ALL_QUESTS = {
@@ -2879,6 +2927,26 @@ def cmd_quests(p, _a):
         st = _q(p, key).replace("_", " ")
         color = {"complete": "bgreen", "started": "byellow"}.get(st, "grey")
         print(f"  {title:20} " + paint(st, color))
+
+
+def cmd_task(p, _a):
+    if not getattr(p, "members", False):
+        say("Slayer is members-only. Type 'membership' to unlock it.", "bmagenta")
+        return
+    banner("Slayer", color="teal", line_color="teal")
+    print("  " + paint(f"Slayer level {p.lvl('slayer')}", "teal")
+          + paint(f"    Points: {p.slayer_points}", "white"))
+    t = getattr(p, "slayer_task", None)
+    if t and t["remaining"] > 0:
+        print("  " + paint(f"Task: slay {t['remaining']}/{t['amount']} "
+                           f"{t['monster']}s", "white"))
+        locs = sorted({ROOMS[k]["name"] for k, r in ROOMS.items()
+                       if t["monster"] in r.get("monsters", [])})
+        if locs:
+            print("  " + paint("Found at: " + ", ".join(locs[:4]), "grey"))
+    else:
+        print("  " + paint("No active task — see Vannaka, the Slayer Master in "
+                           "Edgeville.", "grey"))
 
 
 def cmd_search(p, _a):
@@ -2916,7 +2984,8 @@ def serialize(p):
             "equipment": p.equipment, "style": p.style, "autocast": p.autocast,
             "quests": p.quests, "members": p.members,
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
-            "run_energy": p.run_energy}
+            "run_energy": p.run_energy, "slayer_task": p.slayer_task,
+            "slayer_points": p.slayer_points}
 
 
 def deserialize(data):
@@ -2937,6 +3006,8 @@ def deserialize(data):
     p.prayer_points = data.get("prayer_points", 1)
     p.active_prayers = data.get("equipped_prayers", [])
     p.run_energy = data.get("run_energy", 100)
+    p.slayer_task = data.get("slayer_task", None)
+    p.slayer_points = data.get("slayer_points", 0)
     # restore quest-spawned monster
     if p.quests.get("vampyre_slayer") == "started" and \
             "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
@@ -3039,6 +3110,7 @@ HANDLERS = {
     "pickpocket": cmd_pickpocket, "thieve": cmd_pickpocket, "steal": cmd_pickpocket,
     "agility": cmd_agility, "lap": cmd_agility, "course": cmd_agility,
     "travel": cmd_travel, "rest": cmd_rest,
+    "task": cmd_task, "slayer": cmd_task,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
 }
@@ -3096,8 +3168,8 @@ def run(player, greet=True):
 
 def main():
     show_art(LOGO, "gold")
-    print(paint("        Free-to-Play Gielinor".center(78), "bgreen"))
-    print(paint("   A faithful slice of F2P Old School RuneScape".center(78),
+    print(paint("        Adventures in Gielinor".center(78), "bgreen"))
+    print(paint("   A love letter to Old School RuneScape".center(78),
                 "grey"))
     rule("brown")
     player = None
@@ -3137,8 +3209,8 @@ def web_logo():
     """Splash logo + tagline for the title screen."""
     def _show():
         show_art(LOGO, "gold")
-        print(paint("        Free-to-Play Gielinor".center(78), "bgreen"))
-        print(paint("   A faithful slice of F2P Old School RuneScape".center(78),
+        print(paint("        Adventures in Gielinor".center(78), "bgreen"))
+        print(paint("   A love letter to Old School RuneScape".center(78),
                     "grey"))
         rule("brown")
     return _capture(_show)

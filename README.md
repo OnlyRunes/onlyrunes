@@ -1,11 +1,11 @@
 # OnlyRunes
 
-A free-to-play text adventure inspired by Old School RuneScape, playable in the
-terminal **or** the browser. Live at **https://onlyrunes.net**.
+A text adventure inspired by Old School RuneScape, playable in the terminal
+**or** the browser. Live at **https://onlyrunes.net**.
 
-Explore the cities of Misthalin, Asgarnia and the Kharidian Desert, train all
-15 F2P skills, fight monsters, bank loot, trade on the Grand Exchange, and
-complete classic quests.
+Explore the cities of Misthalin, Asgarnia and the Kharidian Desert, train your
+skills, fight monsters, bank loot, trade on the Grand Exchange, unlock members
+content, and complete classic quests.
 
 ## Play in the terminal
 
