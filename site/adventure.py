@@ -487,6 +487,11 @@ add_item("yellow bead", 2)
 add_item("black bead", 2)
 add_item("white bead", 2)
 add_item("ranarr seed", 1500, members=True)
+add_item("ghost's skull", 1)
+add_item("air talisman", 50)
+add_item("oil can", 1)
+add_item("pressure gauge", 1)
+add_item("rubber tube", 1)
 add_item("dragon med helm", 60000, members=True,
          equip={"slot": "head", "def": 30, "req": {"defence": 60}})
 add_item("dragon dagger", 30000, members=True,
@@ -747,13 +752,13 @@ ROOMS = {
              "wheat field, and Morgan, who looks terrified.",
         exits={"east": "draynor_path", "north": "draynor_manor",
                "south": "wizard_tower"},
-        bank=True, trees=["willow"], npc="vampyre_slayer"),
+        bank=True, trees=["willow"], npc=["vampyre_slayer", "witch_potion"]),
     "draynor_manor": dict(
         name="Draynor Manor",
         desc="A gloomy manor. Skeletons and zombies roam, and Count Draynor "
              "lurks within.",
         exits={"south": "draynor_village"},
-        monsters=["skeleton", "zombie"]),
+        monsters=["skeleton", "zombie"], npc="ernest_chicken"),
     # ---- Varrock ---------------------------------------------------------
     "varrock_gate": dict(
         name="Varrock South Gate",
@@ -875,7 +880,7 @@ ROOMS = {
         desc="A tower of mages south of Draynor. Sedridor studies runes in the "
              "basement, and mischievous imps flit about.",
         exits={"north": "draynor_village"},
-        monsters=["imp"], npc="rune_mysteries"),
+        monsters=["imp"], npc=["rune_mysteries", "imp_catcher"]),
     "stronghold_security": dict(
         name="Stronghold of Security",
         desc="A monster-filled dungeon beneath Barbarian Village. Minotaurs and "
@@ -2248,7 +2253,10 @@ def cmd_talk(p, _a):
     if not npc:
         say("There's no one here to talk to.")
         return
-    QUEST_TALK[npc](p)
+    npcs = npc if isinstance(npc, list) else [npc]
+    # talk to whoever still has an unfinished quest; else the last NPC
+    target = next((k for k in npcs if _q(p, k) != "complete"), npcs[-1])
+    QUEST_TALK[target](p)
 
 
 def _q(p, key):
@@ -2371,12 +2379,142 @@ def talk_morgan(p):
         say("Morgan: \"The Count still lives! Slay him in the manor!\"")
 
 
+def _need_msg(npc, missing):
+    say(f"{npc}: \"You still need: " + ", ".join(missing) + ".\"")
+
+
+def _complete_banner(title):
+    show_art(ART_QUEST, "gold", center=True)
+    banner(f"QUEST COMPLETE: {title}", color="byellow", line_color="gold")
+
+
+def talk_aereck(p):
+    stage = _q(p, "restless_ghost")
+    if stage == "not_started":
+        banner("Quest Start: The Restless Ghost", color="purple", line_color="bmagenta")
+        say("Father Aereck: \"A ghost haunts my graveyard! He lost his SKULL — "
+            "it's down in the Varrock sewers. 'search' there, fetch it, and lay "
+            "him to rest.\"")
+        p.quests["restless_ghost"] = "started"
+    elif stage == "started":
+        if p.has("ghost's skull"):
+            p.take("ghost's skull")
+            _complete_banner("The Restless Ghost")
+            say("You return the skull and the ghost fades away in peace. "
+                "1125 prayer xp awarded!")
+            p.gain_xp("prayer", 1125)
+            p.quests["restless_ghost"] = "complete"
+        else:
+            say("Father Aereck: \"The skull is in the Varrock sewers — 'search' "
+                "the muck down there.\"")
+    else:
+        say("Father Aereck: \"Bless you for freeing that poor soul.\"")
+
+
+def talk_sedridor(p):
+    stage = _q(p, "rune_mysteries")
+    if stage == "not_started":
+        banner("Quest Start: Rune Mysteries", color="purple", line_color="bmagenta")
+        say("Sedridor: \"Take this AIR TALISMAN, study it, and bring it back — "
+            "and I'll teach you the secret of runecrafting.\"")
+        p.add("air talisman")
+        p.quests["rune_mysteries"] = "started"
+    elif stage == "started":
+        if p.has("air talisman"):
+            p.take("air talisman")
+            _complete_banner("Rune Mysteries")
+            say("Sedridor teaches you the basics of runecrafting! "
+                "100 runecrafting and 100 magic xp awarded.")
+            p.gain_xp("runecrafting", 100)
+            p.gain_xp("magic", 100)
+            p.quests["rune_mysteries"] = "complete"
+        else:
+            say("Sedridor: \"Hmm, where did that talisman go? Come back with it.\"")
+    else:
+        say("Sedridor: \"The runes reveal themselves to you now.\"")
+
+
+def talk_mizgog(p):
+    stage = _q(p, "imp_catcher")
+    beads = ["red bead", "yellow bead", "black bead", "white bead"]
+    if stage == "not_started":
+        banner("Quest Start: Imp Catcher", color="purple", line_color="bmagenta")
+        say("Wizard Mizgog: \"Those imps stole my magic beads! Bring me a RED, "
+            "YELLOW, BLACK and WHITE bead — slay the imps here to get them.\"")
+        p.quests["imp_catcher"] = "started"
+    elif stage == "started":
+        missing = [b for b in beads if not p.has(b)]
+        if missing:
+            _need_msg("Mizgog", missing)
+        else:
+            for b in beads:
+                p.take(b)
+            _complete_banner("Imp Catcher")
+            say("Mizgog cheers and rewards you with 875 magic xp!")
+            p.gain_xp("magic", 875)
+            p.quests["imp_catcher"] = "complete"
+    else:
+        say("Mizgog: \"My beads are safe, thank you!\"")
+
+
+def talk_aggie(p):
+    stage = _q(p, "witch_potion")
+    need = ["raw rat meat", "bucket of milk", "egg"]
+    if stage == "not_started":
+        banner("Quest Start: Witch's Potion", color="purple", line_color="bmagenta")
+        say("Aggie: \"Brew my potion and I'll boost your magic. Bring me RAW RAT "
+            "MEAT, a BUCKET OF MILK and an EGG.\"")
+        p.quests["witch_potion"] = "started"
+    elif stage == "started":
+        missing = [i for i in need if not p.has(i)]
+        if missing:
+            _need_msg("Aggie", missing)
+        else:
+            for i in need:
+                p.take(i)
+            _complete_banner("Witch's Potion")
+            say("Aggie brews a bubbling potion. 325 magic xp awarded!")
+            p.gain_xp("magic", 325)
+            p.quests["witch_potion"] = "complete"
+    else:
+        say("Aggie: \"That potion did you good, didn't it?\"")
+
+
+def talk_oddenstein(p):
+    stage = _q(p, "ernest_chicken")
+    parts = ["oil can", "pressure gauge", "rubber tube"]
+    if stage == "not_started":
+        banner("Quest Start: Ernest the Chicken", color="purple", line_color="bmagenta")
+        say("Professor Oddenstein: \"My machine turned Ernest into a chicken! "
+            "To fix it, 'search' the manor for an OIL CAN, a PRESSURE GAUGE and "
+            "a RUBBER TUBE.\"")
+        p.quests["ernest_chicken"] = "started"
+    elif stage == "started":
+        missing = [i for i in parts if not p.has(i)]
+        if missing:
+            _need_msg("Oddenstein", missing)
+        else:
+            for i in parts:
+                p.take(i)
+            _complete_banner("Ernest the Chicken")
+            say("The machine whirs and Ernest is restored! 300 coins awarded.")
+            p.add("coins", 300)
+            p.quests["ernest_chicken"] = "complete"
+    else:
+        say("Oddenstein: \"Ernest is most grateful to you!\"")
+
+
 QUEST_TALK = {
     "cooks_assistant": talk_cook,
     "sheep_shearer": talk_farmer,
     "dorics_quest": talk_doric,
     "romeo_juliet": talk_romeo,
     "vampyre_slayer": talk_morgan,
+    "restless_ghost": talk_aereck,
+    "rune_mysteries": talk_sedridor,
+    "imp_catcher": talk_mizgog,
+    "witch_potion": talk_aggie,
+    "ernest_chicken": talk_oddenstein,
 }
 
 
@@ -2391,24 +2529,43 @@ def _quest_on_kill(p, target):
         ROOMS["draynor_manor"]["monsters"].remove("count draynor")
 
 
+ALL_QUESTS = {
+    "cooks_assistant": "Cook's Assistant", "sheep_shearer": "Sheep Shearer",
+    "dorics_quest": "Doric's Quest", "romeo_juliet": "Romeo & Juliet",
+    "vampyre_slayer": "Vampyre Slayer", "restless_ghost": "The Restless Ghost",
+    "rune_mysteries": "Rune Mysteries", "imp_catcher": "Imp Catcher",
+    "witch_potion": "Witch's Potion", "ernest_chicken": "Ernest the Chicken",
+}
+
+
 def cmd_quests(p, _a):
-    banner("Quest Journal")
-    all_q = {"cooks_assistant": "Cook's Assistant",
-             "sheep_shearer": "Sheep Shearer", "dorics_quest": "Doric's Quest",
-             "romeo_juliet": "Romeo & Juliet", "vampyre_slayer": "Vampyre Slayer"}
-    for key, title in all_q.items():
+    done = sum(1 for k in ALL_QUESTS if _q(p, k) == "complete")
+    banner(f"Quest Journal  ({done}/{len(ALL_QUESTS)})", color="gold")
+    for key, title in ALL_QUESTS.items():
         st = _q(p, key).replace("_", " ")
-        say(f"  {title:18} — {st}")
+        color = {"complete": "bgreen", "started": "byellow"}.get(st, "grey")
+        print(f"  {title:20} " + paint(st, color))
 
 
-# special handling: picking up Juliet's message
 def cmd_search(p, _a):
-    if p.location == "draynor_village" and _q(p, "romeo_juliet") == "started":
-        if not p.has("message"):
-            p.add("message")
-            say("You find Juliet here. She gives you a heartfelt message for "
-                "Romeo. Take it back to Varrock Square!")
-            return
+    loc = p.location
+    if loc == "draynor_village" and _q(p, "romeo_juliet") == "started" \
+            and not p.has("message"):
+        p.add("message")
+        say("You find Juliet here. She gives you a heartfelt message for Romeo. "
+            "Take it back to Varrock Square!")
+        return
+    if loc == "varrock_sewers" and _q(p, "restless_ghost") == "started" \
+            and not p.has("ghost's skull"):
+        p.add("ghost's skull")
+        say("Among the filth you spot a grinning skull — the ghost's! You pocket it.")
+        return
+    if loc == "draynor_manor" and _q(p, "ernest_chicken") == "started":
+        for part in ["oil can", "pressure gauge", "rubber tube"]:
+            if not p.has(part):
+                p.add(part)
+                say(f"You rummage through the manor and find a {part}.")
+                return
     say("You find nothing of interest.")
 
 
