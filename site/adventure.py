@@ -540,9 +540,10 @@ RUNECRAFT = {"air rune": (1, 5), "mind rune": (2, 5.5), "water rune": (5, 6),
 # ===========================================================================
 #  MONSTERS
 # ===========================================================================
-def mob(hp, attack, defence, max_hit, drops, weak=None):
+def mob(hp, attack, defence, max_hit, drops, weak=None, members=False, boss=False):
     return {"hp": hp, "attack": attack, "defence": defence,
-            "max_hit": max_hit, "drops": drops, "weak": weak}
+            "max_hit": max_hit, "drops": drops, "weak": weak,
+            "members": members, "boss": boss}
 
 
 # drops: list of (item, min, max, chance)
@@ -567,6 +568,36 @@ MONSTERS = {
                                       ("steel platelegs", 1, 1, 0.05),
                                       ("law rune", 1, 3, 0.1)]),
     "count draynor": mob(30, 12, 8, 4, [("bones", 1, 1, 1.0)], weak="stake"),
+    # --- additional F2P monsters ---
+    "giant spider": mob(20, 12, 8, 2, [("bones", 1, 1, 1.0), ("coins", 1, 15, 0.5)]),
+    "dwarf": mob(14, 8, 6, 2, [("bones", 1, 1, 1.0), ("coins", 3, 25, 0.9)]),
+    "minotaur": mob(18, 10, 7, 3, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.9),
+                                   ("iron arrow", 5, 15, 0.4)]),
+    "flesh crawler": mob(22, 11, 7, 2, [("bones", 1, 1, 1.0), ("coins", 10, 45, 0.9),
+                                        ("mind rune", 2, 6, 0.3)]),
+    "thug": mob(20, 12, 6, 3, [("bones", 1, 1, 1.0), ("coins", 8, 40, 0.8)]),
+    "dark warrior": mob(28, 16, 12, 4, [("bones", 1, 1, 1.0), ("coins", 15, 60, 0.9)]),
+    "imp": mob(6, 3, 2, 1, [("bones", 1, 1, 0.0), ("red bead", 1, 1, 0.25),
+                            ("yellow bead", 1, 1, 0.25), ("black bead", 1, 1, 0.25),
+                            ("white bead", 1, 1, 0.25), ("coins", 1, 8, 0.4)]),
+    "man": mob(7, 1, 1, 1, [("bones", 1, 1, 1.0), ("coins", 1, 12, 0.8)]),
+    "chicken farmer": mob(7, 1, 1, 1, [("bones", 1, 1, 1.0), ("coins", 1, 10, 0.7)]),
+    "zombie rat": mob(6, 2, 1, 1, [("bones", 1, 1, 1.0)]),
+    # --- members monsters (gated behind membership) ---
+    "moss giant": mob(60, 24, 18, 6, [("big bones", 1, 1, 1.0), ("coins", 20, 120, 0.9),
+                                      ("mithril sword", 1, 1, 0.06),
+                                      ("nature rune", 2, 6, 0.2)], members=True),
+    "ice giant": mob(70, 28, 22, 8, [("big bones", 1, 1, 1.0), ("coins", 30, 150, 0.9),
+                                     ("adamant arrow", 5, 15, 0.2)], members=True),
+    "lesser demon": mob(79, 32, 24, 8, [("ashes", 1, 1, 1.0), ("coins", 30, 180, 0.9),
+                                        ("rune full helm", 1, 1, 0.03),
+                                        ("law rune", 2, 8, 0.2)], members=True),
+    "greater demon": mob(87, 36, 26, 9, [("ashes", 1, 1, 1.0), ("coins", 40, 220, 0.9),
+                                         ("rune kiteshield", 1, 1, 0.02)], members=True),
+    "king black dragon": mob(240, 60, 40, 25, [("big bones", 1, 1, 1.0),
+                             ("coins", 500, 3000, 1.0), ("rune platebody", 1, 1, 0.15),
+                             ("dragon med helm", 1, 1, 0.05),
+                             ("ranarr seed", 1, 3, 0.3)], members=True, boss=True),
 }
 
 
@@ -584,7 +615,7 @@ ROOMS = {
              "bank sits upstairs, and a spinning wheel hums in the hall. The "
              "Cook frets by the ovens.",
         exits={"north": "general_store", "east": "river_lum", "south": "swamp",
-               "west": "cow_field"},
+               "west": "cow_field", "church": "lumbridge_church"},
         bank=True, range=True, spinning_wheel=True, npc="cooks_assistant"),
     "general_store": dict(
         name="Lumbridge General Store",
@@ -653,7 +684,8 @@ ROOMS = {
         name="Draynor Village",
         desc="A run-down village with a bank, willow trees by the river, a "
              "wheat field, and Morgan, who looks terrified.",
-        exits={"east": "draynor_path", "north": "draynor_manor"},
+        exits={"east": "draynor_path", "north": "draynor_manor",
+               "south": "wizard_tower"},
         bank=True, trees=["willow"], npc="vampyre_slayer"),
     "draynor_manor": dict(
         name="Draynor Manor",
@@ -690,7 +722,8 @@ ROOMS = {
     "varrock_palace": dict(
         name="Varrock Palace",
         desc="King Roald's palace, patrolled by guards.",
-        exits={"south": "varrock_square"}, monsters=["guard"]),
+        exits={"south": "varrock_square", "down": "varrock_sewers"},
+        monsters=["guard"]),
     "essence_mine": dict(
         name="Rune Essence Mine",
         desc="A mystical cavern of pure rune essence. A portal leads back out.",
@@ -701,7 +734,7 @@ ROOMS = {
         desc="Rowdy barbarians, a mine, and a river for fly fishing trout and "
              "salmon.",
         exits={"east": "varrock_west_bank", "west": "falador_east",
-               "north": "edgeville"},
+               "north": "edgeville", "down": "stronghold_security"},
         rocks=["copper", "tin", "iron", "coal"], fish_tools=["fly"],
         monsters=["barbarian"]),
     "edgeville": dict(
@@ -714,12 +747,14 @@ ROOMS = {
     "edgeville_dungeon": dict(
         name="Edgeville Dungeon",
         desc="A dank dungeon. Hobgoblins and hill giants prowl the dark.",
-        exits={"up": "edgeville"}, monsters=["hobgoblin", "hill giant"]),
+        exits={"up": "edgeville", "deeper": "members_dungeon"},
+        monsters=["hobgoblin", "hill giant", "giant spider"]),
     "wilderness_edge": dict(
         name="Edge of the Wilderness",
         desc="Past this ditch lies the lawless Wilderness. Dark wizards and "
              "skeletons haunt the wastes. Tread carefully.",
-        exits={"south": "edgeville"}, monsters=["dark wizard", "skeleton"]),
+        exits={"south": "edgeville", "deep": "kbd_lair"},
+        monsters=["dark wizard", "skeleton", "dark warrior"]),
     # ---- Falador / Dwarven Mine ------------------------------------------
     "falador_east": dict(
         name="East Falador",
@@ -736,12 +771,13 @@ ROOMS = {
     "falador_west": dict(
         name="West Falador",
         desc="A bank and the road south toward Rimmington.",
-        exits={"east": "falador_square", "south": "rimmington"}, bank=True),
+        exits={"east": "falador_square", "south": "rimmington",
+               "altar": "air_altar"}, bank=True),
     "dwarven_mine": dict(
         name="Dwarven Mine",
         desc="A deep mine of coal, iron, mithril and gold. Scorpions lurk.",
         exits={"north": "falador_square"},
-        rocks=["iron", "coal", "gold", "mithril"], monsters=["scorpion"]),
+        rocks=["iron", "coal", "gold", "mithril"], monsters=["scorpion", "dwarf"]),
     # ---- Rimmington / Port Sarim / Karamja -------------------------------
     "rimmington": dict(
         name="Rimmington",
@@ -760,6 +796,50 @@ ROOMS = {
         desc="A tropical island port. Fishing spots line the docks; a volcano "
              "smokes in the distance.",
         exits={"north": "port_sarim"}, fish_tools=["net", "rod"]),
+    # ---- New F2P areas ---------------------------------------------------
+    "lumbridge_church": dict(
+        name="Lumbridge Church",
+        desc="A quiet stone church with a graveyard out back. Father Aereck "
+             "tends the altar, and prayers can be restored here.",
+        exits={"out": "lumbridge_castle"},
+        prayer_altar=True, npc="restless_ghost"),
+    "varrock_sewers": dict(
+        name="Varrock Sewers",
+        desc="A reeking warren beneath the palace, crawling with rats, zombies "
+             "and giant spiders.",
+        exits={"up": "varrock_palace"},
+        monsters=["giant rat", "zombie", "giant spider"]),
+    "wizard_tower": dict(
+        name="Wizard's Tower",
+        desc="A tower of mages south of Draynor. Sedridor studies runes in the "
+             "basement, and mischievous imps flit about.",
+        exits={"north": "draynor_village"},
+        monsters=["imp"], npc="rune_mysteries"),
+    "stronghold_security": dict(
+        name="Stronghold of Security",
+        desc="A monster-filled dungeon beneath Barbarian Village. Minotaurs and "
+             "flesh crawlers roam its halls — and treasure awaits the brave.",
+        exits={"up": "barbarian_village"},
+        monsters=["minotaur", "flesh crawler", "zombie rat"], stronghold=True),
+    "air_altar": dict(
+        name="Air Altar",
+        desc="A mystical altar humming with air magic. Bind rune essence into "
+             "air runes here.",
+        exits={"out": "falador_west"}, altar="air"),
+    # ---- Members areas (require membership) -------------------------------
+    "members_dungeon": dict(
+        name="Deep Dungeon",
+        desc="A forbidding cavern far below Edgeville. Moss giants and demons "
+             "lurk in the gloom. (members)",
+        exits={"up": "edgeville_dungeon"},
+        monsters=["moss giant", "ice giant", "lesser demon", "greater demon"],
+        members=True),
+    "kbd_lair": dict(
+        name="Lair of the King Black Dragon",
+        desc="A scorched lair deep in the Wilderness. The King Black Dragon "
+             "broods over a hoard of treasure. (members)",
+        exits={"out": "wilderness_edge"},
+        monsters=["king black dragon"], members=True),
 }
 
 
@@ -799,6 +879,9 @@ class Player:
         self.autocast = "wind strike"
         self.quests = {}          # quest_key -> stage string
         self.automap = "compass"  # off / compass / full — mini-map on each move
+        self.members = False      # unlocks members areas / skills
+        self.prayer_points = 1    # current prayer points (max = prayer level)
+        self.active_prayers = []  # names of currently-active prayers
         # starter kit
         for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
                       ("bronze axe", 1), ("small fishing net", 1),
@@ -1102,6 +1185,10 @@ REGIONS = {
     "falador_west": "Falador", "dwarven_mine": "Falador",
     "rimmington": "Rimmington", "port_sarim": "PortSarim",
     "karamja_port": "Karamja",
+    "lumbridge_church": "Lumbridge", "varrock_sewers": "Varrock",
+    "wizard_tower": "Draynor", "stronghold_security": "Barbarian",
+    "air_altar": "Falador", "members_dungeon": "Edgeville",
+    "kbd_lair": "Wilderness",
 }
 
 REGION_MAP = r"""
@@ -1192,6 +1279,24 @@ def cmd_automap(p, arg):
     cmd_map(p, arg)
 
 
+def cmd_membership(p, arg):
+    arg = arg.strip().lower()
+    if arg in ("off", "cancel"):
+        p.members = False
+        say("Membership disabled. Members areas are locked again.", "grey")
+        return
+    if p.members:
+        say("You are already a member! Members areas and skills are unlocked.",
+            "bmagenta")
+        return
+    p.members = True
+    banner("MEMBERSHIP UNLOCKED", color="bmagenta", line_color="magenta")
+    say("Welcome, member! You can now reach members areas (Deep Dungeon, the "
+        "King Black Dragon's lair) and train members skills (thieving, "
+        "agility). This tribute game grants it free.", "bmagenta")
+    say("(Type 'membership off' to go back to free-to-play.)", "grey")
+
+
 def cmd_look(p, _a):
     r = ROOMS[p.location]
     banner(r["name"], color="bcyan", line_color="teal")
@@ -1229,6 +1334,12 @@ def cmd_go(p, arg):
         say("You can't go that way.")
         return
     dest = r["exits"][d]
+    if ROOMS[dest].get("members") and not getattr(p, "members", False):
+        say("A magical barrier blocks the way — that area is members-only.",
+            "bmagenta")
+        say("(Type 'membership' to unlock members content in this tribute game.)",
+            "grey")
+        return
     if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
         toll = ROOMS[p.location]["toll"]
         if not p.has("coins", toll):
@@ -2157,7 +2268,8 @@ def serialize(p):
     return {"name": p.name, "location": p.location, "skills": p.skills,
             "hp": p.hp, "inventory": p.inventory, "bank": p.bank,
             "equipment": p.equipment, "style": p.style, "autocast": p.autocast,
-            "quests": p.quests}
+            "quests": p.quests, "members": p.members,
+            "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers}
 
 
 def deserialize(data):
@@ -2172,6 +2284,9 @@ def deserialize(data):
     p.style = data.get("style", "melee")
     p.autocast = data.get("autocast", "wind strike")
     p.quests = data.get("quests", {})
+    p.members = data.get("members", False)
+    p.prayer_points = data.get("prayer_points", 1)
+    p.active_prayers = data.get("equipped_prayers", [])
     # restore quest-spawned monster
     if p.quests.get("vampyre_slayer") == "started" and \
             "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
@@ -2269,7 +2384,7 @@ HANDLERS = {
     "mill": cmd_mill, "shear": cmd_shear,
     "quests": cmd_quests, "quest": cmd_quests, "journal": cmd_quests,
     "examine": cmd_examine,
-    "map": cmd_map, "automap": cmd_automap,
+    "map": cmd_map, "automap": cmd_automap, "membership": cmd_membership,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
 }
