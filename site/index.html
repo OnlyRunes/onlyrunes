@@ -184,7 +184,58 @@
 
     const w = (s) => term.write(String(s).replace(/\n/g, "\r\n"));
 
-    let mode = "loading", player = null, buffer = "", mod = null;
+    let mode = "loading", player = null, buffer = "", mod = null, animating = false;
+
+    // ---- ASCII animation player (boss fights, level-ups, ...) ----
+    // adventure.py marks an animation as: OPEN + JSON({frames,delay,loops,
+    // hold,height}) + CLOSE. We play the frames in place with xterm cursor
+    // moves, then continue writing the rest of the output.
+    const ANIM_OPEN = "\x00\x00ONLYRUNES_ANIM\x00";
+    const ANIM_CLOSE = "\x00ONLYRUNES_ANIM\x00\x00";
+
+    const playFrames = (anim, done) => {
+      const frames = (anim && anim.frames) || [];
+      if (!frames.length) { done(); return; }
+      const H = anim.height || frames[0].split("\n").length;
+      const delay = anim.delay || 140, hold = anim.hold || 0;
+      const loops = Math.max(1, anim.loops || 1);
+      const up = "\x1b[" + H + "A\x1b[0J";   // cursor up H rows, clear below
+      let li = 0, fi = 0;
+      const step = () => {
+        term.write(frames[fi].replace(/\n/g, "\r\n") + "\r\n");
+        const lastFrame = fi === frames.length - 1, lastLoop = li >= loops - 1;
+        if (lastFrame && lastLoop) {
+          if (hold) setTimeout(done, hold); else done();
+          return;
+        }
+        setTimeout(() => {
+          term.write(up);
+          if (lastFrame) { fi = 0; li++; } else { fi++; }
+          step();
+        }, delay);
+      };
+      step();
+    };
+
+    const writeWithAnim = (text, done) => {
+      done = done || (() => {});
+      if (text.indexOf(ANIM_OPEN) === -1) { w(text); done(); return; }
+      animating = true;
+      const pump = (s) => {
+        const i = s.indexOf(ANIM_OPEN);
+        if (i === -1) { w(s); animating = false; done(); return; }
+        const rest = s.slice(i + ANIM_OPEN.length);
+        const j = rest.indexOf(ANIM_CLOSE);
+        if (j === -1) { w(s.slice(0, i) + rest); animating = false; done(); return; }
+        w(s.slice(0, i));                       // text before the animation
+        const after = rest.slice(j + ANIM_CLOSE.length);
+        let anim = null;
+        try { anim = JSON.parse(rest.slice(0, j)); } catch (e) {}
+        if (!anim) { pump(after); return; }
+        playFrames(anim, () => pump(after));    // play, then continue
+      };
+      pump(text);
+    };
 
     w("\x1b[90mLoading the realm... (downloading Python, ~3-6s)\x1b[0m\r\n");
 
@@ -220,7 +271,7 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
     const runCommand = (cmd) => {
-      if (mode !== "play") return;
+      if (mode !== "play" || animating) return;
       term.write(cmd + "\r\n");
       handleLine(cmd);
       refreshUI();
@@ -284,7 +335,7 @@
     // ---- input box (reliable typing, esp. on mobile) ----
     const submitInput = (text) => {
       text = (text || "").trim();
-      if (!text || mode === "loading" || mode === "ended") return;
+      if (!text || mode === "loading" || mode === "ended" || animating) return;
       term.write(text + "\r\n");   // echo onto the prompt line
       buffer = "";
       handleLine(text);
@@ -401,13 +452,15 @@
         let res;
         try { res = JSON.parse(mod.web_command(player, cmd)); }
         catch (e) { w("\r\n\x1b[91mError: " + e + "\x1b[0m\r\n"); prompt(); return; }
-        w(res.text);
-        persist();
-        if (res.alive) { prompt(); }
-        else {
-          w("\r\n\x1b[90m(refresh the page to begin a new adventure)\x1b[0m\r\n");
-          mode = "ended";
-        }
+        writeWithAnim(res.text, () => {
+          persist();
+          if (res.alive) { prompt(); }
+          else {
+            w("\r\n\x1b[90m(refresh the page to begin a new adventure)\x1b[0m\r\n");
+            mode = "ended";
+          }
+          refreshUI();
+        });
       }
     };
 

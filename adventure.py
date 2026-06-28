@@ -21,6 +21,7 @@ import os
 import random
 import sys
 import textwrap
+import time
 
 
 # ===========================================================================
@@ -41,6 +42,7 @@ def _supports_color():
 
 
 COLOR = _supports_color()
+WEB = False          # set by enable_web() when running in the browser (Pyodide)
 
 # Style/colour codes
 _CODES = {
@@ -126,6 +128,84 @@ def clamp(x, lo, hi):
 
 
 # ===========================================================================
+#  ANIMATION ENGINE
+# ===========================================================================
+# Plays a sequence of ASCII-art frames as a real animation:
+#   * in a terminal (TTY): redraws frames in place using ANSI cursor moves.
+#   * in the browser (Pyodide): emits a marked block that index.html parses
+#     out and plays with JS timers + xterm cursor control.
+#   * otherwise (piped/tests): prints the final frame once, no control codes.
+# Frames may carry their own ANSI colour (built with paint()); centering is by
+# *visible* width so embedded colour codes don't throw off the alignment.
+
+ANIM_OPEN = "\x00\x00ONLYRUNES_ANIM\x00"     # sentinels never appear in game text
+ANIM_CLOSE = "\x00ONLYRUNES_ANIM\x00\x00"
+
+
+def _tint(art, *styles):
+    """Paint every line of an art block (so a frame can be one solid colour)."""
+    return "\n".join(paint(ln, *styles) for ln in art.strip("\n").splitlines())
+
+
+def animate(frames, delay=0.14, loops=1, color=None, center=True, hold=0.0):
+    """Play `frames` (list of multi-line art strings) as an animation.
+
+    Frames are *block*-centered with one shared offset (so the art stays
+    rock-steady from frame to frame, even as colour/details change)."""
+    if isinstance(color, str):
+        color = (color,)
+    blocks = [f.strip("\n").splitlines() for f in frames if f.strip("\n")]
+    if not blocks:
+        return
+    height = max(len(b) for b in blocks)
+    indent = 0
+    if center:
+        maxw = max((visible_len(ln) for b in blocks for ln in b), default=0)
+        indent = max(0, (78 - maxw) // 2)
+    pad = " " * indent
+    rendered = []                        # equal height, equal indent => no jitter
+    for b in blocks:
+        lines = [""] * (height - len(b)) + list(b)   # bottom-align (things sink)
+        out = []
+        for ln in lines:
+            ln = (pad + ln) if ln else ""
+            out.append(paint(ln, *color) if (color and ln) else ln)
+        rendered.append("\n".join(out))
+    loops = max(1, loops)
+
+    if WEB:
+        sys.stdout.write(ANIM_OPEN + json.dumps({
+            "frames": rendered, "delay": int(delay * 1000),
+            "loops": loops, "hold": int(hold * 1000), "height": height,
+        }) + ANIM_CLOSE + "\n")
+        return
+
+    if not COLOR or not _is_tty():
+        print(rendered[-1])              # static fallback (pipes / tests)
+        return
+
+    up_clear = f"\x1b[{height}A\x1b[0J"   # cursor up `height` rows, clear below
+    for li in range(loops):
+        for fi, frame in enumerate(rendered):
+            sys.stdout.write(frame + "\n")
+            sys.stdout.flush()
+            if li == loops - 1 and fi == len(rendered) - 1:
+                break
+            time.sleep(delay)
+            sys.stdout.write(up_clear)
+            sys.stdout.flush()
+    if hold:
+        time.sleep(hold)
+
+
+def _is_tty():
+    try:
+        return sys.stdout.isatty()
+    except Exception:
+        return False
+
+
+# ===========================================================================
 #  TEXT ART
 # ===========================================================================
 
@@ -185,6 +265,152 @@ ART_DRAGON = r"""
      ( (_)            /  /  \ \  \ /
       \___/          (__(    )__)
 """
+
+# ---- Boss animation frames -----------------------------------------------
+# The three-headed King Black Dragon: a rigid body so the frames animate in
+# place; only the eyes, the fire plume (left) and the colour change.
+KBD_CALM = r"""
+                /\   /\   /\
+               (oo) (oo) (oo)
+                \    |    /
+           ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+"""
+KBD_FIRE1 = r"""
+                /\   /\   /\
+      ~=*>     (^^) (oo) (^^)
+     ~==*>      \    |    /
+           ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+"""
+KBD_FIRE2 = r"""
+                /\   /\   /\
+   ~~==**>     (XX) (^^) (XX)
+  ~~===***>     \    |    /
+   ~~==**> ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+"""
+KBD_DIE1 = r"""
+                \/   \/   \/
+               (xx) (xx) (xx)
+                \    |    /
+           ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+"""
+KBD_DIE2 = r"""
+               (xx)(xx)(xx)
+              ___\__|__/___
+             /     \|/      \
+            /  __   |   __   \
+            \_/  \_____/  \_/
+"""
+KBD_DIE3 = r"""
+              .  .  .   .
+           __  .  __  .   __
+          (xx)__(xx)__(xx)
+         ~~~ rubble & ash ~~~
+"""
+
+# Count Draynor: a giant vampyre that flares its wings and bares its fangs.
+BAT_CALM = r"""
+       /\                 /\
+      /  \    _     _    /  \
+     /    \__/ \   / \__/    \
+     \    (  o  ) (  o  )    /
+      \    \___/   \___/    /
+       \______\_____/______/
+"""
+BAT_FANG = r"""
+     \/\                 /\/
+      \ \    _     _    / /
+       \ \__/ \   / \__/ /
+        (  O  ) ^ (  O  )
+         \VVV/  |  \VVV/
+          \____\|/____/
+"""
+BAT_DIE1 = r"""
+       /\                 /\
+      /  \    _     _    /  \
+     /    \__/ \   / \__/    \
+     \    (  x  ) (  x  )    /
+      \    \___/   \___/    /
+       \______\_____/______/
+"""
+BAT_DIE2 = r"""
+      ^v^       ^v^      ^v^
+          ^v^       ^v^
+       a shrieking cloud of bats
+"""
+
+# Fallback for any boss without bespoke art.
+GEN_ROAR = r"""
+       \  |  /        R O A R !
+     --=[ >< ]=--
+       /  |  \
+"""
+
+
+def _kbd_intro(name):
+    return [_tint(KBD_CALM, "grey"), _tint(KBD_CALM, "bred", "bold"),
+            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
+            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
+            _tint(KBD_CALM, "bred", "bold")]
+
+
+def _kbd_death(name):
+    return [_tint(KBD_DIE1, "bred"), _tint(KBD_DIE1, "grey"),
+            _tint(KBD_DIE2, "grey"), _tint(KBD_DIE3, "grey", "dim")]
+
+
+def _count_intro(name):
+    return [_tint(BAT_CALM, "grey"), _tint(BAT_FANG, "bred", "bold"),
+            _tint(BAT_CALM, "bmagenta"), _tint(BAT_FANG, "bred", "bold"),
+            _tint(BAT_CALM, "bmagenta", "bold")]
+
+
+def _count_death(name):
+    return [_tint(BAT_DIE1, "bred"), _tint(BAT_DIE1, "grey"),
+            _tint(BAT_DIE2, "bmagenta", "dim")]
+
+
+def _generic_boss_intro(name):
+    return [_tint(GEN_ROAR, "grey"), _tint(GEN_ROAR, "bred", "bold"),
+            _tint(GEN_ROAR, "byellow", "bold"), _tint(GEN_ROAR, "bred", "bold")]
+
+
+def _generic_boss_death(name):
+    return [_tint(GEN_ROAR, "bred"), _tint(GEN_ROAR, "grey", "dim")]
+
+
+BOSS_INTRO = {"king black dragon": _kbd_intro, "count draynor": _count_intro}
+BOSS_DEATH = {"king black dragon": _kbd_death, "count draynor": _count_death}
+
+
+def play_boss_intro(name):
+    """Dramatic entrance animation when a boss fight begins."""
+    say("The ground shudders — something ancient stirs.", "grey", "italic")
+    builder = BOSS_INTRO.get(name, _generic_boss_intro)
+    animate(builder(name), delay=0.16, center=True)
+
+
+def play_boss_death(name):
+    """Death throes animation, finishing on a golden VICTORY."""
+    builder = BOSS_DEATH.get(name, _generic_boss_death)
+    animate(builder(name), delay=0.18, center=True)
+    show_art(ART_VICTORY, "gold", center=True)
+
 
 # Small per-monster art shown at the start of a fight.
 MONSTER_ART = {
@@ -1057,7 +1283,10 @@ class Player:
         print(paint(f"  +{amount} {skill} xp", "bcyan"))
         after = self.lvl(skill)
         if after > before:
-            show_art(ART_LEVELUP, "byellow", center=True)
+            animate([_tint(ART_LEVELUP, "byellow"), _tint(ART_LEVELUP, "bwhite"),
+                     _tint(ART_LEVELUP, "gold"),
+                     _tint(ART_LEVELUP, "byellow", "bold")],
+                    delay=0.11, center=True)
             banner(f"LEVEL UP!  Your {skill} is now level {after}.",
                    color="byellow", line_color="gold")
             if skill == "hitpoints":
@@ -1247,7 +1476,10 @@ def _resolve_monster_hit(p, m):
 
 
 def _victory(p, m):
-    show_art(ART_VICTORY, "gold", center=True)
+    if m.get("boss"):
+        play_boss_death(m["name"])
+    else:
+        show_art(ART_VICTORY, "gold", center=True)
     say(f"You have defeated the {m['name']}!", "bgreen", "bold")
     _award_combat_xp(p, m["hp"])
     _roll_drops(p, m)
@@ -1298,7 +1530,9 @@ def _combat_prompt(p):
 
 def _start_combat(p, mname):
     p.combat = _new_monster(mname)
-    if mname in MONSTER_ART:
+    if p.combat.get("boss"):
+        play_boss_intro(mname)
+    elif mname in MONSTER_ART:
         show_art(MONSTER_ART[mname], "bred")
     else:
         show_art(ART_SWORDS, "grey")
@@ -3196,9 +3430,10 @@ def main():
 # coloured (ANSI) text output so xterm.js can render it in the browser.
 
 def enable_web():
-    """Force ANSI colour on (Pyodide stdout is not a TTY)."""
-    global COLOR
+    """Force ANSI colour on (Pyodide stdout is not a TTY) + enable web anims."""
+    global COLOR, WEB
     COLOR = True
+    WEB = True
 
 
 def _capture(fn, *args, **kwargs):
