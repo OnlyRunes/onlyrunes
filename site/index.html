@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OnlyRunes — a free-to-play text adventure</title>
+<meta name="description" content="OnlyRunes: a browser text adventure inspired by free-to-play Old School RuneScape. Train skills, fight monsters, complete quests.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0d0f13; color: #c8cdd6;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  header { text-align: center; padding: 22px 16px 8px; }
+  h1 {
+    margin: 0; font-size: 30px; font-weight: 600; letter-spacing: 1px;
+    color: #ffce42;
+  }
+  h1 .of { color: #6ee36e; }
+  .tag { margin: 4px 0 0; font-size: 14px; color: #8b93a0; }
+  #shell {
+    width: 100%; max-width: 920px; margin: 0 auto; padding: 12px 16px 0; flex: 1;
+    display: flex; flex-direction: column;
+  }
+  #terminal {
+    width: 100%; height: 70vh; min-height: 360px;
+    background: #14161b; border: 1px solid #262a33; border-radius: 12px;
+    padding: 10px 6px 6px 12px; overflow: hidden;
+  }
+  .hint { margin: 8px 2px 0; font-size: 12.5px; color: #6b7280; }
+  .hint b { color: #9aa3b2; font-weight: 600; }
+  footer {
+    width: 100%; max-width: 920px; margin: 0 auto; padding: 14px 16px 26px;
+    font-size: 12px; color: #5a616e; text-align: center; line-height: 1.6;
+  }
+  footer a { color: #7f8794; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span class="of">Only</span>Runes</h1>
+    <p class="tag">A free-to-play text adventure in a world that's totally not Gielinor</p>
+  </header>
+
+  <main id="shell">
+    <div id="terminal" aria-label="Game terminal"></div>
+    <p class="hint">Click the window and type. Try <b>help</b>, <b>look</b>,
+      <b>stats</b>, <b>fight</b>, <b>chop</b>. Your progress auto-saves in this
+      browser. To move to another device, type <b>save export</b> (downloads a
+      file) and <b>save import</b> on the other device.</p>
+  </main>
+
+  <footer>
+    OnlyRunes is a fan-made tribute and parody. It is <b>not</b> affiliated with,
+    endorsed by, or connected to Jagex Ltd. or RuneScape. "RuneScape" is a
+    trademark of Jagex. All original code &amp; world here are our own.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  <script>
+  (async () => {
+    const SAVE_KEY = "onlyrunes_save_v1";
+    const PROMPT = "\x1b[92m\x1b[1m> \x1b[0m";
+
+    const term = new Terminal({
+      fontFamily: "ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace",
+      fontSize: 14, cursorBlink: true, convertEol: false,
+      theme: {
+        background: "#14161b", foreground: "#c8cdd6", cursor: "#6ee36e",
+        black: "#14161b", red: "#d64f4f", green: "#3fa34d", yellow: "#caa53a",
+        blue: "#4a78c0", magenta: "#b15bbf", cyan: "#2b8fb0", white: "#c8cdd6",
+        brightBlack: "#8b93a0", brightRed: "#ff6a6a", brightGreen: "#6ee36e",
+        brightYellow: "#ffe24a", brightBlue: "#6a9bff", brightMagenta: "#ff7bd5",
+        brightCyan: "#59e0ff", brightWhite: "#ffffff"
+      }
+    });
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(document.getElementById("terminal"));
+    fit.fit();
+    window.addEventListener("resize", () => { try { fit.fit(); } catch (e) {} });
+    term.focus();
+
+    const w = (s) => term.write(String(s).replace(/\n/g, "\r\n"));
+
+    let mode = "loading", player = null, buffer = "", mod = null;
+
+    w("\x1b[90mLoading the realm... (downloading Python, ~3-6s)\x1b[0m\r\n");
+
+    let pyodide;
+    try {
+      pyodide = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"
+      });
+      const code = await (await fetch("adventure.py?v=" + Date.now(), {cache: "no-store"})).text();
+      pyodide.FS.writeFile("adventure.py", code);
+      mod = pyodide.pyimport("adventure");
+      mod.enable_web();
+    } catch (e) {
+      w("\r\n\x1b[91mFailed to load the game: " + e + "\x1b[0m\r\n");
+      w("\x1b[90m(If you opened this as a file, run a local server instead —\r\n");
+      w("see the deploy guide. Online, just reload.)\x1b[0m\r\n");
+      return;
+    }
+
+    const prompt = () => term.write(PROMPT);
+    const persist = () => {
+      try { localStorage.setItem(SAVE_KEY, mod.player_to_json(player)); }
+      catch (e) {}
+    };
+    const askName = () => { w("\r\nWhat is your name, adventurer? "); mode = "name"; };
+    const beginPlay = (p) => {
+      player = p; w(mod.web_welcome(player)); mode = "play"; persist();
+      w("\r\n"); prompt();
+    };
+
+    const saveCode = () => btoa(unescape(encodeURIComponent(mod.player_to_json(player))));
+
+    const exportSave = () => {
+      const code = saveCode();
+      try {
+        const url = URL.createObjectURL(new Blob([code], {type: "text/plain"}));
+        const a = document.createElement("a");
+        a.href = url; a.download = "onlyrunes-save.txt";
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {}
+      let copied = false;
+      try { if (navigator.clipboard) { navigator.clipboard.writeText(code); copied = true; } } catch (e) {}
+      w("\r\n\x1b[92mSave exported!\x1b[0m Downloaded \x1b[1monlyrunes-save.txt\x1b[0m"
+        + (copied ? " and copied the code to your clipboard." : ".") + "\r\n");
+      w("\x1b[90mRestore it on any device with 'save import'.\x1b[0m\r\n");
+    };
+
+    const loadFromCode = (raw) => {
+      raw = (raw || "").trim();
+      let json = null;
+      try { const d = decodeURIComponent(escape(atob(raw))); JSON.parse(d); json = d; } catch (e) {}
+      if (json === null) { try { JSON.parse(raw); json = raw; } catch (e) {} }
+      if (json === null) {
+        w("\r\n\x1b[91mThat doesn't look like a valid OnlyRunes save.\x1b[0m\r\n");
+        return;
+      }
+      try {
+        player = mod.player_from_json(json); persist();
+        w("\r\n\x1b[92mSave loaded! Welcome back, " + player.name + ".\x1b[0m\r\n");
+        w(JSON.parse(mod.web_command(player, "look")).text);
+      } catch (e) {
+        w("\r\n\x1b[91mCouldn't load that save: " + e + "\x1b[0m\r\n");
+      }
+    };
+
+    const pickFile = () => {
+      const inp = document.createElement("input");
+      inp.type = "file"; inp.accept = ".txt,text/plain";
+      inp.onchange = () => {
+        const f = inp.files && inp.files[0];
+        if (!f) { w("\r\nNo file chosen.\r\n"); mode = "play"; prompt(); return; }
+        const reader = new FileReader();
+        reader.onload = () => { loadFromCode(reader.result); mode = "play"; prompt(); };
+        reader.readAsText(f);
+      };
+      inp.click();
+    };
+
+    const handleLine = (line) => {
+      if (mode === "load") {
+        if (line.trim().toLowerCase().startsWith("y")) {
+          try {
+            player = mod.player_from_json(localStorage.getItem(SAVE_KEY));
+            w("\r\n\x1b[92mWelcome back, " + player.name + ".\x1b[0m\r\n");
+            mode = "play"; prompt();
+          } catch (e) {
+            w("\r\n\x1b[90mThat save was unreadable; starting fresh.\x1b[0m\r\n");
+            askName();
+          }
+        } else { askName(); }
+        return;
+      }
+      if (mode === "name") {
+        beginPlay(mod.Player(line.trim() || "Guest"));
+        return;
+      }
+      if (mode === "import") {
+        const v = line.trim(), low = v.toLowerCase();
+        if (low === "" || low === "cancel") { w("\r\nImport cancelled.\r\n"); }
+        else if (low === "file" || low === "upload") { pickFile(); return; }
+        else { loadFromCode(v); }
+        mode = "play"; prompt(); return;
+      }
+      if (mode === "play") {
+        const cmd = line.trim();
+        const low = cmd.toLowerCase();
+        if (low === "save export" || low === "export" || low === "backup") {
+          exportSave(); prompt(); return;
+        }
+        if (low === "save import" || low === "import" || low === "restore") {
+          w("\r\n\x1b[90mPaste your save code + Enter, or type \x1b[0m'file'\x1b[90m to upload, or \x1b[0m'cancel'\x1b[90m:\x1b[0m\r\n");
+          mode = "import"; return;
+        }
+        if (low === "save") {
+          persist();
+          w("\r\n\x1b[92mSaved in this browser. (Use 'save export' to back up off-device.)\x1b[0m\r\n");
+          prompt(); return;
+        }
+        if (low === "load") {
+          w("\r\n\x1b[90mYour game auto-saves here every turn. Use 'save import' to restore a backup.\x1b[0m\r\n");
+          prompt(); return;
+        }
+        let res;
+        try { res = JSON.parse(mod.web_command(player, cmd)); }
+        catch (e) { w("\r\n\x1b[91mError: " + e + "\x1b[0m\r\n"); prompt(); return; }
+        w(res.text);
+        persist();
+        if (res.alive) { prompt(); }
+        else {
+          w("\r\n\x1b[90m(refresh the page to begin a new adventure)\x1b[0m\r\n");
+          mode = "ended";
+        }
+      }
+    };
+
+    term.onData((data) => {
+      if (mode === "loading" || mode === "ended") return;
+      for (const ch of data) {
+        if (ch === "\r" || ch === "\n") {        // Enter
+          term.write("\r\n");
+          const line = buffer; buffer = ""; handleLine(line);
+        } else if (ch === "\x7f" || ch === "\b") { // Backspace / Delete
+          if (buffer.length) { buffer = buffer.slice(0, -1); term.write("\b \b"); }
+        } else if (ch === "\x03") {              // Ctrl-C
+          buffer = ""; term.write("^C\r\n"); if (mode === "play") prompt();
+        } else if (ch >= " ") {                  // printable
+          buffer += ch; term.write(ch);
+        }
+      }
+    });
+
+    // ---- localhost-only test seam (no effect in production) ----
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+      window.__onlyrunes = {
+        feed: (s) => handleLine(s),
+        saveCode: () => saveCode(),
+        loadFromCode: (c) => loadFromCode(c),
+        screen: () => [...document.querySelectorAll(".xterm-rows > div")]
+          .map(r => r.textContent.replace(/\s+$/, "")).filter(Boolean).join("\n"),
+        get mode() { return mode; },
+        get player() { return player; }
+      };
+    }
+
+    // ---- start the title sequence ----
+    w(mod.web_logo());
+    if (localStorage.getItem(SAVE_KEY)) {
+      w("\r\nA saved game exists. Load it? (y/n) "); mode = "load";
+    } else {
+      askName();
+    }
+  })();
+  </script>
+</body>
+</html>
