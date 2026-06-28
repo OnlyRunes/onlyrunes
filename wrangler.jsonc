@@ -1,10 +1,21 @@
 {
   // Cloudflare Worker config for OnlyRunes (static-assets site).
-  // Deploying with this updates the SAME worker named "onlyrunes",
-  // so your custom domain (onlyrunes.net) and HTTPS stay attached.
+  //
+  // PRODUCTION (live):  npx wrangler deploy            -> worker "onlyrunes"      -> onlyrunes.net
+  // BETA (staging):     npx wrangler deploy --env beta -> worker "onlyrunes-beta" -> beta.onlyrunes.net
+  //
+  // Deploying updates the same-named worker, so custom domains + HTTPS persist.
   "name": "onlyrunes",
   "compatibility_date": "2026-06-27",
   "assets": {
     "directory": "./site"
+  },
+  "env": {
+    "beta": {
+      "name": "onlyrunes-beta",
+      "assets": {
+        "directory": "./site"
+      }
+    }
   }
 }

@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-# One command to ship an update:
-#   1. copies the latest adventure.py into site/
-#   2. deploys site/ to the "onlyrunes" Cloudflare Worker
+# Ship an update.  Usage:
+#   ./deploy.sh         -> PRODUCTION (live)  https://onlyrunes.net
+#   ./deploy.sh beta    -> BETA  (staging)    https://beta.onlyrunes.net
 #
 # First time only:  npx --yes wrangler login   (browser approval)
-# Then any time:    ./deploy.sh
+# Note: normally you don't need this — pushing to GitHub auto-deploys
+#       (main -> live, beta -> beta). This is the manual fallback.
 set -euo pipefail
 cd "$(dirname "$0")"
 
+if [ "${1:-}" = "beta" ]; then
+  ENVFLAG="--env beta"; TARGET="BETA (beta.onlyrunes.net)"
+else
+  ENVFLAG=""; TARGET="PRODUCTION (onlyrunes.net)"
+fi
+
 ./build_site.sh
 echo
-echo "Deploying to Cloudflare..."
-npx --yes wrangler@latest deploy
+echo "Deploying to $TARGET ..."
+npx --yes wrangler@latest deploy $ENVFLAG
 echo
-echo "Done. Live at https://onlyrunes.net (hard-refresh to bypass cache)."
+echo "Done."
