@@ -1,0 +1,2107 @@
+#!/usr/bin/env python3
+"""
+RuneScape Text Adventure  —  Free-to-Play Gielinor
+==================================================
+A terminal text adventure inspired by Old School RuneScape's free-to-play
+worlds. Explore the cities of Misthalin, Asgarnia and the Kharidian Desert,
+train all 15 F2P skills, fight monsters, bank your loot, trade on the Grand
+Exchange, and complete a handful of classic quests.
+
+This is a faithful *slice* of F2P OSRS — not every item, monster or quest, but
+a broad, coherent world built to be easy to extend (see the data tables below).
+
+Run with:  python3 adventure.py
+"""
+
+import contextlib
+import io
+import json
+import math
+import os
+import random
+import sys
+import textwrap
+
+
+# ===========================================================================
+#  COLOR & TEXT-ART TOOLKIT
+# ===========================================================================
+# ANSI colors that gracefully disable when output isn't an interactive
+# terminal (so piped/scripted runs stay clean) or when NO_COLOR is set.
+
+def _supports_color():
+    if os.environ.get("NO_COLOR") is not None:
+        return False
+    if os.environ.get("FORCE_COLOR") is not None:
+        return True
+    try:
+        return sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
+    except Exception:
+        return False
+
+
+COLOR = _supports_color()
+
+# Style/colour codes
+_CODES = {
+    "reset": "\033[0m", "bold": "\033[1m", "dim": "\033[2m",
+    "italic": "\033[3m", "underline": "\033[4m",
+    "black": "\033[30m", "red": "\033[31m", "green": "\033[32m",
+    "yellow": "\033[33m", "blue": "\033[34m", "magenta": "\033[35m",
+    "cyan": "\033[36m", "white": "\033[37m", "grey": "\033[90m",
+    "bred": "\033[91m", "bgreen": "\033[92m", "byellow": "\033[93m",
+    "bblue": "\033[94m", "bmagenta": "\033[95m", "bcyan": "\033[96m",
+    "bwhite": "\033[97m",
+    "gold": "\033[38;5;220m", "orange": "\033[38;5;208m",
+    "brown": "\033[38;5;130m", "purple": "\033[38;5;141m",
+    "lime": "\033[38;5;154m", "teal": "\033[38;5;44m",
+}
+
+
+def paint(text, *styles):
+    """Wrap text in ANSI style codes (no-op when colour is disabled)."""
+    if not COLOR or not styles:
+        return str(text)
+    prefix = "".join(_CODES.get(s, "") for s in styles)
+    return f"{prefix}{text}{_CODES['reset']}"
+
+
+def strip_ansi(text):
+    import re
+    return re.sub(r"\033\[[0-9;]*m", "", text)
+
+
+def visible_len(text):
+    return len(strip_ansi(text))
+
+
+# ===========================================================================
+#  OUTPUT HELPERS
+# ===========================================================================
+
+def say(text="", *styles):
+    """Print word-wrapped narration, optionally tinted with ANSI styles."""
+    if text == "":
+        print()
+        return
+    wrapped = textwrap.fill(str(text), width=78)
+    print(paint(wrapped, *styles) if styles else wrapped)
+
+
+def banner(text, color="gold", line_color="brown"):
+    """A framed, centered title bar."""
+    bar = paint("=" * 78, line_color)
+    title = paint(str(text).center(78), color, "bold")
+    print(f"\n{bar}\n{title}\n{bar}")
+
+
+def rule(color="grey"):
+    print(paint("-" * 78, color))
+
+
+def show_art(art, *styles, center=False):
+    """Print multi-line ASCII art without word-wrapping, optionally tinted."""
+    for raw in art.strip("\n").splitlines():
+        line = raw.center(78) if center else raw
+        print(paint(line, *styles) if styles else line)
+
+
+def bar_meter(current, maximum, width=20, fill_color="bgreen", empty_color="grey"):
+    """Return a colored [#####-----] style meter."""
+    current = max(0, current)
+    ratio = (current / maximum) if maximum else 0
+    filled = int(round(ratio * width))
+    if ratio > 0.5:
+        fc = fill_color
+    elif ratio > 0.25:
+        fc = "byellow"
+    else:
+        fc = "bred"
+    bar = paint("█" * filled, fc) + paint("░" * (width - filled), empty_color)
+    return f"{bar} {current}/{maximum}"
+
+
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+
+
+# ===========================================================================
+#  TEXT ART
+# ===========================================================================
+
+LOGO = r"""
+   ____                  _____
+  |  _ \ _   _ _ __   ___/ ____|  ___ __ _ _ __   ___
+  | |_) | | | | '_ \ / _ \____ \ / __/ _` | '_ \ / _ \
+  |  _ <| |_| | | | |  __/____) | (_| (_| | |_) |  __/
+  |_| \_\\__,_|_| |_|\___|_____/ \___\__,_| .__/ \___|
+        T E X T   A D V E N T U R E       |_|
+"""
+
+ART_SWORDS = r"""
+        ,                       ,
+       /|          _____        |\
+      | |        .'     '.      | |
+      |/        / Battle! \      \|
+   >==[]========(  vs  )========[]==<
+              \         /
+               '._____.'
+"""
+
+ART_LEVELUP = r"""
+       .    *        .   ___   .       *      .
+   *      .     LEVEL UP!  / _ \    .      *
+       .------------------| | | |------------------.
+        '*.   .  *    .    \_\_/    *   .   .*'
+"""
+
+ART_VICTORY = r"""
+   __      ___ ___ _____ ___  _____   __
+   \ \    / /_ _/ __|_   _/ _ \| _ \ \ / /
+    \ \/\/ / | | (__  | || (_) |   /\ V /
+     \_/\_/ |___\___| |_| \___/|_|_\ |_|
+"""
+
+ART_DEATH = r"""
+        _____
+      .'     '.        Oh dear, you are dead!
+     /  x   x  \
+    |    ___    |      You wake up in Lumbridge...
+     \  \___/  /
+      '._____.'
+"""
+
+ART_QUEST = r"""
+    .-----------------------------------------.
+   ( ~ ~ ~  Q U E S T   C O M P L E T E  ~ ~ ~ )
+    '-----------------------------------------'
+"""
+
+ART_DRAGON = r"""
+                       /  \\__
+                      /  /  \ \___
+       ___           (  (    )    \
+      / _ \___________\  \  /  /\   )
+     ( (_)            /  /  \ \  \ /
+      \___/          (__(    )__)
+"""
+
+
+# ===========================================================================
+#  XP / LEVELS  (Old School RuneScape curve)
+# ===========================================================================
+
+_XP_TABLE = [0] * 100  # _XP_TABLE[level] = xp required for that level
+_pts = 0
+for _lvl in range(1, 99):
+    _pts += int(_lvl + 300 * (2 ** (_lvl / 7.0)))
+    _XP_TABLE[_lvl + 1] = _pts // 4
+
+
+def level_from_xp(xp):
+    level = 1
+    for lvl in range(1, 100):
+        if _XP_TABLE[lvl] <= xp:
+            level = lvl
+        else:
+            break
+    return level
+
+
+SKILLS = [
+    "attack", "strength", "defence", "hitpoints", "ranged", "prayer", "magic",
+    "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
+    "mining", "runecrafting",
+]
+
+
+# ===========================================================================
+#  ITEM DATABASE
+# ===========================================================================
+# Each item: {"value": int, optional "equip", "heal", "tool", "tier", "bury",
+#             "raw"/"cooked", ...}.  Alchemy values derive from "value".
+
+ITEMS = {}
+
+
+def add_item(name, value=1, **kw):
+    ITEMS[name] = {"value": value, **kw}
+
+
+# --- Currency, bones, hides, raw materials --------------------------------
+add_item("coins", 1)
+add_item("bones", 1, bury=("prayer", 5))
+add_item("big bones", 3, bury=("prayer", 15))
+add_item("cowhide", 12)
+add_item("leather", 20)
+add_item("wool", 8)
+add_item("ball of wool", 12)
+add_item("feather", 2)
+add_item("rune essence", 4)
+
+# --- Logs (firemaking / woodcutting) --------------------------------------
+add_item("logs", 10, log_fm_xp=40)
+add_item("oak logs", 30, log_fm_xp=60)
+add_item("willow logs", 40, log_fm_xp=90)
+
+# --- Ores, bars, gems -----------------------------------------------------
+for ore, val in [("copper ore", 20), ("tin ore", 20), ("iron ore", 60),
+                 ("silver ore", 80), ("coal", 50), ("gold ore", 150),
+                 ("mithril ore", 160), ("adamantite ore", 240), ("clay", 25)]:
+    add_item(ore, val)
+for bar, val in [("bronze bar", 40), ("iron bar", 70), ("steel bar", 130),
+                 ("silver bar", 90), ("gold bar", 170), ("mithril bar", 330),
+                 ("adamant bar", 600)]:
+    add_item(bar, val)
+
+# --- Runes ----------------------------------------------------------------
+for rune, val in [("air rune", 4), ("water rune", 4), ("earth rune", 4),
+                  ("fire rune", 4), ("mind rune", 3), ("body rune", 3),
+                  ("chaos rune", 90), ("nature rune", 180), ("law rune", 240),
+                  ("cosmic rune", 120), ("death rune", 220)]:
+    add_item(rune, val)
+
+# --- Food (heal hitpoints) -----------------------------------------------
+for food, heal, val in [("bread", 5, 12), ("cooked shrimp", 3, 5),
+                        ("cooked anchovies", 1, 6), ("cooked sardine", 4, 8),
+                        ("cooked herring", 5, 12), ("cooked trout", 7, 20),
+                        ("cooked salmon", 9, 30), ("cooked pike", 8, 25),
+                        ("cooked chicken", 3, 8), ("cooked meat", 3, 8),
+                        ("cake", 4, 30)]:
+    add_item(food, val, heal=heal)
+for burnt in ["burnt shrimp", "burnt fish", "burnt chicken", "burnt meat"]:
+    add_item(burnt, 1)
+# Raw food -> cooked mapping
+RAW_TO_COOKED = {
+    "raw shrimp": ("cooked shrimp", "burnt shrimp", 1),
+    "raw anchovies": ("cooked anchovies", "burnt shrimp", 1),
+    "raw sardine": ("cooked sardine", "burnt fish", 5),
+    "raw herring": ("cooked herring", "burnt fish", 5),
+    "raw trout": ("cooked trout", "burnt fish", 15),
+    "raw salmon": ("cooked salmon", "burnt fish", 25),
+    "raw pike": ("cooked pike", "burnt fish", 20),
+    "raw chicken": ("cooked chicken", "burnt chicken", 1),
+    "raw beef": ("cooked meat", "burnt meat", 1),
+}
+COOK_XP = {"raw shrimp": 30, "raw anchovies": 30, "raw sardine": 40,
+           "raw herring": 50, "raw trout": 70, "raw salmon": 90,
+           "raw pike": 80, "raw chicken": 30, "raw beef": 30}
+for raw in RAW_TO_COOKED:
+    add_item(raw, max(1, ITEMS[RAW_TO_COOKED[raw][0]]["value"] // 2))
+add_item("egg", 4)
+add_item("pot", 1)
+add_item("pot of flour", 10)
+add_item("grain", 4)
+add_item("bucket", 2)
+add_item("bucket of milk", 6)
+add_item("garlic", 3)
+
+# --- Tools ----------------------------------------------------------------
+add_item("tinderbox", 1, tool="tinderbox")
+add_item("hammer", 1, tool="hammer")
+add_item("needle", 1, tool="needle")
+add_item("thread", 1)
+add_item("chisel", 1, tool="chisel")
+add_item("shears", 1, tool="shears")
+add_item("small fishing net", 5, tool="net")
+add_item("fishing rod", 5, tool="rod")
+add_item("fly fishing rod", 5, tool="fly")
+add_item("harpoon", 5, tool="harpoon")
+add_item("stake", 1)
+add_item("chef's hat", 1, equip={"slot": "head"})
+
+# --- Metal equipment (bronze -> rune) -------------------------------------
+# (name, level requirement, tier index)
+METALS = [("bronze", 1, 0), ("iron", 1, 1), ("steel", 5, 2), ("black", 10, 3),
+          ("mithril", 20, 4), ("adamant", 30, 5), ("rune", 40, 6)]
+TIER_VALUE = [1, 2, 4, 7, 12, 25, 60]
+
+for mname, req, t in METALS:
+    v = TIER_VALUE[t]
+    add_item(f"{mname} sword", 30 * v,
+             equip={"slot": "weapon", "att": 4 + t * 4, "str": 3 + t * 3,
+                    "req": {"attack": req}})
+    add_item(f"{mname} scimitar", 40 * v,
+             equip={"slot": "weapon", "att": 5 + t * 5, "str": 5 + t * 4,
+                    "req": {"attack": req}})
+    add_item(f"{mname} platebody", 100 * v,
+             equip={"slot": "body", "def": 10 + t * 6, "req": {"defence": req}})
+    add_item(f"{mname} platelegs", 70 * v,
+             equip={"slot": "legs", "def": 6 + t * 4, "req": {"defence": req}})
+    add_item(f"{mname} kiteshield", 60 * v,
+             equip={"slot": "shield", "def": 5 + t * 4, "req": {"defence": req}})
+    add_item(f"{mname} full helm", 35 * v,
+             equip={"slot": "head", "def": 3 + t * 2, "req": {"defence": req}})
+    # tools share the metal tiers (no black tools, as in OSRS)
+    if mname != "black":
+        add_item(f"{mname} pickaxe", 20 * v,
+                 tool="pickaxe", tier=t, equip={"slot": "weapon", "att": 2 + t,
+                 "str": 2 + t, "req": {"attack": req}})
+        add_item(f"{mname} axe", 16 * v, tool="axe", tier=t)
+
+# --- Ranged gear ----------------------------------------------------------
+add_item("shortbow", 20, equip={"slot": "weapon", "ranged": 8, "req": {"ranged": 1}})
+add_item("oak shortbow", 40, equip={"slot": "weapon", "ranged": 14, "req": {"ranged": 5}})
+add_item("willow shortbow", 70, equip={"slot": "weapon", "ranged": 20, "req": {"ranged": 20}})
+for arrow, t in [("bronze arrow", 0), ("iron arrow", 1), ("steel arrow", 2),
+                 ("mithril arrow", 4), ("adamant arrow", 5), ("rune arrow", 6)]:
+    add_item(arrow, 2 + t * 3, equip={"slot": "ammo", "ranged": 7 + t * 4})
+add_item("leather body", 30, equip={"slot": "body", "def": 8, "ranged": 8,
+         "req": {"defence": 1}})
+
+# --- Magic gear -----------------------------------------------------------
+for st in ["air", "water", "earth", "fire"]:
+    add_item(f"staff of {st}", 1500, provides=f"{st} rune",
+             equip={"slot": "weapon", "magic": 10, "att": 5, "str": 5,
+                    "req": {"attack": 1}})
+add_item("wizard hat", 20, equip={"slot": "head", "magic": 2})
+add_item("wizard robe", 20, equip={"slot": "body", "magic": 3})
+
+
+def low_alch(name):
+    return int(ITEMS[name]["value"] * 0.4)
+
+
+def high_alch(name):
+    return int(ITEMS[name]["value"] * 0.6)
+
+
+# ===========================================================================
+#  SPELLS  (standard F2P spellbook)
+# ===========================================================================
+# combat spells: max_hit + rune cost + magic level + xp
+SPELLS = {
+    "wind strike":  {"type": "combat", "max": 2, "lvl": 1,  "xp": 5.5,
+                     "runes": {"air rune": 1, "mind rune": 1}},
+    "water strike": {"type": "combat", "max": 4, "lvl": 5,  "xp": 7.5,
+                     "runes": {"water rune": 1, "air rune": 1, "mind rune": 1}},
+    "earth strike": {"type": "combat", "max": 6, "lvl": 9,  "xp": 9.5,
+                     "runes": {"earth rune": 2, "air rune": 1, "mind rune": 1}},
+    "fire strike":  {"type": "combat", "max": 8, "lvl": 13, "xp": 11.5,
+                     "runes": {"fire rune": 3, "air rune": 2, "mind rune": 1}},
+    "wind bolt":    {"type": "combat", "max": 9, "lvl": 17, "xp": 13.5,
+                     "runes": {"air rune": 2, "chaos rune": 1}},
+    "water bolt":   {"type": "combat", "max": 10, "lvl": 23, "xp": 16.5,
+                     "runes": {"water rune": 2, "air rune": 2, "chaos rune": 1}},
+    "earth bolt":   {"type": "combat", "max": 11, "lvl": 29, "xp": 19.5,
+                     "runes": {"earth rune": 3, "air rune": 2, "chaos rune": 1}},
+    "fire bolt":    {"type": "combat", "max": 12, "lvl": 35, "xp": 22.5,
+                     "runes": {"fire rune": 4, "air rune": 3, "chaos rune": 1}},
+    # utility
+    "low alchemy":  {"type": "alch", "ratio": 0.4, "lvl": 21, "xp": 31,
+                     "runes": {"fire rune": 3, "nature rune": 1}},
+    "high alchemy": {"type": "alch", "ratio": 0.6, "lvl": 55, "xp": 65,
+                     "runes": {"fire rune": 5, "nature rune": 1}},
+    "lumbridge teleport": {"type": "tele", "dest": "lumbridge_castle", "lvl": 31,
+                           "xp": 41, "runes": {"earth rune": 1, "air rune": 3, "law rune": 1}},
+    "varrock teleport":   {"type": "tele", "dest": "varrock_square", "lvl": 25,
+                           "xp": 35, "runes": {"fire rune": 1, "air rune": 3, "law rune": 1}},
+    "falador teleport":   {"type": "tele", "dest": "falador_square", "lvl": 37,
+                           "xp": 48, "runes": {"water rune": 1, "air rune": 3, "law rune": 1}},
+}
+
+
+# ===========================================================================
+#  GATHERING TABLES
+# ===========================================================================
+# tree: (product, level, xp)
+TREES = {
+    "tree":   ("logs", 1, 25),
+    "oak":    ("oak logs", 15, 37),
+    "willow": ("willow logs", 30, 67),
+}
+# rock: (product, level, xp)
+ROCKS = {
+    "copper": ("copper ore", 1, 17), "tin": ("tin ore", 1, 17),
+    "clay": ("clay", 1, 5), "iron": ("iron ore", 15, 35),
+    "silver": ("silver ore", 20, 40), "coal": ("coal", 30, 50),
+    "gold": ("gold ore", 40, 65), "mithril": ("mithril ore", 55, 80),
+    "adamantite": ("adamantite ore", 70, 95),
+    "rune essence": ("rune essence", 1, 5),
+}
+# fishing spot tool -> [(product, level, xp), ...]
+FISH = {
+    "net": [("raw shrimp", 1, 10), ("raw anchovies", 15, 40)],
+    "rod": [("raw sardine", 5, 20), ("raw herring", 10, 30), ("raw pike", 25, 60)],
+    "fly": [("raw trout", 20, 50), ("raw salmon", 30, 70)],
+}
+# smelting: bar -> ({ores}, level, xp)
+SMELT = {
+    "bronze bar": ({"copper ore": 1, "tin ore": 1}, 1, 6),
+    "iron bar": ({"iron ore": 1}, 15, 12),
+    "silver bar": ({"silver ore": 1}, 20, 14),
+    "steel bar": ({"iron ore": 1, "coal": 2}, 30, 17),
+    "gold bar": ({"gold ore": 1}, 40, 22),
+    "mithril bar": ({"mithril ore": 1, "coal": 4}, 50, 30),
+    "adamant bar": ({"adamantite ore": 1, "coal": 6}, 70, 37),
+}
+# smithable item -> (bar type, bar count, smithing level)
+SMITH_BARS = {"dagger": 1, "sword": 1, "scimitar": 2, "full helm": 2,
+              "kiteshield": 3, "platelegs": 3, "platebody": 5}
+SMITH_METAL_LVL = {"bronze": 1, "iron": 15, "steel": 30, "mithril": 50, "adamant": 70}
+# runecrafting: rune -> (level, xp)
+RUNECRAFT = {"air rune": (1, 5), "mind rune": (2, 5.5), "water rune": (5, 6),
+             "earth rune": (9, 6.5), "fire rune": (14, 7), "body rune": (20, 7.5)}
+
+
+# ===========================================================================
+#  MONSTERS
+# ===========================================================================
+def mob(hp, attack, defence, max_hit, drops, weak=None):
+    return {"hp": hp, "attack": attack, "defence": defence,
+            "max_hit": max_hit, "drops": drops, "weak": weak}
+
+
+# drops: list of (item, min, max, chance)
+MONSTERS = {
+    "chicken": mob(3, 1, 1, 1, [("bones", 1, 1, 1.0), ("feather", 5, 15, 1.0),
+                                ("raw chicken", 1, 1, 1.0)]),
+    "cow": mob(8, 1, 1, 1, [("bones", 1, 1, 1.0), ("cowhide", 1, 1, 1.0),
+                            ("raw beef", 1, 1, 1.0)]),
+    "goblin": mob(5, 1, 1, 2, [("bones", 1, 1, 1.0), ("coins", 1, 12, 0.7)]),
+    "giant rat": mob(8, 2, 1, 2, [("bones", 1, 1, 1.0), ("raw beef", 1, 1, 0.5)]),
+    "barbarian": mob(18, 7, 5, 3, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.8),
+                                   ("bronze sword", 1, 1, 0.1)]),
+    "guard": mob(22, 9, 8, 3, [("bones", 1, 1, 1.0), ("coins", 10, 40, 0.9)]),
+    "scorpion": mob(14, 7, 5, 3, [("bones", 1, 1, 0.0)]),
+    "skeleton": mob(18, 9, 6, 3, [("bones", 1, 1, 1.0), ("coins", 5, 25, 0.6)]),
+    "zombie": mob(18, 9, 6, 4, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.6)]),
+    "dark wizard": mob(14, 7, 5, 4, [("bones", 1, 1, 1.0), ("mind rune", 1, 5, 0.5),
+                                     ("chaos rune", 1, 2, 0.2)]),
+    "hobgoblin": mob(28, 14, 10, 4, [("bones", 1, 1, 1.0), ("coins", 10, 50, 0.8),
+                                     ("iron arrow", 5, 10, 0.2)]),
+    "hill giant": mob(35, 18, 14, 5, [("big bones", 1, 1, 1.0), ("coins", 20, 80, 0.9),
+                                      ("steel platelegs", 1, 1, 0.05),
+                                      ("law rune", 1, 3, 0.1)]),
+    "count draynor": mob(30, 12, 8, 4, [("bones", 1, 1, 1.0)], weak="stake"),
+}
+
+
+# ===========================================================================
+#  WORLD MAP
+# ===========================================================================
+# Each room: name, desc, exits{dir:roomkey}, plus optional service flags:
+#   bank, range, furnace, anvil, ge, spinning_wheel, altar(rune name)
+#   trees[], rocks[], fish_tools[], monsters[], shop, npc(quest key)
+ROOMS = {
+    # ---- Lumbridge -------------------------------------------------------
+    "lumbridge_castle": dict(
+        name="Lumbridge Castle",
+        desc="The home of Duke Horacio. A cooking range warms the kitchen, a "
+             "bank sits upstairs, and a spinning wheel hums in the hall. The "
+             "Cook frets by the ovens.",
+        exits={"north": "general_store", "east": "river_lum", "south": "swamp",
+               "west": "cow_field"},
+        bank=True, range=True, spinning_wheel=True, npc="cooks_assistant"),
+    "general_store": dict(
+        name="Lumbridge General Store",
+        desc="A well-stocked shop selling adventuring basics.",
+        exits={"south": "lumbridge_castle", "north": "lumbridge_forest",
+               "east": "lumbridge_farm"},
+        shop="general"),
+    "lumbridge_forest": dict(
+        name="Lumbridge Forest",
+        desc="Trees crowd the road north to Varrock. Goblins grunt in the brush.",
+        exits={"south": "general_store", "north": "varrock_gate"},
+        trees=["tree", "oak"], monsters=["goblin"]),
+    "lumbridge_farm": dict(
+        name="Lumbridge Farm",
+        desc="Chickens, a cow, a wheat field and sheep. Farmer Fred is here.",
+        exits={"west": "general_store", "north": "windmill"},
+        monsters=["chicken"], npc="sheep_shearer"),
+    "windmill": dict(
+        name="Lumbridge Windmill",
+        desc="Grain becomes flour here if you have an empty pot.",
+        exits={"south": "lumbridge_farm"}),
+    "river_lum": dict(
+        name="River Lum",
+        desc="A fishing spot teeming with shrimp. A toll bridge leads east to "
+             "Al Kharid.",
+        exits={"west": "lumbridge_castle", "east": "al_kharid_gate"},
+        fish_tools=["net"]),
+    "swamp": dict(
+        name="Lumbridge Swamp",
+        desc="Copper and tin rocks dot the misty ground.",
+        exits={"north": "lumbridge_castle"}, rocks=["copper", "tin", "clay"]),
+    "cow_field": dict(
+        name="Lumbridge Cow Field",
+        desc="A fenced field full of cows and sheep. Good for combat, hides, "
+             "and wool.",
+        exits={"east": "lumbridge_castle", "west": "draynor_path"},
+        monsters=["cow"]),
+    # ---- Al Kharid -------------------------------------------------------
+    "al_kharid_gate": dict(
+        name="Al Kharid Toll Gate",
+        desc="A gate guard demands 10 coins to pass east into Al Kharid.",
+        exits={"west": "river_lum", "east": "al_kharid_square"}, toll=10),
+    "al_kharid_square": dict(
+        name="Al Kharid",
+        desc="A desert city with a bank, furnace, range, a scimitar shop and a "
+             "tanner. Scorpions skitter at the edges.",
+        exits={"west": "al_kharid_gate", "north": "al_kharid_mine",
+               "east": "al_kharid_palace"},
+        bank=True, furnace=True, range=True, tanner=True, shop="scimitar",
+        monsters=["scorpion"]),
+    "al_kharid_mine": dict(
+        name="Al Kharid Mine",
+        desc="A rich mine: iron, silver, coal, gold, mithril and adamantite.",
+        exits={"south": "al_kharid_square"},
+        rocks=["iron", "silver", "coal", "gold", "mithril", "adamantite"]),
+    "al_kharid_palace": dict(
+        name="Al Kharid Palace",
+        desc="The palace of Emir. Guards watch the gleaming halls.",
+        exits={"west": "al_kharid_square"}),
+    # ---- Draynor ---------------------------------------------------------
+    "draynor_path": dict(
+        name="Draynor Path",
+        desc="A path winding west to Draynor Village.",
+        exits={"east": "cow_field", "west": "draynor_village"}),
+    "draynor_village": dict(
+        name="Draynor Village",
+        desc="A run-down village with a bank, willow trees by the river, a "
+             "wheat field, and Morgan, who looks terrified.",
+        exits={"east": "draynor_path", "north": "draynor_manor"},
+        bank=True, trees=["willow"], npc="vampyre_slayer"),
+    "draynor_manor": dict(
+        name="Draynor Manor",
+        desc="A gloomy manor. Skeletons and zombies roam, and Count Draynor "
+             "lurks within.",
+        exits={"south": "draynor_village"},
+        monsters=["skeleton", "zombie"]),
+    # ---- Varrock ---------------------------------------------------------
+    "varrock_gate": dict(
+        name="Varrock South Gate",
+        desc="The southern entrance to Varrock, capital of Misthalin.",
+        exits={"south": "lumbridge_forest", "north": "varrock_square"}),
+    "varrock_square": dict(
+        name="Varrock Square",
+        desc="A bustling plaza with a fountain. Romeo paces, lovesick.",
+        exits={"south": "varrock_gate", "west": "varrock_west_bank",
+               "east": "varrock_east_bank", "north": "varrock_palace"},
+        npc="romeo_juliet"),
+    "varrock_west_bank": dict(
+        name="West Varrock",
+        desc="A bank, the sword shop, an anvil for smithing, and Aubury's rune "
+             "shop with a portal to the rune essence mine.",
+        exits={"east": "varrock_square", "west": "barbarian_village",
+               "essence": "essence_mine"},
+        bank=True, anvil=True, shop="rune"),
+    "varrock_east_bank": dict(
+        name="East Varrock",
+        desc="A bank near the road north to the Grand Exchange.",
+        exits={"west": "varrock_square", "north": "grand_exchange"}, bank=True),
+    "grand_exchange": dict(
+        name="Grand Exchange",
+        desc="Traders from across Gielinor buy and sell here. A bank is on site.",
+        exits={"south": "varrock_east_bank"}, bank=True, ge=True),
+    "varrock_palace": dict(
+        name="Varrock Palace",
+        desc="King Roald's palace, patrolled by guards.",
+        exits={"south": "varrock_square"}, monsters=["guard"]),
+    "essence_mine": dict(
+        name="Rune Essence Mine",
+        desc="A mystical cavern of pure rune essence. A portal leads back out.",
+        exits={"out": "varrock_west_bank"}, rocks=["rune essence"]),
+    # ---- Barbarian Village / Edgeville / Wilderness ----------------------
+    "barbarian_village": dict(
+        name="Barbarian Village",
+        desc="Rowdy barbarians, a mine, and a river for fly fishing trout and "
+             "salmon.",
+        exits={"east": "varrock_west_bank", "west": "falador_east",
+               "north": "edgeville"},
+        rocks=["copper", "tin", "iron", "coal"], fish_tools=["fly"],
+        monsters=["barbarian"]),
+    "edgeville": dict(
+        name="Edgeville",
+        desc="A frontier town with a bank and furnace. A dungeon lies below, "
+             "and the Wilderness ditch is to the north.",
+        exits={"south": "barbarian_village", "north": "wilderness_edge",
+               "down": "edgeville_dungeon"},
+        bank=True, furnace=True),
+    "edgeville_dungeon": dict(
+        name="Edgeville Dungeon",
+        desc="A dank dungeon. Hobgoblins and hill giants prowl the dark.",
+        exits={"up": "edgeville"}, monsters=["hobgoblin", "hill giant"]),
+    "wilderness_edge": dict(
+        name="Edge of the Wilderness",
+        desc="Past this ditch lies the lawless Wilderness. Dark wizards and "
+             "skeletons haunt the wastes. Tread carefully.",
+        exits={"south": "edgeville"}, monsters=["dark wizard", "skeleton"]),
+    # ---- Falador / Dwarven Mine ------------------------------------------
+    "falador_east": dict(
+        name="East Falador",
+        desc="The eastern gate of Falador, with a bank.",
+        exits={"east": "barbarian_village", "west": "falador_square"},
+        bank=True),
+    "falador_square": dict(
+        name="Falador",
+        desc="The white-walled city of Asgarnia. Doric the dwarf works nearby, "
+             "and a mine lies south.",
+        exits={"east": "falador_east", "west": "falador_west",
+               "south": "dwarven_mine"},
+        npc="dorics_quest"),
+    "falador_west": dict(
+        name="West Falador",
+        desc="A bank and the road south toward Rimmington.",
+        exits={"east": "falador_square", "south": "rimmington"}, bank=True),
+    "dwarven_mine": dict(
+        name="Dwarven Mine",
+        desc="A deep mine of coal, iron, mithril and gold. Scorpions lurk.",
+        exits={"north": "falador_square"},
+        rocks=["iron", "coal", "gold", "mithril"], monsters=["scorpion"]),
+    # ---- Rimmington / Port Sarim / Karamja -------------------------------
+    "rimmington": dict(
+        name="Rimmington",
+        desc="A small mining village with Doric's anvil. Copper, tin, iron and "
+             "clay rocks are here.",
+        exits={"north": "falador_west", "east": "port_sarim"},
+        rocks=["copper", "tin", "iron", "clay"], anvil=True),
+    "port_sarim": dict(
+        name="Port Sarim",
+        desc="A busy port with a fishing shop and a food shop. Boats sail south "
+             "to Karamja.",
+        exits={"west": "rimmington", "south": "karamja_port"},
+        shop="fishing"),
+    "karamja_port": dict(
+        name="Karamja (Musa Point)",
+        desc="A tropical island port. Fishing spots line the docks; a volcano "
+             "smokes in the distance.",
+        exits={"north": "port_sarim"}, fish_tools=["net", "rod"]),
+}
+
+
+# ===========================================================================
+#  SHOPS
+# ===========================================================================
+SHOPS = {
+    "general": {"bread": 12, "pot": 1, "bucket": 2, "tinderbox": 1, "hammer": 1,
+                "shears": 1, "chisel": 1, "needle": 1, "thread": 5},
+    "scimitar": {"bronze scimitar": 32, "iron scimitar": 112, "steel scimitar": 400,
+                 "mithril scimitar": 1300},
+    "rune": {"air rune": 4, "water rune": 4, "earth rune": 4, "fire rune": 4,
+             "mind rune": 3, "body rune": 3, "chaos rune": 90, "nature rune": 180,
+             "law rune": 240},
+    "fishing": {"small fishing net": 5, "fishing rod": 5, "fly fishing rod": 5,
+                "harpoon": 5, "feather": 2},
+}
+
+
+# ===========================================================================
+#  PLAYER
+# ===========================================================================
+EQUIP_SLOTS = ["weapon", "shield", "head", "body", "legs", "ammo"]
+
+
+class Player:
+    def __init__(self, name="Guest"):
+        self.name = name
+        self.location = "lumbridge_castle"
+        self.skills = {s: 0 for s in SKILLS}
+        self.skills["hitpoints"] = _XP_TABLE[10]  # HP starts at level 10
+        self.hp = 10
+        self.inventory = {}
+        self.bank = {}
+        self.equipment = {slot: None for slot in EQUIP_SLOTS}
+        self.style = "melee"      # melee / ranged / magic
+        self.autocast = "wind strike"
+        self.quests = {}          # quest_key -> stage string
+        # starter kit
+        for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
+                      ("bronze axe", 1), ("small fishing net", 1),
+                      ("tinderbox", 1), ("hammer", 1), ("shears", 1),
+                      ("bread", 1), ("coins", 25)]:
+            self.add(it, q)
+        self.equip_item("bronze sword", silent=True)
+
+    # --- skills ---------------------------------------------------------
+    def lvl(self, skill):
+        return level_from_xp(self.skills[skill])
+
+    @property
+    def max_hp(self):
+        return self.lvl("hitpoints")
+
+    def combat_level(self):
+        base = 0.25 * (self.lvl("defence") + self.lvl("hitpoints")
+                       + self.lvl("prayer") // 2)
+        melee = 0.325 * (self.lvl("attack") + self.lvl("strength"))
+        rng = 0.325 * (self.lvl("ranged") * 3 // 2)
+        mag = 0.325 * (self.lvl("magic") * 3 // 2)
+        return int(base + max(melee, rng, mag))
+
+    def gain_xp(self, skill, amount):
+        amount = int(amount)
+        before = self.lvl(skill)
+        self.skills[skill] += amount
+        print(paint(f"  +{amount} {skill} xp", "bcyan"))
+        after = self.lvl(skill)
+        if after > before:
+            show_art(ART_LEVELUP, "byellow", center=True)
+            banner(f"LEVEL UP!  Your {skill} is now level {after}.",
+                   color="byellow", line_color="gold")
+            if skill == "hitpoints":
+                self.hp = self.max_hp
+
+    # --- inventory ------------------------------------------------------
+    def add(self, item, qty=1):
+        self.inventory[item] = self.inventory.get(item, 0) + qty
+
+    def take(self, item, qty=1):
+        if self.inventory.get(item, 0) < qty:
+            return False
+        self.inventory[item] -= qty
+        if self.inventory[item] <= 0:
+            del self.inventory[item]
+        return True
+
+    def has(self, item, qty=1):
+        return self.inventory.get(item, 0) >= qty
+
+    def count(self, item):
+        return self.inventory.get(item, 0)
+
+    @property
+    def coins(self):
+        return self.inventory.get("coins", 0)
+
+    def find_tool(self, kind):
+        """Return an equipped/inventory tool name of the given kind, or None."""
+        # check inventory and equipped weapon
+        for item in list(self.inventory):
+            if ITEMS.get(item, {}).get("tool") == kind:
+                return item
+        w = self.equipment["weapon"]
+        if w and ITEMS.get(w, {}).get("tool") == kind:
+            return w
+        return None
+
+    # --- equipment ------------------------------------------------------
+    def equip_bonus(self, field):
+        total = 0
+        for slot, item in self.equipment.items():
+            if item:
+                total += ITEMS[item].get("equip", {}).get(field, 0)
+        return total
+
+    def equip_item(self, item, silent=False):
+        info = ITEMS.get(item, {})
+        eq = info.get("equip")
+        if not eq:
+            if not silent:
+                say(f"You can't equip {item}.")
+            return False
+        for skill, req in eq.get("req", {}).items():
+            if self.lvl(skill) < req:
+                say(f"You need {skill} level {req} to wield {item}.")
+                return False
+        if not self.has(item):
+            say(f"You don't have {item}.")
+            return False
+        slot = eq["slot"]
+        if self.equipment[slot]:
+            self.add(self.equipment[slot])
+        self.take(item)
+        self.equipment[slot] = item
+        if not silent:
+            say(f"You equip the {item}.")
+        return True
+
+    def unequip(self, slot):
+        if self.equipment.get(slot):
+            self.add(self.equipment[slot])
+            say(f"You unequip the {self.equipment[slot]}.")
+            self.equipment[slot] = None
+        else:
+            say(f"Nothing equipped in {slot}.")
+
+
+# ===========================================================================
+#  COMBAT
+# ===========================================================================
+def _accuracy(att_roll, def_roll):
+    if att_roll > def_roll:
+        return 1 - (def_roll + 2) / (2 * (att_roll + 1))
+    return att_roll / (2 * (def_roll + 1))
+
+
+def _player_attack(p, m):
+    """Return (damage, skill_xp_dict, label) for one player attack."""
+    if p.style == "ranged":
+        bow = p.equipment["weapon"]
+        ammo = p.equipment["ammo"]
+        if not bow or ITEMS[bow].get("equip", {}).get("ranged") is None:
+            say("You need a bow equipped to use ranged.")
+            return None
+        if not ammo or p.count_ammo() <= 0:
+            say("You're out of arrows!")
+            return None
+        rng_bonus = p.equip_bonus("ranged")
+        att_roll = (p.lvl("ranged") + 9) * (rng_bonus + 64)
+        max_hit = int(0.5 + (p.lvl("ranged") + 9) * (rng_bonus + 64) / 640)
+        p.take(ammo)  # consume one arrow
+        if p.count(ammo) == 0:
+            p.equipment["ammo"] = None
+        skill_xp = {"ranged": 0, "hitpoints": 0}
+        return ("ranged", att_roll, max_hit, skill_xp)
+    if p.style == "magic":
+        spell = SPELLS.get(p.autocast)
+        if not spell or spell["type"] != "combat":
+            say("Set a combat spell with 'autocast <spell>'.")
+            return None
+        if p.lvl("magic") < spell["lvl"]:
+            say(f"You need magic level {spell['lvl']} to cast {p.autocast}.")
+            return None
+        if not _consume_runes(p, spell["runes"]):
+            say(f"You don't have the runes for {p.autocast}.")
+            return None
+        mag_bonus = p.equip_bonus("magic")
+        att_roll = (p.lvl("magic") + 9) * (mag_bonus + 64)
+        return ("magic", att_roll, spell["max"], {"magic": spell["xp"], "hitpoints": 0})
+    # melee
+    atk_bonus = p.equip_bonus("att")
+    str_bonus = p.equip_bonus("str")
+    att_roll = (p.lvl("attack") + 9) * (atk_bonus + 64)
+    eff_str = p.lvl("strength") + 9
+    max_hit = int(0.5 + eff_str * (str_bonus + 64) / 640)
+    return ("melee", att_roll, max_hit, {"attack": 0, "strength": 0,
+                                         "defence": 0, "hitpoints": 0})
+
+
+STYLE_COLOR = {"melee": "bred", "ranged": "bgreen", "magic": "bblue"}
+
+
+def fight(p, mname):
+    template = MONSTERS[mname]
+    m = dict(template)
+    m["cur"] = m["hp"]
+    show_art(ART_SWORDS, "grey")
+    banner(f"{mname.upper()}", color="bred", line_color="red")
+    say(paint(f"  You ready your weapon.  Style: ", "grey")
+        + paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold"))
+    print("  " + paint(f"{mname}: ", "white")
+          + bar_meter(m["cur"], m["hp"], 18, fill_color="bred"))
+    while m["cur"] > 0 and p.hp > 0:
+        atk = _player_attack(p, m)
+        if atk is None:
+            say("You disengage from combat.", "grey")
+            return False
+        kind, att_roll, max_hit, _xp = atk
+        def_roll = (m["defence"] + 9) * 64
+        if random.random() < _accuracy(att_roll, def_roll):
+            dmg = random.randint(0, max_hit)
+            m["cur"] -= dmg
+            verb = {"melee": "slash", "ranged": "shoot", "magic": "blast"}[kind]
+            print("  " + paint(f"You {verb} the {mname} for {dmg}!", "bgreen")
+                  + "  " + bar_meter(max(m["cur"], 0), m["hp"], 18,
+                                     fill_color="bred"))
+        else:
+            miss = "splash on" if kind == "magic" else "miss"
+            print("  " + paint(f"You {miss} the {mname}.", "grey"))
+        if m["cur"] <= 0:
+            break
+        # monster retaliates
+        m_att_roll = (m["attack"] + 9) * 64
+        p_def_roll = (p.lvl("defence") + 9) * (p.equip_bonus("def") + 64)
+        if random.random() < _accuracy(m_att_roll, p_def_roll):
+            dmg = random.randint(0, m["max_hit"])
+            p.hp -= dmg
+            print("  " + paint(f"The {mname} hits you for {dmg}.", "bred")
+                  + "  " + paint("HP ", "white")
+                  + bar_meter(max(p.hp, 0), p.max_hp, 18))
+        else:
+            print("  " + paint(f"You block the {mname}.", "grey"))
+
+    if p.hp <= 0:
+        return False
+
+    show_art(ART_VICTORY, "gold", center=True)
+    say(f"You have defeated the {mname}!", "bgreen", "bold")
+    _award_combat_xp(p, m["hp"])
+    _roll_drops(p, m)
+    return True
+
+
+def _award_combat_xp(p, mhp):
+    cxp = mhp * 4
+    if p.style == "melee":
+        for s in ("attack", "strength", "defence"):
+            p.gain_xp(s, cxp / 3)
+    elif p.style == "ranged":
+        p.gain_xp("ranged", cxp)
+    elif p.style == "magic":
+        spell = SPELLS.get(p.autocast)
+        if spell:
+            p.gain_xp("magic", spell["xp"] * 2)
+    p.gain_xp("hitpoints", cxp / 3)
+
+
+def _roll_drops(p, m):
+    got = False
+    for item, lo, hi, chance in m["drops"]:
+        if random.random() < chance:
+            qty = random.randint(lo, hi)
+            if qty > 0:
+                p.add(item, qty)
+                tint = "gold" if item == "coins" else "byellow"
+                print("  " + paint(f"Loot: {item} x{qty}", tint))
+                got = True
+    if not got:
+        say("  No loot this time.", "grey")
+    p.hp = p.max_hp  # heal up between fights for convenience
+
+
+def _consume_runes(p, runes):
+    # staves provide unlimited runes of their element
+    provided = set()
+    for slot, item in p.equipment.items():
+        if item and "provides" in ITEMS.get(item, {}):
+            provided.add(ITEMS[item]["provides"])
+    needed = {r: q for r, q in runes.items() if r not in provided}
+    for r, q in needed.items():
+        if not p.has(r, q):
+            return False
+    for r, q in needed.items():
+        p.take(r, q)
+    return True
+
+
+# helper bound to Player (ammo count)
+def _count_ammo(self):
+    a = self.equipment["ammo"]
+    return self.count(a) if a else 0
+
+
+Player.count_ammo = _count_ammo
+
+
+# ===========================================================================
+#  COMMAND HANDLERS
+# ===========================================================================
+def gather_chance(level, req):
+    return clamp(0.45 + (level - req) * 0.03, 0.45, 0.95)
+
+
+def cmd_look(p, _a):
+    r = ROOMS[p.location]
+    banner(r["name"], color="bcyan", line_color="teal")
+    say(r["desc"], "white")
+    services = []
+    for flag, label in [("bank", "bank"), ("range", "cooking range"),
+                        ("furnace", "furnace"), ("anvil", "anvil"),
+                        ("ge", "Grand Exchange"), ("spinning_wheel", "spinning wheel"),
+                        ("tanner", "tanner")]:
+        if r.get(flag):
+            services.append(paint(label, "bmagenta"))
+    if r.get("shop"):
+        services.append(paint("shop", "bmagenta"))
+    if r.get("trees"):
+        services.append(paint("trees: " + ", ".join(r["trees"]), "bgreen"))
+    if r.get("rocks"):
+        services.append(paint("rocks: " + ", ".join(r["rocks"]), "brown"))
+    if r.get("fish_tools"):
+        services.append(paint("fishing spot", "bblue"))
+    if r.get("monsters"):
+        services.append(paint("monsters: " + ", ".join(r["monsters"]), "bred"))
+    if r.get("npc"):
+        services.append(paint("someone to 'talk' to", "byellow"))
+    if services:
+        print(paint("\n  Here: ", "grey") + "; ".join(services))
+    print(paint("  Exits: ", "grey")
+          + paint(", ".join(r["exits"].keys()), "bcyan"))
+
+
+def cmd_go(p, arg):
+    r = ROOMS[p.location]
+    d = arg.strip().lower()
+    if d not in r["exits"]:
+        say("You can't go that way.")
+        return
+    dest = r["exits"][d]
+    if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
+        toll = ROOMS[p.location]["toll"]
+        if not p.has("coins", toll):
+            say(f"The gate guard demands {toll} coins. You can't afford it.")
+            return
+        p.take("coins", toll)
+        say(f"You pay the {toll} coin toll.")
+    p.location = dest
+    cmd_look(p, "")
+
+
+# skill -> theme colour for the stats screen
+SKILL_COLOR = {
+    "attack": "bred", "strength": "bred", "defence": "bred",
+    "hitpoints": "bred", "ranged": "bgreen", "prayer": "bwhite",
+    "magic": "bblue", "cooking": "orange", "woodcutting": "bgreen",
+    "fishing": "bcyan", "firemaking": "orange", "crafting": "brown",
+    "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
+}
+
+
+def cmd_stats(p, _a):
+    banner(f"{p.name} — Combat level {p.combat_level()}", color="gold")
+    print("  " + paint("Hitpoints ", "white")
+          + bar_meter(p.hp, p.max_hp, 22)
+          + paint(f"   Coins: {p.coins:,}", "gold"))
+    style_str = paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold")
+    if p.style == "magic":
+        style_str += paint(f" ({p.autocast})", "grey")
+    print("  " + paint("Style: ", "white") + style_str)
+    say()
+    total = 0
+    cols = []
+    for s in SKILLS:
+        total += p.lvl(s)
+        label = paint(f"{s:12}", SKILL_COLOR.get(s, "white"))
+        cols.append(f"{label}{paint(f'{p.lvl(s):2}', 'bwhite', 'bold')}")
+    for i in range(0, len(cols), 3):
+        print("  " + "   ".join(cols[i:i + 3]))
+    print("\n  " + paint(f"Total level: {total}", "gold", "bold"))
+
+
+def cmd_inventory(p, _a):
+    banner("Inventory")
+    if not p.inventory:
+        say("Empty.")
+        return
+    for item, q in sorted(p.inventory.items()):
+        say(f"  {item} x{q}")
+
+
+def cmd_equipment(p, _a):
+    banner("Worn Equipment")
+    for slot in EQUIP_SLOTS:
+        say(f"  {slot:7}: {p.equipment[slot] or '(empty)'}")
+    say(f"\nBonuses — att {p.equip_bonus('att'):+d}  str {p.equip_bonus('str'):+d}"
+        f"  def {p.equip_bonus('def'):+d}  ranged {p.equip_bonus('ranged'):+d}"
+        f"  magic {p.equip_bonus('magic'):+d}")
+
+
+def cmd_equip(p, arg):
+    item = arg.strip().lower()
+    if not item:
+        say("Equip what?")
+        return
+    p.equip_item(item)
+
+
+def cmd_unequip(p, arg):
+    slot = arg.strip().lower()
+    if slot not in EQUIP_SLOTS:
+        say(f"Slots: {', '.join(EQUIP_SLOTS)}")
+        return
+    p.unequip(slot)
+
+
+def cmd_style(p, arg):
+    s = arg.strip().lower()
+    if s not in ("melee", "ranged", "magic"):
+        say(f"Current style: {p.style}. Choose: melee, ranged, magic.")
+        return
+    p.style = s
+    say(f"Combat style set to {s}.")
+
+
+def cmd_autocast(p, arg):
+    spell = arg.strip().lower()
+    if spell not in SPELLS or SPELLS[spell]["type"] != "combat":
+        combat_spells = [s for s in SPELLS if SPELLS[s]["type"] == "combat"]
+        say("Combat spells: " + ", ".join(combat_spells))
+        return
+    p.autocast = spell
+    p.style = "magic"
+    say(f"You will autocast {spell}. Style set to magic.")
+
+
+# --- gathering ------------------------------------------------------------
+def cmd_chop(p, arg):
+    r = ROOMS[p.location]
+    trees = r.get("trees", [])
+    if not trees:
+        say("No trees here.")
+        return
+    tree = arg.strip().lower() or trees[0]
+    if tree not in trees:
+        say(f"No {tree} tree here. Available: {', '.join(trees)}")
+        return
+    if not p.find_tool("axe"):
+        say("You need an axe.")
+        return
+    product, req, xp = TREES[tree]
+    if p.lvl("woodcutting") < req:
+        say(f"You need woodcutting level {req} to chop {tree}.")
+        return
+    say(f"You swing your axe at the {tree}...")
+    if random.random() < gather_chance(p.lvl("woodcutting"), req):
+        p.add(product)
+        say(f"You get some {product}.")
+        p.gain_xp("woodcutting", xp)
+    else:
+        say("You fail to get any logs this time.")
+
+
+def cmd_mine(p, arg):
+    r = ROOMS[p.location]
+    rocks = r.get("rocks", [])
+    if not rocks:
+        say("No rocks here.")
+        return
+    rock = arg.strip().lower() or rocks[0]
+    if rock not in rocks:
+        say(f"No {rock} here. Available: {', '.join(rocks)}")
+        return
+    if rock != "rune essence" and not p.find_tool("pickaxe"):
+        say("You need a pickaxe.")
+        return
+    product, req, xp = ROCKS[rock]
+    if p.lvl("mining") < req:
+        say(f"You need mining level {req} to mine {rock}.")
+        return
+    say(f"You swing your pickaxe at the {rock} rock...")
+    if random.random() < gather_chance(p.lvl("mining"), req):
+        p.add(product)
+        say(f"You manage to mine some {product}.")
+        p.gain_xp("mining", xp)
+    else:
+        say("You only chip the rock.")
+
+
+def cmd_fish(p, arg):
+    r = ROOMS[p.location]
+    tools = r.get("fish_tools", [])
+    if not tools:
+        say("No fishing spot here.")
+        return
+    # choose a tool the player has
+    tool_map = {"net": "net", "rod": "rod", "fly": "fly"}
+    usable = [t for t in tools if p.find_tool(tool_map[t])]
+    if not usable:
+        needed = {"net": "small fishing net", "rod": "fishing rod",
+                  "fly": "fly fishing rod"}
+        say("You need: " + " or ".join(needed[t] for t in tools))
+        return
+    tool = usable[0]
+    options = [o for o in FISH[tool] if p.lvl("fishing") >= o[1]]
+    if not options:
+        say(f"You need fishing level {FISH[tool][0][1]} to fish here.")
+        return
+    product, req, xp = max(options, key=lambda o: o[1])
+    say("You cast out your line...")
+    if random.random() < gather_chance(p.lvl("fishing"), req):
+        p.add(product)
+        say(f"You catch some {product}.")
+        p.gain_xp("fishing", xp)
+    else:
+        say("You fail to catch anything.")
+
+
+# --- processing -----------------------------------------------------------
+def cmd_cook(p, arg):
+    r = ROOMS[p.location]
+    if not (r.get("range") or r.get("fire")):
+        say("You need a cooking range or fire.")
+        return
+    raw = arg.strip().lower()
+    cookable = [i for i in p.inventory if i in RAW_TO_COOKED]
+    if not raw:
+        if not cookable:
+            say("You have nothing to cook.")
+            return
+        raw = cookable[0]
+    if raw not in RAW_TO_COOKED:
+        say(f"You can't cook {raw}.")
+        return
+    if not p.has(raw):
+        say(f"You have no {raw}.")
+        return
+    cooked, burnt, req = RAW_TO_COOKED[raw]
+    p.take(raw)
+    if p.lvl("cooking") < req:
+        say(f"You need cooking level {req} for that.")
+        p.add(raw)
+        return
+    burn_chance = clamp(0.55 - (p.lvl("cooking") - req) * 0.03, 0.02, 0.55)
+    if random.random() > burn_chance:
+        p.add(cooked)
+        say(f"You cook the {raw} into {cooked}.")
+        p.gain_xp("cooking", COOK_XP[raw])
+    else:
+        p.add(burnt)
+        say(f"Oops! You burn the {raw}.")
+
+
+def cmd_light(p, arg):
+    if not p.find_tool("tinderbox"):
+        say("You need a tinderbox.")
+        return
+    logs = arg.strip().lower() or "logs"
+    if logs not in ITEMS or "log_fm_xp" not in ITEMS[logs]:
+        say("You can't light that.")
+        return
+    if not p.has(logs):
+        say(f"You have no {logs}.")
+        return
+    p.take(logs)
+    say(f"You light the {logs}. A fire crackles to life.")
+    p.gain_xp("firemaking", ITEMS[logs]["log_fm_xp"])
+
+
+def cmd_bury(p, arg):
+    bone = arg.strip().lower() or "bones"
+    if bone not in ITEMS or "bury" not in ITEMS[bone]:
+        # bury any bones
+        bone = "big bones" if p.has("big bones") else "bones"
+    if not p.has(bone):
+        say("You have no bones to bury.")
+        return
+    p.take(bone)
+    skill, xp = ITEMS[bone]["bury"]
+    say(f"You dig a hole and bury the {bone}.")
+    p.gain_xp(skill, xp)
+
+
+def cmd_smelt(p, arg):
+    r = ROOMS[p.location]
+    if not r.get("furnace"):
+        say("You need a furnace.")
+        return
+    bar = arg.strip().lower()
+    if not bar.endswith("bar"):
+        bar = bar + " bar" if bar else ""
+    if bar not in SMELT:
+        say("Smeltable bars: " + ", ".join(SMELT))
+        return
+    ores, req, xp = SMELT[bar]
+    if p.lvl("smithing") < req:
+        say(f"You need smithing level {req} to smelt {bar}.")
+        return
+    for ore, q in ores.items():
+        if not p.has(ore, q):
+            say(f"You need {q}x {ore}.")
+            return
+    for ore, q in ores.items():
+        p.take(ore, q)
+    # iron has a 50% chance to fail
+    if bar == "iron bar" and random.random() < 0.5:
+        say("The iron ore is too impure — the bar is ruined.")
+        p.gain_xp("smithing", xp // 4)
+        return
+    p.add(bar)
+    say(f"You smelt a {bar}.")
+    p.gain_xp("smithing", xp)
+
+
+def cmd_smith(p, arg):
+    r = ROOMS[p.location]
+    if not r.get("anvil"):
+        say("You need an anvil.")
+        return
+    if not p.find_tool("hammer"):
+        say("You need a hammer.")
+        return
+    arg = arg.strip().lower()
+    parts = arg.split()
+    if len(parts) < 2:
+        say("Smith what? e.g. 'smith iron platebody'. Items: "
+            + ", ".join(SMITH_BARS))
+        return
+    metal = parts[0]
+    item_type = " ".join(parts[1:])
+    if metal not in SMITH_METAL_LVL or item_type not in SMITH_BARS:
+        say(f"Metals: {', '.join(SMITH_METAL_LVL)}. Items: {', '.join(SMITH_BARS)}")
+        return
+    nbars = SMITH_BARS[item_type]
+    bar = f"{metal} bar"
+    base_lvl = SMITH_METAL_LVL[metal]
+    req = base_lvl + nbars  # rough scaling
+    if p.lvl("smithing") < req:
+        say(f"You need smithing level {req} to smith a {metal} {item_type}.")
+        return
+    if not p.has(bar, nbars):
+        say(f"You need {nbars}x {bar}.")
+        return
+    result = f"{metal} {item_type}"
+    if result not in ITEMS:
+        say(f"You don't know how to smith a {result}.")
+        return
+    p.take(bar, nbars)
+    p.add(result)
+    say(f"You hammer out a {result}.")
+    p.gain_xp("smithing", nbars * (12 + base_lvl // 3))
+
+
+def cmd_spin(p, _a):
+    r = ROOMS[p.location]
+    if not r.get("spinning_wheel"):
+        say("You need a spinning wheel (Lumbridge Castle).")
+        return
+    if not p.has("wool"):
+        say("You have no wool to spin.")
+        return
+    p.take("wool")
+    p.add("ball of wool")
+    say("You spin the wool into a ball of wool.")
+    p.gain_xp("crafting", 2.5)
+
+
+def cmd_tan(p, arg):
+    r = ROOMS[p.location]
+    if not r.get("tanner"):
+        say("You need a tanner (Al Kharid).")
+        return
+    if not p.has("cowhide"):
+        say("You have no cowhide.")
+        return
+    if not p.has("coins", 1):
+        say("The tanner charges 1 coin per hide.")
+        return
+    p.take("cowhide")
+    p.take("coins", 1)
+    p.add("leather")
+    say("The tanner turns your cowhide into leather.")
+
+
+def cmd_craft(p, arg):
+    arg = arg.strip().lower()
+    if arg in ("leather body", "body", "leather"):
+        if not (p.find_tool("needle") and p.has("thread") and p.has("leather")):
+            say("You need a needle, thread and leather.")
+            return
+        p.take("leather")
+        p.take("thread")
+        p.add("leather body")
+        say("You stitch together a leather body.")
+        p.gain_xp("crafting", 25)
+    else:
+        say("You can 'craft leather body'. (Also 'spin' wool, 'tan' hides.)")
+
+
+def cmd_craftrune(p, _a):
+    r = ROOMS[p.location]
+    altar = r.get("altar")
+    if not altar:
+        say("You need a runecrafting altar.")
+        return
+    rune = altar + " rune"
+    if rune not in RUNECRAFT:
+        say("You can't craft that rune in F2P.")
+        return
+    if not p.has("rune essence"):
+        say("You need rune essence.")
+        return
+    req, xp = RUNECRAFT[rune]
+    if p.lvl("runecrafting") < req:
+        say(f"You need runecrafting level {req}.")
+        return
+    n = p.count("rune essence")
+    p.take("rune essence", n)
+    p.add(rune, n)
+    say(f"You bind the essence into {n}x {rune}.")
+    p.gain_xp("runecrafting", xp * n)
+
+
+# --- eating, magic utility ------------------------------------------------
+def cmd_eat(p, arg):
+    item = arg.strip().lower()
+    foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
+    if not item:
+        if not foods:
+            say("You have no food.")
+            return
+        item = foods[0]
+    if "heal" not in ITEMS.get(item, {}):
+        say(f"You can't eat {item}.")
+        return
+    if not p.has(item):
+        say(f"You have no {item}.")
+        return
+    p.take(item)
+    p.hp = min(p.max_hp, p.hp + ITEMS[item]["heal"])
+    say(f"You eat the {item}. (HP: {p.hp}/{p.max_hp})")
+
+
+def cmd_cast(p, arg):
+    spell = arg.strip().lower()
+    if spell not in SPELLS:
+        say("Known spells: " + ", ".join(SPELLS))
+        return
+    s = SPELLS[spell]
+    if p.lvl("magic") < s["lvl"]:
+        say(f"You need magic level {s['lvl']} to cast {spell}.")
+        return
+    if s["type"] == "combat":
+        cmd_autocast(p, spell)
+        return
+    if s["type"] == "tele":
+        if not _consume_runes(p, s["runes"]):
+            say("You don't have the runes.")
+            return
+        p.location = s["dest"]
+        p.gain_xp("magic", s["xp"])
+        say(f"You teleport in a flash of light.")
+        cmd_look(p, "")
+        return
+    if s["type"] == "alch":
+        # alch the most valuable non-coin, non-rune item
+        candidates = [i for i in p.inventory
+                      if i not in ("coins",) and "rune" not in i]
+        if not candidates:
+            say("You have nothing worth alching.")
+            return
+        target = max(candidates, key=lambda i: ITEMS.get(i, {}).get("value", 0))
+        if not _consume_runes(p, s["runes"]):
+            say("You don't have the runes.")
+            return
+        p.take(target)
+        gold = int(ITEMS[target]["value"] * s["ratio"])
+        p.add("coins", gold)
+        say(f"You transmute the {target} into {gold} coins.")
+        p.gain_xp("magic", s["xp"])
+
+
+# --- banking, shops, GE ---------------------------------------------------
+def cmd_bank(p, _a):
+    if not ROOMS[p.location].get("bank"):
+        say("There's no bank here.")
+        return
+    banner("Bank of Gielinor")
+    if not p.bank:
+        say("Your bank is empty.")
+    else:
+        for item, q in sorted(p.bank.items()):
+            say(f"  {item} x{q}")
+    say("\nUse: deposit <item> [n|all] | withdraw <item> [n|all] | deposit all")
+
+
+def cmd_deposit(p, arg):
+    if not ROOMS[p.location].get("bank"):
+        say("There's no bank here.")
+        return
+    arg = arg.strip().lower()
+    if arg in ("all", ""):
+        moved = 0
+        for item in list(p.inventory):
+            q = p.inventory[item]
+            p.bank[item] = p.bank.get(item, 0) + q
+            del p.inventory[item]
+            moved += 1
+        say(f"You deposit everything ({moved} stacks).")
+        return
+    parts = arg.rsplit(" ", 1)
+    if len(parts) == 2 and (parts[1].isdigit() or parts[1] == "all"):
+        item, qarg = parts
+    else:
+        item, qarg = arg, "all"
+    if not p.has(item):
+        say(f"You have no {item}.")
+        return
+    q = p.count(item) if qarg == "all" else min(int(qarg), p.count(item))
+    p.take(item, q)
+    p.bank[item] = p.bank.get(item, 0) + q
+    say(f"Deposited {item} x{q}.")
+
+
+def cmd_withdraw(p, arg):
+    if not ROOMS[p.location].get("bank"):
+        say("There's no bank here.")
+        return
+    arg = arg.strip().lower()
+    parts = arg.rsplit(" ", 1)
+    if len(parts) == 2 and (parts[1].isdigit() or parts[1] == "all"):
+        item, qarg = parts
+    else:
+        item, qarg = arg, "1"
+    if p.bank.get(item, 0) <= 0:
+        say(f"You have no {item} in the bank.")
+        return
+    q = p.bank[item] if qarg == "all" else min(int(qarg), p.bank[item])
+    p.bank[item] -= q
+    if p.bank[item] <= 0:
+        del p.bank[item]
+    p.add(item, q)
+    say(f"Withdrew {item} x{q}.")
+
+
+def cmd_shop(p, _a):
+    shop = ROOMS[p.location].get("shop")
+    if not shop:
+        say("There's no shop here.")
+        return
+    banner(f"Shop — {shop}")
+    for item, price in SHOPS[shop].items():
+        say(f"  {item:22} {price} coins")
+    say("\nUse: buy <item> [n] | sell <item> [n]")
+
+
+def _parse_item_qty(arg):
+    parts = arg.strip().lower().rsplit(" ", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[0], int(parts[1])
+    return arg.strip().lower(), 1
+
+
+def cmd_buy(p, arg):
+    shop = ROOMS[p.location].get("shop")
+    if not shop:
+        say("There's no shop here.")
+        return
+    item, qty = _parse_item_qty(arg)
+    if item not in SHOPS[shop]:
+        say("The shopkeeper doesn't sell that.")
+        return
+    cost = SHOPS[shop][item] * qty
+    if not p.has("coins", cost):
+        say(f"That costs {cost} coins; you can't afford it.")
+        return
+    p.take("coins", cost)
+    p.add(item, qty)
+    say(f"You buy {item} x{qty} for {cost} coins.")
+
+
+def cmd_sell(p, arg):
+    shop = ROOMS[p.location].get("shop")
+    if not shop:
+        say("There's no shop here.")
+        return
+    item, qty = _parse_item_qty(arg)
+    if not p.has(item, qty):
+        say(f"You don't have {qty}x {item}.")
+        return
+    price = max(1, int(ITEMS.get(item, {}).get("value", 1) * 0.4)) * qty
+    p.take(item, qty)
+    p.add("coins", price)
+    say(f"You sell {item} x{qty} for {price} coins.")
+
+
+def cmd_ge(p, arg):
+    if not ROOMS[p.location].get("ge"):
+        say("You must be at the Grand Exchange.")
+        return
+    arg = arg.strip().lower()
+    if not arg:
+        banner("Grand Exchange")
+        say("Trade almost any item at its market value.")
+        say("Use: ge buy <item> [n]  |  ge sell <item> [n]")
+        say("(Prices are the item's value; sell returns full value here.)")
+        return
+    action, rest = (arg.split(" ", 1) + [""])[:2]
+    item, qty = _parse_item_qty(rest)
+    if item not in ITEMS:
+        say(f"No such item: {item}")
+        return
+    price = ITEMS[item]["value"] * qty
+    if action == "buy":
+        if not p.has("coins", price):
+            say(f"That costs {price} coins; you can't afford it.")
+            return
+        p.take("coins", price)
+        p.add(item, qty)
+        say(f"Bought {item} x{qty} for {price} coins.")
+    elif action == "sell":
+        if not p.has(item, qty):
+            say(f"You don't have {qty}x {item}.")
+            return
+        p.take(item, qty)
+        p.add("coins", price)
+        say(f"Sold {item} x{qty} for {price} coins.")
+    else:
+        say("Use: ge buy <item> [n] | ge sell <item> [n]")
+
+
+# --- combat & farm actions ------------------------------------------------
+def cmd_fight(p, arg):
+    r = ROOMS[p.location]
+    monsters = r.get("monsters", [])
+    target = arg.strip().lower()
+    # Vampyre Slayer boss is talk-gated
+    if not monsters:
+        say("There's nothing to fight here.")
+        return
+    if not target:
+        target = monsters[0]
+    if target not in monsters:
+        say(f"No {target} here. Monsters: {', '.join(monsters)}")
+        return
+    if not fight(p, target):
+        if p.hp <= 0:
+            show_art(ART_DEATH, "bred")
+            banner("YOU HAVE DIED", color="bred", line_color="red")
+            say("You wake in Lumbridge, your wounds bound. Your items are safe.",
+                "grey")
+            p.hp = p.max_hp
+            p.location = "lumbridge_castle"
+        return
+    # quest hooks
+    _quest_on_kill(p, target)
+
+
+def cmd_collect(p, _a):
+    if p.location != "lumbridge_farm":
+        say("There are no eggs here.")
+        return
+    p.add("egg")
+    say("You take a fresh egg from the chicken coop.")
+
+
+def cmd_milk(p, _a):
+    if p.location not in ("lumbridge_farm",):
+        say("There's no cow to milk here.")
+        return
+    if not p.has("bucket"):
+        say("You need an empty bucket.")
+        return
+    p.take("bucket")
+    p.add("bucket of milk")
+    say("You milk the cow, filling your bucket.")
+
+
+def cmd_pick(p, _a):
+    if p.location not in ("lumbridge_farm", "draynor_village"):
+        say("There's no wheat to pick here.")
+        return
+    p.add("grain")
+    say("You pick some wheat, gathering grain.")
+
+
+def cmd_mill(p, _a):
+    if p.location != "windmill":
+        say("You need a windmill.")
+        return
+    if not p.has("grain"):
+        say("You have no grain.")
+        return
+    if not p.has("pot"):
+        say("You need an empty pot to catch the flour.")
+        return
+    p.take("grain")
+    p.take("pot")
+    p.add("pot of flour")
+    say("You grind the grain into a pot of flour.")
+
+
+def cmd_shear(p, _a):
+    if p.location not in ("lumbridge_farm", "cow_field"):
+        say("There are no sheep here.")
+        return
+    if not p.find_tool("shears"):
+        say("You need shears.")
+        return
+    p.add("wool")
+    say("You shear a sheep and collect some wool.")
+
+
+# ===========================================================================
+#  QUESTS
+# ===========================================================================
+def cmd_talk(p, _a):
+    npc = ROOMS[p.location].get("npc")
+    if not npc:
+        say("There's no one here to talk to.")
+        return
+    QUEST_TALK[npc](p)
+
+
+def _q(p, key):
+    return p.quests.get(key, "not_started")
+
+
+def talk_cook(p):
+    stage = _q(p, "cooks_assistant")
+    if stage == "not_started":
+        banner("Quest Start: Cook's Assistant", color="purple", line_color="bmagenta")
+        say("\"It's the Duke's birthday and I've ruined the cake! Fetch me an "
+            "EGG, a BUCKET OF MILK and a POT OF FLOUR. The farm is east!\"")
+        say("He hands you an empty bucket and pot.")
+        p.add("bucket")
+        p.add("pot")
+        p.quests["cooks_assistant"] = "started"
+    elif stage == "started":
+        need = ["egg", "bucket of milk", "pot of flour"]
+        missing = [i for i in need if not p.has(i)]
+        if missing:
+            say("\"Still missing: " + ", ".join(missing) + "!\"")
+        else:
+            for i in need:
+                p.take(i)
+            show_art(ART_QUEST, "gold", center=True)
+            banner("QUEST COMPLETE: Cook's Assistant", color="byellow", line_color="gold")
+            say("\"The cake is saved!\" 300 cooking xp and 200 coins.")
+            p.add("coins", 200)
+            p.gain_xp("cooking", 300)
+            p.quests["cooks_assistant"] = "complete"
+    else:
+        say("\"Thanks again for saving the cake!\"")
+
+
+def talk_farmer(p):
+    stage = _q(p, "sheep_shearer")
+    if stage == "not_started":
+        banner("Quest Start: Sheep Shearer", color="purple", line_color="bmagenta")
+        say("Farmer Fred: \"Shear my sheep and spin the wool — bring me 6 balls "
+            "of wool and I'll reward you.\" ('shear' sheep, then 'spin' wool at "
+            "Lumbridge Castle.)")
+        p.quests["sheep_shearer"] = "started"
+    elif stage == "started":
+        if p.count("ball of wool") >= 6:
+            p.take("ball of wool", 6)
+            show_art(ART_QUEST, "gold", center=True)
+            banner("QUEST COMPLETE: Sheep Shearer", color="byellow", line_color="gold")
+            say("Farmer Fred pays you 60 coins and 150 crafting xp.")
+            p.add("coins", 60)
+            p.gain_xp("crafting", 150)
+            p.quests["sheep_shearer"] = "complete"
+        else:
+            say(f"\"You've got {p.count('ball of wool')}/6 balls of wool.\"")
+    else:
+        say("Farmer Fred: \"Fine work, shepherd.\"")
+
+
+def talk_doric(p):
+    stage = _q(p, "dorics_quest")
+    if stage == "not_started":
+        banner("Quest Start: Doric's Quest", color="purple", line_color="bmagenta")
+        say("Doric: \"Use my anvils? First fetch me 6 CLAY, 4 COPPER ORE and 2 "
+            "IRON ORE for my work.\"")
+        p.quests["dorics_quest"] = "started"
+    elif stage == "started":
+        need = {"clay": 6, "copper ore": 4, "iron ore": 2}
+        missing = [f"{q}x {i}" for i, q in need.items() if not p.has(i, q)]
+        if missing:
+            say("\"Still need: " + ", ".join(missing) + "\"")
+        else:
+            for i, q in need.items():
+                p.take(i, q)
+            show_art(ART_QUEST, "gold", center=True)
+            banner("QUEST COMPLETE: Doric's Quest", color="byellow", line_color="gold")
+            say("Doric gives you 180 mining xp and 200 coins.")
+            p.gain_xp("mining", 180)
+            p.add("coins", 200)
+            p.quests["dorics_quest"] = "complete"
+    else:
+        say("Doric: \"Use the anvils any time!\"")
+
+
+def talk_romeo(p):
+    stage = _q(p, "romeo_juliet")
+    if stage == "not_started":
+        banner("Quest Start: Romeo & Juliet", color="purple", line_color="bmagenta")
+        say("Romeo: \"Find my Juliet and bring me a MESSAGE of her love! She's "
+            "in the house west of here.\" (He gives you a token to find her.)")
+        p.add("message")
+        ITEMS.setdefault("message", {"value": 1})
+        p.quests["romeo_juliet"] = "started"
+    elif stage == "started":
+        if p.has("message"):
+            p.take("message")
+            show_art(ART_QUEST, "gold", center=True)
+            banner("QUEST COMPLETE: Romeo & Juliet", color="byellow", line_color="gold")
+            say("Romeo weeps with joy. 5 quest points... and 150 coins.")
+            p.add("coins", 150)
+            p.quests["romeo_juliet"] = "complete"
+        else:
+            say("Romeo: \"Where is her message?!\"")
+    else:
+        say("Romeo: \"My thanks, friend!\"")
+
+
+def talk_morgan(p):
+    stage = _q(p, "vampyre_slayer")
+    if stage == "not_started":
+        banner("Quest Start: Vampyre Slayer", color="purple", line_color="bmagenta")
+        say("Morgan: \"Count Draynor, a vampyre, terrorises us! Take this STAKE "
+            "and a HAMMER, and slay him in the manor to the north!\"")
+        p.add("stake")
+        p.quests["vampyre_slayer"] = "started"
+        # add the count to the manor
+        if "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
+            ROOMS["draynor_manor"]["monsters"].append("count draynor")
+    elif stage == "complete":
+        say("Morgan: \"You saved us all!\"")
+    else:
+        say("Morgan: \"The Count still lives! Slay him in the manor!\"")
+
+
+QUEST_TALK = {
+    "cooks_assistant": talk_cook,
+    "sheep_shearer": talk_farmer,
+    "dorics_quest": talk_doric,
+    "romeo_juliet": talk_romeo,
+    "vampyre_slayer": talk_morgan,
+}
+
+
+def _quest_on_kill(p, target):
+    if target == "count draynor" and _q(p, "vampyre_slayer") == "started":
+        show_art(ART_QUEST, "gold", center=True)
+        banner("QUEST COMPLETE: Vampyre Slayer", color="byellow", line_color="gold")
+        say("With the stake through its heart, Count Draynor crumbles to dust! "
+            "4825 attack xp awarded.")
+        p.gain_xp("attack", 4825)
+        p.quests["vampyre_slayer"] = "complete"
+        ROOMS["draynor_manor"]["monsters"].remove("count draynor")
+
+
+def cmd_quests(p, _a):
+    banner("Quest Journal")
+    all_q = {"cooks_assistant": "Cook's Assistant",
+             "sheep_shearer": "Sheep Shearer", "dorics_quest": "Doric's Quest",
+             "romeo_juliet": "Romeo & Juliet", "vampyre_slayer": "Vampyre Slayer"}
+    for key, title in all_q.items():
+        st = _q(p, key).replace("_", " ")
+        say(f"  {title:18} — {st}")
+
+
+# special handling: picking up Juliet's message
+def cmd_search(p, _a):
+    if p.location == "draynor_village" and _q(p, "romeo_juliet") == "started":
+        if not p.has("message"):
+            p.add("message")
+            say("You find Juliet here. She gives you a heartfelt message for "
+                "Romeo. Take it back to Varrock Square!")
+            return
+    say("You find nothing of interest.")
+
+
+# ===========================================================================
+#  SAVE / LOAD
+# ===========================================================================
+SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "savegame.json")
+
+
+def serialize(p):
+    """Return a plain-dict snapshot of a player (for file or browser saves)."""
+    return {"name": p.name, "location": p.location, "skills": p.skills,
+            "hp": p.hp, "inventory": p.inventory, "bank": p.bank,
+            "equipment": p.equipment, "style": p.style, "autocast": p.autocast,
+            "quests": p.quests}
+
+
+def deserialize(data):
+    """Rebuild a Player from a snapshot dict."""
+    p = Player(data["name"])
+    p.location = data["location"]
+    p.skills = {s: data["skills"].get(s, p.skills[s]) for s in SKILLS}
+    p.hp = data["hp"]
+    p.inventory = data["inventory"]
+    p.bank = data.get("bank", {})
+    p.equipment = data.get("equipment", p.equipment)
+    p.style = data.get("style", "melee")
+    p.autocast = data.get("autocast", "wind strike")
+    p.quests = data.get("quests", {})
+    # restore quest-spawned monster
+    if p.quests.get("vampyre_slayer") == "started" and \
+            "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
+        ROOMS["draynor_manor"]["monsters"].append("count draynor")
+    return p
+
+
+def cmd_save(p, _a):
+    with open(SAVE_PATH, "w") as f:
+        json.dump(serialize(p), f, indent=2)
+    say(f"Game saved to {os.path.basename(SAVE_PATH)}.", "bgreen")
+
+
+def load_game():
+    if not os.path.exists(SAVE_PATH):
+        return None
+    with open(SAVE_PATH) as f:
+        return deserialize(json.load(f))
+
+
+def cmd_load(p, _a):
+    say("Use 'load' from the title screen. (Loading mid-game not supported here.)")
+
+
+# ===========================================================================
+#  HELP & DISPATCH
+# ===========================================================================
+def cmd_help(_p, _a):
+    banner("Commands")
+    groups = {
+        "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
+        "Info": "stats, inventory (i), equipment, quests, examine <item>",
+        "Combat": "fight [monster], style <melee|ranged|magic>, autocast <spell>, eat [food]",
+        "Gear": "equip <item>, unequip <slot>",
+        "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
+                    "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
+                    "craft <item>, craftrune",
+        "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>",
+        "Town": "bank, deposit/withdraw <item> [n], shop, buy/sell <item> [n], "
+                "ge buy/sell <item> [n]",
+        "Quests": "talk, search",
+        "System": "save, help, quit",
+    }
+    for g, c in groups.items():
+        say(f"\n{g}:")
+        say("  " + c)
+
+
+def cmd_examine(p, arg):
+    item = arg.strip().lower()
+    if item not in ITEMS:
+        say("No such item.")
+        return
+    info = ITEMS[item]
+    bits = [f"value {info['value']}"]
+    if "heal" in info:
+        bits.append(f"heals {info['heal']}")
+    if "equip" in info:
+        eq = info["equip"]
+        bits.append("slot " + eq["slot"])
+        for f in ("att", "str", "def", "ranged", "magic"):
+            if eq.get(f):
+                bits.append(f"{f} {eq[f]:+d}")
+    say(f"{item}: " + ", ".join(bits))
+
+
+DIRECTIONS = {"n": "north", "s": "south", "e": "east", "w": "west",
+              "u": "up", "d": "down"}
+
+HANDLERS = {
+    "look": cmd_look, "l": cmd_look, "exits": cmd_look,
+    "go": cmd_go,
+    "stats": cmd_stats, "skills": cmd_stats,
+    "inventory": cmd_inventory, "inv": cmd_inventory, "i": cmd_inventory,
+    "equipment": cmd_equipment, "worn": cmd_equipment,
+    "equip": cmd_equip, "wield": cmd_equip, "wear": cmd_equip,
+    "unequip": cmd_unequip, "remove": cmd_unequip,
+    "style": cmd_style, "autocast": cmd_autocast,
+    "chop": cmd_chop, "cut": cmd_chop,
+    "mine": cmd_mine,
+    "fish": cmd_fish,
+    "cook": cmd_cook,
+    "light": cmd_light, "firemake": cmd_light,
+    "bury": cmd_bury,
+    "smelt": cmd_smelt, "smith": cmd_smith,
+    "spin": cmd_spin, "tan": cmd_tan, "craft": cmd_craft, "craftrune": cmd_craftrune,
+    "eat": cmd_eat,
+    "cast": cmd_cast,
+    "bank": cmd_bank, "deposit": cmd_deposit, "withdraw": cmd_withdraw,
+    "shop": cmd_shop, "store": cmd_shop, "buy": cmd_buy, "sell": cmd_sell,
+    "ge": cmd_ge, "exchange": cmd_ge,
+    "fight": cmd_fight, "attack": cmd_fight, "kill": cmd_fight,
+    "talk": cmd_talk, "search": cmd_search,
+    "collect": cmd_collect, "milk": cmd_milk, "pick": cmd_pick,
+    "mill": cmd_mill, "shear": cmd_shear,
+    "quests": cmd_quests, "quest": cmd_quests, "journal": cmd_quests,
+    "examine": cmd_examine,
+    "save": cmd_save, "load": cmd_load,
+    "help": cmd_help, "commands": cmd_help, "?": cmd_help,
+}
+
+
+def dispatch(player, raw):
+    """Execute a single command line. Returns False if the player quit."""
+    raw = raw.strip()
+    if not raw:
+        return True
+    parts = raw.split(maxsplit=1)
+    verb = parts[0].lower()
+    arg = parts[1] if len(parts) > 1 else ""
+    if verb in ("quit", "exit", "q"):
+        say("Farewell, adventurer. May your bank be ever full.", "gold")
+        return False
+    if verb in DIRECTIONS:
+        cmd_go(player, DIRECTIONS[verb])
+    elif verb in ROOMS[player.location]["exits"]:
+        cmd_go(player, verb)
+    else:
+        handler = HANDLERS.get(verb)
+        if handler:
+            handler(player, arg)
+        else:
+            say("You don't know how to do that. Type 'help'.")
+    return True
+
+
+def run(player):
+    print(paint(f"\nWelcome to Gielinor, {player.name}! ", "bgreen", "bold")
+          + paint("Type 'help' for commands.", "grey"))
+    cmd_look(player, "")
+    while True:
+        try:
+            raw = input(paint("\n> ", "bgreen", "bold"))
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not dispatch(player, raw):
+            break
+
+
+def main():
+    show_art(LOGO, "gold")
+    print(paint("        Free-to-Play Gielinor".center(78), "bgreen"))
+    print(paint("   A faithful slice of F2P Old School RuneScape".center(78),
+                "grey"))
+    rule("brown")
+    player = None
+    if os.path.exists(SAVE_PATH):
+        choice = input(paint("\nA saved game exists. Load it? (y/n) ",
+                             "byellow")).strip().lower()
+        if choice.startswith("y"):
+            player = load_game()
+            say(f"Welcome back, {player.name}.", "bgreen")
+    if player is None:
+        name = input(paint("\nWhat is your name, adventurer? ",
+                           "bcyan")).strip() or "Guest"
+        player = Player(name)
+    run(player)
+
+
+# ===========================================================================
+#  WEB / BROWSER API  (driven by index.html via Pyodide)
+# ===========================================================================
+# These let JavaScript run the game one command at a time, capturing the
+# coloured (ANSI) text output so xterm.js can render it in the browser.
+
+def enable_web():
+    """Force ANSI colour on (Pyodide stdout is not a TTY)."""
+    global COLOR
+    COLOR = True
+
+
+def _capture(fn, *args, **kwargs):
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        fn(*args, **kwargs)
+    return buf.getvalue()
+
+
+def web_logo():
+    """Splash logo + tagline for the title screen."""
+    def _show():
+        show_art(LOGO, "gold")
+        print(paint("        Free-to-Play Gielinor".center(78), "bgreen"))
+        print(paint("   A faithful slice of F2P Old School RuneScape".center(78),
+                    "grey"))
+        rule("brown")
+    return _capture(_show)
+
+
+def web_welcome(player):
+    """Welcome line + room description when a session begins."""
+    def _show():
+        print(paint(f"\nWelcome to Gielinor, {player.name}! ", "bgreen", "bold")
+              + paint("Type 'help' for commands.", "grey"))
+        cmd_look(player, "")
+    return _capture(_show)
+
+
+def web_command(player, line):
+    """Run one command; return JSON {text, alive} for the browser."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        alive = dispatch(player, line)
+    return json.dumps({"text": buf.getvalue(), "alive": alive})
+
+
+def player_to_json(player):
+    return json.dumps(serialize(player))
+
+
+def player_from_json(text):
+    return deserialize(json.loads(text))
+
+
+if __name__ == "__main__":
+    main()
