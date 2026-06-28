@@ -580,6 +580,23 @@ SMITH_METAL_LVL = {"bronze": 1, "iron": 15, "steel": 30, "mithril": 50, "adamant
 RUNECRAFT = {"air rune": (1, 5), "mind rune": (2, 5.5), "water rune": (5, 6),
              "earth rune": (9, 6.5), "fire rune": (14, 7), "body rune": (20, 7.5)}
 
+# Prayers: name -> (level, drain_per_round, {boost pct}, protect_style)
+# boosts are fractional bonuses to effective combat levels while active.
+PRAYERS = {
+    "thick skin":          (1,  0.15, {"defence": 0.05}, None),
+    "burst of strength":   (4,  0.15, {"strength": 0.05}, None),
+    "clarity of thought":  (7,  0.15, {"attack": 0.05}, None),
+    "rock skin":           (10, 0.30, {"defence": 0.10}, None),
+    "superhuman strength": (13, 0.30, {"strength": 0.10}, None),
+    "improved reflexes":   (16, 0.30, {"attack": 0.10}, None),
+    "steel skin":          (28, 0.60, {"defence": 0.15}, None),
+    "ultimate strength":   (31, 0.60, {"strength": 0.15}, None),
+    "incredible reflexes": (34, 0.60, {"attack": 0.15}, None),
+    "protect from magic":  (37, 0.60, {}, "magic"),
+    "protect from missiles": (40, 0.60, {}, "ranged"),
+    "protect from melee":  (43, 0.60, {}, "melee"),
+}
+
 
 # ===========================================================================
 #  MONSTERS
@@ -951,6 +968,26 @@ class Player:
         mag = 0.325 * (self.lvl("magic") * 3 // 2)
         return int(base + max(melee, rng, mag))
 
+    # --- prayer ---------------------------------------------------------
+    def prayer_max(self):
+        return self.lvl("prayer")
+
+    def prayer_mult(self, kind):
+        """Effective-level multiplier for attack/strength/defence from prayers."""
+        boost = 0.0
+        for name in self.active_prayers:
+            boost += PRAYERS.get(name, (0, 0, {}, None))[2].get(kind, 0.0)
+        return 1.0 + boost
+
+    def prayer_protects(self, style):
+        for name in self.active_prayers:
+            if PRAYERS.get(name, (0, 0, {}, None))[3] == style:
+                return True
+        return False
+
+    def prayer_drain(self):
+        return sum(PRAYERS.get(n, (0, 0, {}, None))[1] for n in self.active_prayers)
+
     def gain_xp(self, skill, amount):
         amount = int(amount)
         before = self.lvl(skill)
@@ -1082,11 +1119,13 @@ def _player_attack(p, m):
         mag_bonus = p.equip_bonus("magic")
         att_roll = (p.lvl("magic") + 9) * (mag_bonus + 64)
         return ("magic", att_roll, spell["max"], {"magic": spell["xp"], "hitpoints": 0})
-    # melee
+    # melee (prayers boost effective attack/strength)
     atk_bonus = p.equip_bonus("att")
     str_bonus = p.equip_bonus("str")
-    att_roll = (p.lvl("attack") + 9) * (atk_bonus + 64)
-    eff_str = p.lvl("strength") + 9
+    att_lvl = int(p.lvl("attack") * p.prayer_mult("attack"))
+    str_lvl = int(p.lvl("strength") * p.prayer_mult("strength"))
+    att_roll = (att_lvl + 9) * (atk_bonus + 64)
+    eff_str = str_lvl + 9
     max_hit = int(0.5 + eff_str * (str_bonus + 64) / 640)
     return ("melee", att_roll, max_hit, {"attack": 0, "strength": 0,
                                          "defence": 0, "hitpoints": 0})
@@ -1127,17 +1166,28 @@ def fight(p, mname):
             print("  " + paint(f"You {miss} the {mname}.", "grey"))
         if m["cur"] <= 0:
             break
-        # monster retaliates
+        # monster retaliates (defence prayers raise effective defence)
         m_att_roll = (m["attack"] + 9) * 64
-        p_def_roll = (p.lvl("defence") + 9) * (p.equip_bonus("def") + 64)
+        def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
+        p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
         if random.random() < _accuracy(m_att_roll, p_def_roll):
             dmg = random.randint(0, m["max_hit"])
+            if p.prayer_protects("melee"):   # protect prayer halves incoming
+                dmg = int(dmg * 0.5)
             p.hp -= dmg
             print("  " + paint(f"The {mname} hits you for {dmg}.", "bred")
                   + "  " + paint("HP ", "white")
                   + bar_meter(max(p.hp, 0), p.max_hp, 18))
         else:
             print("  " + paint(f"You block the {mname}.", "grey"))
+        # drain prayer points; deactivate when depleted
+        if p.active_prayers:
+            p.prayer_points -= p.prayer_drain()
+            if p.prayer_points <= 0:
+                p.prayer_points = 0
+                p.active_prayers = []
+                print("  " + paint("Your prayers flicker out (out of prayer "
+                                   "points).", "bmagenta"))
 
     if p.hp <= 0:
         return False
@@ -1343,6 +1393,63 @@ def cmd_membership(p, arg):
         "King Black Dragon's lair) and train members skills (thieving, "
         "agility). This tribute game grants it free.", "bmagenta")
     say("(Type 'membership off' to go back to free-to-play.)", "grey")
+
+
+def cmd_pray(p, arg):
+    arg = arg.strip().lower()
+    mx = p.prayer_max()
+    if p.prayer_points > mx:
+        p.prayer_points = mx
+    if arg in ("recharge", "altar", "restore"):
+        if ROOMS[p.location].get("prayer_altar"):
+            p.prayer_points = mx
+            say(f"You pray at the altar. Prayer points restored to {int(mx)}.",
+                "bmagenta")
+        else:
+            say("You need a prayer altar (e.g. Lumbridge Church) to recharge.")
+        return
+    if arg in ("off", "none", "clear"):
+        p.active_prayers = []
+        say("You close your mind and deactivate all prayers.", "grey")
+        return
+    if not arg:
+        banner("Prayer", color="bmagenta", line_color="magenta")
+        print("  " + paint(f"Prayer level {p.lvl('prayer')}", "bmagenta")
+              + paint(f"   Points: {int(p.prayer_points)}/{mx}", "white"))
+        if p.active_prayers:
+            print("  " + paint("Active: " + ", ".join(p.active_prayers),
+                               "bmagenta", "bold"))
+        say()
+        any_avail = False
+        for name, (lvl, drain, boost, prot) in PRAYERS.items():
+            if p.lvl("prayer") >= lvl:
+                any_avail = True
+                mark = "x" if name in p.active_prayers else " "
+                desc = ", ".join(f"+{int(v*100)}% {k}" for k, v in boost.items()) \
+                    or f"protect from {prot}"
+                print(f"  [{mark}] {name:20} (lvl {lvl:2})  {desc}")
+        if not any_avail:
+            say("  You haven't unlocked any prayers yet (bury bones to train).",
+                "grey")
+        say("\n  'pray <name>' to toggle · 'pray off' · 'pray recharge' at an altar.",
+            "grey")
+        return
+    if arg not in PRAYERS:
+        say(f"There's no prayer called '{arg}'. Type 'pray' to list them.")
+        return
+    lvl, drain, boost, prot = PRAYERS[arg]
+    if p.lvl("prayer") < lvl:
+        say(f"You need prayer level {lvl} to use {arg}.")
+        return
+    if arg in p.active_prayers:
+        p.active_prayers.remove(arg)
+        say(f"You deactivate {arg}.", "grey")
+        return
+    if p.prayer_points <= 0:
+        say("You have no prayer points left. Recharge at an altar.", "bmagenta")
+        return
+    p.active_prayers.append(arg)
+    say(f"You activate {arg}.", "bmagenta", "bold")
 
 
 def cmd_look(p, _a):
@@ -2435,6 +2542,7 @@ HANDLERS = {
     "quests": cmd_quests, "quest": cmd_quests, "journal": cmd_quests,
     "examine": cmd_examine,
     "map": cmd_map, "automap": cmd_automap, "membership": cmd_membership,
+    "pray": cmd_pray, "prayer": cmd_pray, "prayers": cmd_pray,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
 }
@@ -2630,6 +2738,9 @@ def web_room_actions(player):
         if r.get(flag):
             out.append({"name": label, "kind": "service",
                         "actions": [{"label": label, "cmd": cmd}]})
+    if r.get("prayer_altar"):
+        out.append({"name": "prayer altar", "kind": "service",
+                    "actions": [{"label": "Recharge prayer", "cmd": "pray recharge"}]})
     return json.dumps(out)
 
 
