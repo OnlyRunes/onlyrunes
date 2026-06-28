@@ -967,6 +967,7 @@ class Player:
         self.members = False      # unlocks members areas / skills
         self.prayer_points = 1    # current prayer points (max = prayer level)
         self.active_prayers = []  # names of currently-active prayers
+        self.combat = None        # interactive-combat state (None = not fighting)
         # starter kit
         for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
                       ("bronze axe", 1), ("small fishing net", 1),
@@ -1157,69 +1158,182 @@ def _player_attack(p, m):
 STYLE_COLOR = {"melee": "bred", "ranged": "bgreen", "magic": "bblue"}
 
 
-def fight(p, mname):
-    template = MONSTERS[mname]
-    m = dict(template)
+def _new_monster(mname):
+    m = dict(MONSTERS[mname])
     m["cur"] = m["hp"]
+    m["name"] = mname
+    return m
+
+
+def _resolve_player_hit(p, m):
+    """One player swing at m. Prints. Returns 'won', 'noattack', or None."""
+    atk = _player_attack(p, m)
+    if atk is None:
+        return "noattack"
+    kind, att_roll, max_hit, _xp = atk
+    def_roll = (m["defence"] + 9) * 64
+    if random.random() < _accuracy(att_roll, def_roll):
+        dmg = random.randint(0, max_hit)
+        m["cur"] -= dmg
+        verb = {"melee": "slash", "ranged": "shoot", "magic": "blast"}[kind]
+        print("  " + paint(f"You {verb} the {m['name']} for {dmg}!", "bgreen")
+              + "  " + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred"))
+    else:
+        miss = "splash on" if kind == "magic" else "miss"
+        print("  " + paint(f"You {miss} the {m['name']}.", "grey"))
+    return "won" if m["cur"] <= 0 else None
+
+
+def _resolve_monster_hit(p, m):
+    """Monster swings at the player. Prints, drains prayer. Returns 'died' or None."""
+    m_att_roll = (m["attack"] + 9) * 64
+    def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
+    p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
+    if random.random() < _accuracy(m_att_roll, p_def_roll):
+        dmg = random.randint(0, m["max_hit"])
+        if p.prayer_protects("melee"):
+            dmg = int(dmg * 0.5)
+        p.hp -= dmg
+        print("  " + paint(f"The {m['name']} hits you for {dmg}.", "bred")
+              + "  " + paint("HP ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 18))
+    else:
+        print("  " + paint(f"You block the {m['name']}.", "grey"))
+    if p.active_prayers:
+        p.prayer_points -= p.prayer_drain()
+        if p.prayer_points <= 0:
+            p.prayer_points = 0
+            p.active_prayers = []
+            print("  " + paint("Your prayers flicker out (no prayer points).",
+                               "bmagenta"))
+    return "died" if p.hp <= 0 else None
+
+
+def _victory(p, m):
+    show_art(ART_VICTORY, "gold", center=True)
+    say(f"You have defeated the {m['name']}!", "bgreen", "bold")
+    _award_combat_xp(p, m["hp"])
+    _roll_drops(p, m)
+
+
+def fight_auto(p, mname):
+    """Auto-resolve a whole fight (no eating / prayer switching mid-fight).
+
+    Returns 'won', 'died', or 'noattack'."""
+    m = _new_monster(mname)
+    if mname in MONSTER_ART:
+        show_art(MONSTER_ART[mname], "bred")
+    else:
+        show_art(ART_SWORDS, "grey")
+    banner(f"{mname.upper()}  (auto)", color="bred", line_color="red")
+    print("  " + paint(f"{mname}: ", "white")
+          + bar_meter(m["cur"], m["hp"], 18, fill_color="bred"))
+    while m["cur"] > 0 and p.hp > 0:
+        r = _resolve_player_hit(p, m)
+        if r == "noattack":
+            return "noattack"
+        if r == "won":
+            break
+        if _resolve_monster_hit(p, m) == "died":
+            return "died"
+    if p.hp <= 0:
+        return "died"
+    _victory(p, m)
+    return "won"
+
+
+# ---- interactive (turn-based) combat -------------------------------------
+def _combat_prompt(p):
+    m = p.combat
+    print()
+    print("  " + paint(f"{m['name']}: ", "white")
+          + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred")
+          + paint("    You: ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 14))
+    foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
+    food_hint = f" ({foods[0]})" if foods else ""
+    pray_hint = f" [{', '.join(p.active_prayers)}]" if p.active_prayers else ""
+    print("  " + paint("Your move: ", "bcyan")
+          + paint(f"attack · eat{food_hint} · pray{pray_hint} · flee", "grey"))
+
+
+def _start_combat(p, mname):
+    p.combat = _new_monster(mname)
     if mname in MONSTER_ART:
         show_art(MONSTER_ART[mname], "bred")
     else:
         show_art(ART_SWORDS, "grey")
     banner(f"{mname.upper()}", color="bred", line_color="red")
-    say(paint(f"  You ready your weapon.  Style: ", "grey")
-        + paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold"))
-    print("  " + paint(f"{mname}: ", "white")
-          + bar_meter(m["cur"], m["hp"], 18, fill_color="bred"))
-    while m["cur"] > 0 and p.hp > 0:
-        atk = _player_attack(p, m)
-        if atk is None:
-            say("You disengage from combat.", "grey")
-            return False
-        kind, att_roll, max_hit, _xp = atk
-        def_roll = (m["defence"] + 9) * 64
-        if random.random() < _accuracy(att_roll, def_roll):
-            dmg = random.randint(0, max_hit)
-            m["cur"] -= dmg
-            verb = {"melee": "slash", "ranged": "shoot", "magic": "blast"}[kind]
-            print("  " + paint(f"You {verb} the {mname} for {dmg}!", "bgreen")
-                  + "  " + bar_meter(max(m["cur"], 0), m["hp"], 18,
-                                     fill_color="bred"))
-        else:
-            miss = "splash on" if kind == "magic" else "miss"
-            print("  " + paint(f"You {miss} the {mname}.", "grey"))
-        if m["cur"] <= 0:
-            break
-        # monster retaliates (defence prayers raise effective defence)
-        m_att_roll = (m["attack"] + 9) * 64
-        def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
-        p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
-        if random.random() < _accuracy(m_att_roll, p_def_roll):
-            dmg = random.randint(0, m["max_hit"])
-            if p.prayer_protects("melee"):   # protect prayer halves incoming
-                dmg = int(dmg * 0.5)
-            p.hp -= dmg
-            print("  " + paint(f"The {mname} hits you for {dmg}.", "bred")
-                  + "  " + paint("HP ", "white")
-                  + bar_meter(max(p.hp, 0), p.max_hp, 18))
-        else:
-            print("  " + paint(f"You block the {mname}.", "grey"))
-        # drain prayer points; deactivate when depleted
-        if p.active_prayers:
-            p.prayer_points -= p.prayer_drain()
-            if p.prayer_points <= 0:
-                p.prayer_points = 0
-                p.active_prayers = []
-                print("  " + paint("Your prayers flicker out (out of prayer "
-                                   "points).", "bmagenta"))
+    print("  " + paint("Style: ", "grey")
+          + paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold")
+          + paint("   (type 'auto' style fights with 'fight <foe> auto')", "grey"))
+    _combat_prompt(p)
 
-    if p.hp <= 0:
-        return False
 
-    show_art(ART_VICTORY, "gold", center=True)
-    say(f"You have defeated the {mname}!", "bgreen", "bold")
-    _award_combat_xp(p, m["hp"])
-    _roll_drops(p, m)
-    return True
+def _end_combat_victory(p):
+    m = p.combat
+    p.combat = None
+    _victory(p, m)
+    _quest_on_kill(p, m["name"])
+
+
+def combat_action(p, raw):
+    """Handle one command while the player is in interactive combat."""
+    m = p.combat
+    parts = raw.strip().split(maxsplit=1)
+    verb = parts[0].lower() if parts else ""
+    arg = parts[1] if len(parts) > 1 else ""
+    verb = {"1": "attack", "2": "eat", "3": "pray", "4": "flee",
+            "a": "attack", "hit": "attack", "run": "flee", "escape": "flee",
+            "": "attack"}.get(verb, verb)
+
+    # free, no-cost actions while fighting
+    if verb in ("stats", "skills"):
+        return cmd_stats(p, "")
+    if verb in ("inventory", "inv", "i"):
+        return cmd_inventory(p, "")
+    if verb in ("equipment", "worn"):
+        return cmd_equipment(p, "")
+    if verb == "examine":
+        return cmd_examine(p, arg)
+    if verb in ("look", "l"):
+        return _combat_prompt(p)
+    if verb in ("help", "?", "commands"):
+        return say("In combat: attack · eat [food] · pray [name] · flee. "
+                   "(stats/inventory are free to check.)", "grey")
+    if verb == "pray" and not arg:
+        return cmd_pray(p, "")          # checking prayers is free
+
+    # actions that take your turn (monster then retaliates)
+    if verb == "attack":
+        r = _resolve_player_hit(p, m)
+        if r == "noattack":
+            return                      # couldn't attack (no ammo/runes)
+        if r == "won":
+            return _end_combat_victory(p)
+    elif verb == "eat":
+        foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
+        food = arg or (foods[0] if foods else "")
+        if not food or not p.has(food):
+            return say("You have no food to eat!", "grey")
+        cmd_eat(p, food)
+    elif verb == "pray":
+        before = list(p.active_prayers)
+        cmd_pray(p, arg)
+        if list(p.active_prayers) == before and arg not in PRAYERS:
+            return                      # invalid prayer name: no turn lost
+    elif verb == "flee":
+        if random.random() < 0.55:
+            p.combat = None
+            return say("You break off and flee the battle!", "byellow")
+        say("You fail to escape!", "grey")
+    else:
+        return say("You're locked in combat! Use: attack, eat, pray, or flee.",
+                   "bred")
+
+    # monster's turn
+    if _resolve_monster_hit(p, m) == "died":
+        p.combat = None
+        return _handle_death(p)
+    _combat_prompt(p)
 
 
 def _award_combat_xp(p, mhp):
@@ -1248,7 +1362,6 @@ def _roll_drops(p, m):
                 got = True
     if not got:
         say("  No loot this time.", "grey")
-    p.hp = p.max_hp  # heal up between fights for convenience
 
 
 def _consume_runes(p, runes):
@@ -2184,15 +2297,19 @@ def _grind_fight(p, target, count):
     kills = 0
     died = False
     stopped = False
+    retreated = False
     for _ in range(count):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            won = fight(p, target)
-            if won:
+            res = fight_auto(p, target)
+            if res == "won":
                 _quest_on_kill(p, target)
-        if won:
+        if res == "won":
             kills += 1
-        elif p.hp <= 0:
+            if p.hp <= p.max_hp * 0.3:   # auto-fight won't suicide you
+                retreated = True
+                break
+        elif res == "died":
             died = True
             break
         else:
@@ -2223,10 +2340,14 @@ def _grind_fight(p, target, count):
         for i, q in sorted(loot):
             tint = "gold" if i == "coins" else "byellow"
             print("    " + paint(f"{i} x{q}", tint))
+    print("  " + paint(f"HP: {max(p.hp,0)}/{p.max_hp}", "white"))
     if stopped:
-        say("\n  You stopped early (out of ammo or runes).", "grey")
+        say("  You stopped early (out of ammo or runes).", "grey")
+    if retreated:
+        say("  You break off the assault, badly wounded — heal up before more.",
+            "byellow")
     if died:
-        say(f"\n  You were slain after {kills} kill(s).", "bred")
+        say(f"  You were slain after {kills} kill(s).", "bred")
         _handle_death(p)
 
 
@@ -2236,13 +2357,18 @@ def cmd_fight(p, arg):
     if not monsters:
         say("There's nothing to fight here.")
         return
-    # parse: optional count ("all" or a number) anywhere among the words
+    # parse: 'auto'/number/'all' triggers auto mode; rest is the monster name
     count = 1
+    auto = False
     words = []
     for t in arg.strip().lower().split():
-        if t == "all":
+        if t == "auto":
+            auto = True
+        elif t == "all":
+            auto = True
             count = 50
         elif t.isdigit():
+            auto = True
             count = int(t)
         else:
             words.append(t)
@@ -2252,12 +2378,14 @@ def cmd_fight(p, arg):
         say(f"No {target} here. Monsters: {', '.join(monsters)}")
         return
 
-    if count == 1:
-        if not fight(p, target):
-            if p.hp <= 0:
-                _handle_death(p)
-            return
-        _quest_on_kill(p, target)
+    if not auto:
+        _start_combat(p, target)              # interactive turn-based
+    elif count == 1:
+        res = fight_auto(p, target)
+        if res == "died":
+            _handle_death(p)
+        elif res == "won":
+            _quest_on_kill(p, target)
     else:
         _grind_fight(p, target, count)
 
@@ -2782,6 +2910,13 @@ HANDLERS = {
 def dispatch(player, raw):
     """Execute a single command line. Returns False if the player quit."""
     raw = raw.strip()
+    # interactive combat captures every command (Enter = attack); quit still works
+    if getattr(player, "combat", None) is not None:
+        if raw.lower() in ("quit", "exit", "q"):
+            say("Farewell, adventurer. May your bank be ever full.", "gold")
+            return False
+        combat_action(player, raw)
+        return True
     if not raw:
         return True
     parts = raw.split(maxsplit=1)
@@ -2925,13 +3060,24 @@ def web_status(player):
 
 def web_room_actions(player):
     """Interactable entities in the current room, for clickable UI chips."""
+    # in interactive combat, show the combat moves instead of room entities
+    if getattr(player, "combat", None) is not None:
+        m = player.combat
+        foods = [i for i in player.inventory if "heal" in ITEMS.get(i, {})]
+        acts = [{"label": "Attack", "cmd": "attack"}]
+        if foods:
+            acts.append({"label": f"Eat {foods[0]}", "cmd": f"eat {foods[0]}"})
+        acts.append({"label": "Pray", "cmd": "pray"})
+        acts.append({"label": "Flee", "cmd": "flee"})
+        return json.dumps([{"name": f"fighting {m['name']}", "kind": "monster",
+                            "actions": acts}])
     r = ROOMS[player.location]
     out = []
     for m in r.get("monsters", []):
         out.append({"name": m, "kind": "monster", "actions": [
             {"label": "Attack", "cmd": f"fight {m}"},
-            {"label": "Attack ×5", "cmd": f"fight {m} 5"},
-            {"label": "Attack all", "cmd": f"fight {m} all"},
+            {"label": "Auto ×5", "cmd": f"fight {m} 5"},
+            {"label": "Auto all", "cmd": f"fight {m} all"},
         ]})
     for t in r.get("trees", []):
         label = "tree" if t == "tree" else f"{t} tree"
