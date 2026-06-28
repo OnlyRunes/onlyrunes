@@ -5,7 +5,7 @@
   // BETA (staging):     npx wrangler deploy --env beta -> worker "onlyrunes-beta" -> beta.onlyrunes.net
   //
   // Deploying updates the same-named worker, so custom domains + HTTPS persist.
-  "name": "onlyrunes",
+  "name": "onlyrunes-beta",
   "compatibility_date": "2026-06-27",
   "assets": {
     "directory": "./site"
