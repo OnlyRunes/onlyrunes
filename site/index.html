@@ -160,9 +160,11 @@
       || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     const term = new Terminal({
       fontFamily: "ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace",
-      fontSize: isMobile ? 12 : 14, cursorBlink: true, convertEol: false,
+      fontSize: isMobile ? 12 : 14, convertEol: false,
+      disableStdin: true,        // read-only: input comes from the box + buttons
+      cursorBlink: false, cursorStyle: "bar", cursorInactiveStyle: "none",
       theme: {
-        background: "#14161b", foreground: "#c8cdd6", cursor: "#6ee36e",
+        background: "#14161b", foreground: "#c8cdd6", cursor: "#14161b",
         black: "#14161b", red: "#d64f4f", green: "#3fa34d", yellow: "#caa53a",
         blue: "#4a78c0", magenta: "#b15bbf", cyan: "#2b8fb0", white: "#c8cdd6",
         brightBlack: "#8b93a0", brightRed: "#ff6a6a", brightGreen: "#6ee36e",
@@ -178,7 +180,7 @@
     window.addEventListener("resize", refit);
     window.addEventListener("orientationchange", () => setTimeout(refit, 300));
     if (window.visualViewport) window.visualViewport.addEventListener("resize", refit);
-    if (!isMobile) term.focus();
+    // terminal is output-only; focus the command box instead (desktop)
 
     const w = (s) => term.write(String(s).replace(/\n/g, "\r\n"));
 
@@ -219,10 +221,10 @@
 
     const runCommand = (cmd) => {
       if (mode !== "play") return;
-      buffer = "";
       term.write(cmd + "\r\n");
       handleLine(cmd);
       refreshUI();
+      if (!isMobile) { const ci = document.getElementById("cmdInput"); if (ci) ci.focus(); }
     };
 
     const renderStatus = (st) => {
@@ -299,6 +301,7 @@
       if (e.key === "Enter") { e.preventDefault(); submitFromBox(); }
     });
     document.getElementById("sendBtn").addEventListener("click", submitFromBox);
+    if (!isMobile) cmdInput.focus();   // type into the box, not the terminal
 
     const saveCode = () => btoa(unescape(encodeURIComponent(mod.player_to_json(player))));
 
