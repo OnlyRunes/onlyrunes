@@ -1,0 +1,10 @@
+{
+  // Cloudflare Worker config for OnlyRunes (static-assets site).
+  // Deploying with this updates the SAME worker named "onlyrunes",
+  // so your custom domain (onlyrunes.net) and HTTPS stay attached.
+  "name": "onlyrunes",
+  "compatibility_date": "2026-06-27",
+  "assets": {
+    "directory": "./site"
+  }
+}
