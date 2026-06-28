@@ -186,6 +186,99 @@ ART_DRAGON = r"""
       \___/          (__(    )__)
 """
 
+# Small per-monster art shown at the start of a fight.
+MONSTER_ART = {
+    "goblin": r"""
+     ,---.
+    ( o o )   a goblin!
+     ) ^ (
+    /_/ \_\
+""",
+    "chicken": r"""
+      __
+     <o )   a chicken
+      ( )>
+       ""
+""",
+    "cow": r"""
+      ^__^
+      (oo)\_______   a cow
+      (__)\       )
+          ||----w |
+""",
+    "giant rat": r"""
+      (\_/)
+     =(o.o)=~   a giant rat
+      (")_(")
+""",
+    "skeleton": r"""
+       .-.
+      (o.o)   a skeleton
+       |=|
+      /| |\
+""",
+    "zombie": r"""
+      [o_o]
+      /|H|\   a zombie
+      _/ \_
+""",
+    "barbarian": r"""
+      \o/
+       |  >==O   a barbarian
+      / \
+""",
+    "guard": r"""
+      .--.
+     |[]|]   a guard
+      |  |==|
+""",
+    "scorpion": r"""
+     /\,,/\
+    ( o.o )><  a scorpion
+     >   <
+""",
+    "hobgoblin": r"""
+     ,-^-.
+    ( >.< )   a hobgoblin
+     )___(
+    /_/ \_\
+""",
+    "hill giant": r"""
+      _____
+     ( O O )    a HILL GIANT
+     /|   |\
+      || ||
+""",
+    "dark wizard": r"""
+       /\
+      (oo)    a dark wizard
+     <(  )>~*
+      /  \
+""",
+    "count draynor": r"""
+      /\_/\
+     ( ^_^ )   COUNT DRAYNOR
+     (  V  )    ~ a vampyre ~
+      """ + '"""' + r"""
+""",
+}
+
+
+def item_rarity_color(name):
+    """Colour an item by its market value (loot-rarity flavour)."""
+    v = ITEMS.get(name, {}).get("value", 0)
+    if name == "coins":
+        return "gold"
+    if v >= 8000:
+        return "gold"
+    if v >= 1500:
+        return "bmagenta"
+    if v >= 300:
+        return "bblue"
+    if v >= 50:
+        return "bgreen"
+    return "white"
+
 
 # ===========================================================================
 #  XP / LEVELS  (Old School RuneScape curve)
@@ -705,6 +798,7 @@ class Player:
         self.style = "melee"      # melee / ranged / magic
         self.autocast = "wind strike"
         self.quests = {}          # quest_key -> stage string
+        self.automap = "compass"  # off / compass / full — mini-map on each move
         # starter kit
         for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
                       ("bronze axe", 1), ("small fishing net", 1),
@@ -874,7 +968,10 @@ def fight(p, mname):
     template = MONSTERS[mname]
     m = dict(template)
     m["cur"] = m["hp"]
-    show_art(ART_SWORDS, "grey")
+    if mname in MONSTER_ART:
+        show_art(MONSTER_ART[mname], "bred")
+    else:
+        show_art(ART_SWORDS, "grey")
     banner(f"{mname.upper()}", color="bred", line_color="red")
     say(paint(f"  You ready your weapon.  Style: ", "grey")
         + paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold"))
@@ -981,6 +1078,120 @@ def gather_chance(level, req):
     return clamp(0.45 + (level - req) * 0.03, 0.45, 0.95)
 
 
+# ===========================================================================
+#  WORLD MAP
+# ===========================================================================
+# Each room belongs to a region; the region map highlights where you are.
+REGIONS = {
+    "lumbridge_castle": "Lumbridge", "general_store": "Lumbridge",
+    "lumbridge_forest": "Lumbridge", "lumbridge_farm": "Lumbridge",
+    "windmill": "Lumbridge", "river_lum": "Lumbridge", "swamp": "Lumbridge",
+    "cow_field": "Lumbridge",
+    "al_kharid_gate": "AlKharid", "al_kharid_square": "AlKharid",
+    "al_kharid_mine": "AlKharid", "al_kharid_palace": "AlKharid",
+    "draynor_path": "Draynor", "draynor_village": "Draynor",
+    "draynor_manor": "Draynor",
+    "varrock_gate": "Varrock", "varrock_square": "Varrock",
+    "varrock_west_bank": "Varrock", "varrock_east_bank": "Varrock",
+    "grand_exchange": "Varrock", "varrock_palace": "Varrock",
+    "essence_mine": "Varrock",
+    "barbarian_village": "Barbarian",
+    "edgeville": "Edgeville", "edgeville_dungeon": "Edgeville",
+    "wilderness_edge": "Wilderness",
+    "falador_east": "Falador", "falador_square": "Falador",
+    "falador_west": "Falador", "dwarven_mine": "Falador",
+    "rimmington": "Rimmington", "port_sarim": "PortSarim",
+    "karamja_port": "Karamja",
+}
+
+REGION_MAP = r"""
+                   [Wilderness]
+                        |
+    [Edgeville]----[Barbarian]----[Varrock]----[Grand Exch]
+         |              |              |
+    [Falador]----------/          [Lumbridge]----[AlKharid]
+         |                          /       \
+    [Rimmington]               [Draynor]   (desert)
+         |
+    [PortSarim]----[Karamja]
+"""
+
+# token in REGION_MAP for each region (for highlighting current location)
+_REGION_TOKEN = {
+    "Wilderness": "[Wilderness]", "Edgeville": "[Edgeville]",
+    "Barbarian": "[Barbarian]", "Varrock": "[Varrock]",
+    "Falador": "[Falador]", "Lumbridge": "[Lumbridge]",
+    "AlKharid": "[AlKharid]", "Rimmington": "[Rimmington]",
+    "Draynor": "[Draynor]", "PortSarim": "[PortSarim]", "Karamja": "[Karamja]",
+}
+
+
+def render_region_map(current_region):
+    m = REGION_MAP
+    tok = _REGION_TOKEN.get(current_region)
+    if tok and tok in m:
+        m = m.replace(tok, paint(tok, "byellow", "bold"), 1)
+    # tint the remaining brackets faintly
+    return m
+
+
+def local_compass(p):
+    """A compact compass of the immediate exits — the always-on mini-map."""
+    ex = ROOMS[p.location]["exits"]
+
+    def nm(d):
+        return ROOMS[ex[d]]["name"]
+    out = []
+    if "north" in ex:
+        out.append("          " + paint("N ↑ ", "bcyan") + nm("north"))
+    left = (paint("W ← ", "bcyan") + nm("west") + "   ") if "west" in ex else ""
+    here = paint(f"[ {ROOMS[p.location]['name']} ]", "byellow", "bold")
+    right = ("   " + paint("→ E ", "bcyan") + nm("east")) if "east" in ex else ""
+    out.append("  " + left + here + right)
+    if "south" in ex:
+        out.append("          " + paint("S ↓ ", "bcyan") + nm("south"))
+    others = [d for d in ex if d not in ("north", "south", "east", "west")]
+    if others:
+        out.append("  " + paint("also: ", "grey")
+                   + paint(", ".join(others), "bcyan"))
+    return "\n".join(out)
+
+
+def _show_automap(p):
+    mode = getattr(p, "automap", "compass")
+    if mode == "compass":
+        print(local_compass(p))
+    elif mode == "full":
+        print(render_region_map(REGIONS.get(p.location, "")))
+        print(local_compass(p))
+
+
+def cmd_map(p, arg):
+    arg = arg.strip().lower()
+    if arg in ("off", "compass", "full", "local", "on"):
+        p.automap = {"on": "compass", "local": "compass"}.get(arg, arg)
+        say(f"Auto-map is now: {p.automap}", "bgreen")
+        return
+    region = REGIONS.get(p.location, "")
+    banner("World Map of Gielinor", color="bcyan", line_color="teal")
+    print(render_region_map(region))
+    print("  " + paint("You are in: ", "grey")
+          + paint(region or "the unknown", "byellow", "bold")
+          + paint(f"  ·  {ROOMS[p.location]['name']}", "white"))
+    print()
+    print(local_compass(p))
+    say("\n  tip: 'map off|compass|full' sets the mini-map shown on each move.",
+        "grey")
+
+
+def cmd_automap(p, arg):
+    if not arg.strip():
+        say(f"Mini-map mode: {getattr(p, 'automap', 'compass')}  "
+            f"(use 'automap off|compass|full')", "grey")
+        return
+    cmd_map(p, arg)
+
+
 def cmd_look(p, _a):
     r = ROOMS[p.location]
     banner(r["name"], color="bcyan", line_color="teal")
@@ -1008,6 +1219,7 @@ def cmd_look(p, _a):
         print(paint("\n  Here: ", "grey") + "; ".join(services))
     print(paint("  Exits: ", "grey")
           + paint(", ".join(r["exits"].keys()), "bcyan"))
+    _show_automap(p)
 
 
 def cmd_go(p, arg):
@@ -1060,12 +1272,16 @@ def cmd_stats(p, _a):
 
 
 def cmd_inventory(p, _a):
-    banner("Inventory")
+    banner("Inventory", color="bgreen")
     if not p.inventory:
         say("Empty.")
         return
+    n = len(p.inventory)
+    print(paint(f"  {n} item type(s)  ·  {p.coins:,} coins", "grey"))
     for item, q in sorted(p.inventory.items()):
-        say(f"  {item} x{q}")
+        qty = f" x{q}" if q > 1 else ""
+        print("  " + paint(item, item_rarity_color(item))
+              + paint(qty, "grey"))
 
 
 def cmd_equipment(p, _a):
@@ -1609,30 +1825,98 @@ def cmd_ge(p, arg):
 
 
 # --- combat & farm actions ------------------------------------------------
+def _handle_death(p):
+    show_art(ART_DEATH, "bred")
+    banner("YOU HAVE DIED", color="bred", line_color="red")
+    say("You wake in Lumbridge, your wounds bound. Your items are safe.", "grey")
+    p.hp = p.max_hp
+    p.location = "lumbridge_castle"
+
+
+def _grind_fight(p, target, count):
+    """Fight `count` of a monster quietly, then print a tally summary."""
+    before_xp = {s: p.skills[s] for s in SKILLS}
+    before_lvl = {s: p.lvl(s) for s in SKILLS}
+    before_inv = {i: q for i, q in p.inventory.items()}
+    kills = 0
+    died = False
+    stopped = False
+    for _ in range(count):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            won = fight(p, target)
+            if won:
+                _quest_on_kill(p, target)
+        if won:
+            kills += 1
+        elif p.hp <= 0:
+            died = True
+            break
+        else:
+            stopped = True  # disengaged: out of arrows/runes
+            break
+
+    banner(f"Hunted {target}  ×{kills}", color="gold", line_color="brown")
+    # xp gained
+    xp_lines = []
+    for s in SKILLS:
+        gained = p.skills[s] - before_xp[s]
+        if gained > 0:
+            up = ("  →  level " + str(p.lvl(s))) if p.lvl(s) > before_lvl[s] else ""
+            xp_lines.append(f"  {s:11} +{gained} xp"
+                            + (paint(up, "byellow", "bold") if up else ""))
+    if xp_lines:
+        print(paint("  XP gained:", "bcyan"))
+        for ln in xp_lines:
+            print(ln)
+    # loot gained
+    loot = []
+    for i, q in p.inventory.items():
+        diff = q - before_inv.get(i, 0)
+        if diff > 0:
+            loot.append((i, diff))
+    if loot:
+        print(paint("  Loot:", "byellow"))
+        for i, q in sorted(loot):
+            tint = "gold" if i == "coins" else "byellow"
+            print("    " + paint(f"{i} x{q}", tint))
+    if stopped:
+        say("\n  You stopped early (out of ammo or runes).", "grey")
+    if died:
+        say(f"\n  You were slain after {kills} kill(s).", "bred")
+        _handle_death(p)
+
+
 def cmd_fight(p, arg):
     r = ROOMS[p.location]
     monsters = r.get("monsters", [])
-    target = arg.strip().lower()
-    # Vampyre Slayer boss is talk-gated
     if not monsters:
         say("There's nothing to fight here.")
         return
-    if not target:
-        target = monsters[0]
+    # parse: optional count ("all" or a number) anywhere among the words
+    count = 1
+    words = []
+    for t in arg.strip().lower().split():
+        if t == "all":
+            count = 50
+        elif t.isdigit():
+            count = int(t)
+        else:
+            words.append(t)
+    count = clamp(count, 1, 200)
+    target = " ".join(words) or monsters[0]
     if target not in monsters:
         say(f"No {target} here. Monsters: {', '.join(monsters)}")
         return
-    if not fight(p, target):
-        if p.hp <= 0:
-            show_art(ART_DEATH, "bred")
-            banner("YOU HAVE DIED", color="bred", line_color="red")
-            say("You wake in Lumbridge, your wounds bound. Your items are safe.",
-                "grey")
-            p.hp = p.max_hp
-            p.location = "lumbridge_castle"
-        return
-    # quest hooks
-    _quest_on_kill(p, target)
+
+    if count == 1:
+        if not fight(p, target):
+            if p.hp <= 0:
+                _handle_death(p)
+            return
+        _quest_on_kill(p, target)
+    else:
+        _grind_fight(p, target, count)
 
 
 def cmd_collect(p, _a):
@@ -1985,6 +2269,7 @@ HANDLERS = {
     "mill": cmd_mill, "shear": cmd_shear,
     "quests": cmd_quests, "quest": cmd_quests, "journal": cmd_quests,
     "examine": cmd_examine,
+    "map": cmd_map, "automap": cmd_automap,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
 }
@@ -2014,10 +2299,11 @@ def dispatch(player, raw):
     return True
 
 
-def run(player):
-    print(paint(f"\nWelcome to Gielinor, {player.name}! ", "bgreen", "bold")
-          + paint("Type 'help' for commands.", "grey"))
-    cmd_look(player, "")
+def run(player, greet=True):
+    if greet:
+        print(paint(f"\nWelcome to Gielinor, {player.name}! ", "bgreen", "bold")
+              + paint("Type 'help' for commands.", "grey"))
+        cmd_look(player, "")
     while True:
         try:
             raw = input(paint("\n> ", "bgreen", "bold"))
@@ -2040,12 +2326,12 @@ def main():
                              "byellow")).strip().lower()
         if choice.startswith("y"):
             player = load_game()
-            say(f"Welcome back, {player.name}.", "bgreen")
-    if player is None:
-        name = input(paint("\nWhat is your name, adventurer? ",
-                           "bcyan")).strip() or "Guest"
-        player = Player(name)
-    run(player)
+            _resume_summary(player)
+            run(player, greet=False)
+            return
+    name = input(paint("\nWhat is your name, adventurer? ",
+                       "bcyan")).strip() or "Guest"
+    run(Player(name))
 
 
 # ===========================================================================
@@ -2087,12 +2373,99 @@ def web_welcome(player):
     return _capture(_show)
 
 
+def _resume_summary(player):
+    """Print a 'welcome back' status block + current room (shared web/CLI)."""
+    done = sum(1 for s in player.quests.values() if s == "complete")
+    total_lvl = sum(player.lvl(s) for s in SKILLS)
+    banner(f"Welcome back, {player.name}!", color="gold")
+    print("  " + paint("Combat level ", "white")
+          + paint(str(player.combat_level()), "byellow", "bold")
+          + paint("    Hitpoints ", "white")
+          + bar_meter(player.hp, player.max_hp, 16)
+          + paint(f"    Coins: {player.coins:,}", "gold"))
+    print("  " + paint(f"Total level: {total_lvl}", "white")
+          + paint(f"    Quests completed: {done}", "bmagenta")
+          + paint(f"    Style: {player.style}", "grey"))
+    print("  " + paint("You were last at: ", "grey")
+          + paint(ROOMS[player.location]["name"], "bcyan", "bold"))
+    print()
+    cmd_look(player, "")
+
+
+def web_resume(player):
+    """Status summary + location, shown when a saved game is loaded."""
+    return _capture(_resume_summary, player)
+
+
 def web_command(player, line):
     """Run one command; return JSON {text, alive} for the browser."""
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         alive = dispatch(player, line)
     return json.dumps({"text": buf.getvalue(), "alive": alive})
+
+
+def web_status(player):
+    """Compact live status for the browser status bar."""
+    return json.dumps({
+        "name": player.name,
+        "combat": player.combat_level(),
+        "hp": player.hp,
+        "max_hp": player.max_hp,
+        "coins": player.coins,
+        "total": sum(player.lvl(s) for s in SKILLS),
+        "location": ROOMS[player.location]["name"],
+        "style": player.style,
+    })
+
+
+def web_room_actions(player):
+    """Interactable entities in the current room, for clickable UI chips."""
+    r = ROOMS[player.location]
+    out = []
+    for m in r.get("monsters", []):
+        out.append({"name": m, "kind": "monster", "actions": [
+            {"label": "Attack", "cmd": f"fight {m}"},
+            {"label": "Attack ×5", "cmd": f"fight {m} 5"},
+            {"label": "Attack all", "cmd": f"fight {m} all"},
+        ]})
+    for t in r.get("trees", []):
+        label = "tree" if t == "tree" else f"{t} tree"
+        out.append({"name": label, "kind": "tree",
+                    "actions": [{"label": "Chop", "cmd": f"chop {t}"}]})
+    for rock in r.get("rocks", []):
+        out.append({"name": f"{rock} rocks", "kind": "rock",
+                    "actions": [{"label": "Mine", "cmd": f"mine {rock}"}]})
+    if r.get("fish_tools"):
+        out.append({"name": "fishing spot", "kind": "fish",
+                    "actions": [{"label": "Fish", "cmd": "fish"}]})
+    if r.get("npc"):
+        out.append({"name": "someone to talk to", "kind": "npc",
+                    "actions": [{"label": "Talk", "cmd": "talk"}]})
+    # location-specific gathering
+    specials = {
+        "lumbridge_farm": [
+            ("chicken coop", [("Collect egg", "collect")]),
+            ("cow", [("Milk", "milk")]),
+            ("wheat field", [("Pick", "pick")]),
+            ("sheep", [("Shear", "shear")]),
+        ],
+        "cow_field": [("sheep", [("Shear", "shear")])],
+        "windmill": [("hopper", [("Mill flour", "mill")])],
+    }
+    for name, acts in specials.get(player.location, []):
+        out.append({"name": name, "kind": "gather",
+                    "actions": [{"label": lbl, "cmd": cmd} for lbl, cmd in acts]})
+    # services
+    svc = [("bank", "Bank", "bank"), ("shop", "Shop", "shop"),
+           ("ge", "Grand Exchange", "ge"), ("range", "Cook", "cook"),
+           ("furnace", "Smelt", "smelt"), ("anvil", "Smith", "smith"),
+           ("spinning_wheel", "Spin", "spin"), ("tanner", "Tan", "tan")]
+    for flag, label, cmd in svc:
+        if r.get(flag):
+            out.append({"name": label, "kind": "service",
+                        "actions": [{"label": label, "cmd": cmd}]})
+    return json.dumps(out)
 
 
 def player_to_json(player):
