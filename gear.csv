@@ -1,0 +1,89 @@
+Slot,Item,AStab,ASlash,ACrush,AMagic,ARange,DStab,DSlash,DCrush,DMagic,DRange,MeleeStr,RangeStr,MagicDmg,Prayer,Req Skill,Req Level,Value,Members
+weapon,bronze pickaxe,4,-2,2,0,0,0,1,0,0,0,5,0,0,0,attack,1,20,no
+weapon,shortbow,0,0,0,0,8,0,0,0,0,0,0,0,0,0,ranged,1,20,no
+weapon,bronze sword,4,3,-2,0,0,0,2,1,0,0,5,0,0,0,attack,1,30,no
+weapon,bronze scimitar,1,7,-2,0,0,0,1,0,0,0,6,0,0,0,attack,1,40,no
+weapon,iron pickaxe,5,-2,3,0,0,0,1,0,0,0,7,0,0,0,attack,1,40,no
+weapon,oak shortbow,0,0,0,0,14,0,0,0,0,0,0,0,0,0,ranged,5,40,no
+weapon,iron sword,6,4,-2,0,0,0,2,1,0,0,7,0,0,0,attack,1,60,no
+weapon,willow shortbow,0,0,0,0,20,0,0,0,0,0,0,0,0,0,ranged,20,70,no
+weapon,iron scimitar,2,10,-2,0,0,0,1,0,0,0,9,0,0,0,attack,1,80,no
+weapon,steel pickaxe,8,-2,6,0,0,0,1,0,0,0,9,0,0,0,attack,5,80,no
+weapon,steel sword,11,8,-2,0,0,0,2,1,0,0,12,0,0,0,attack,5,120,no
+weapon,steel scimitar,3,15,-2,0,0,0,1,0,0,0,14,0,0,0,attack,5,160,no
+weapon,black sword,14,10,-2,0,0,0,2,1,0,0,12,0,0,0,attack,10,210,no
+weapon,mithril pickaxe,12,-2,10,0,0,0,1,0,0,0,13,0,0,0,attack,20,240,no
+weapon,black scimitar,4,19,-2,0,0,0,1,0,0,0,14,0,0,0,attack,10,280,no
+weapon,mithril sword,16,11,-2,0,0,0,2,1,0,0,17,0,0,0,attack,20,360,no
+weapon,mithril scimitar,5,21,-2,0,0,0,1,0,0,0,20,0,0,0,attack,20,480,no
+weapon,adamant pickaxe,17,-2,15,0,0,0,1,0,0,0,19,0,0,0,attack,30,500,no
+weapon,adamant sword,23,18,-2,0,0,0,2,1,0,0,24,0,0,0,attack,30,750,no
+weapon,adamant scimitar,6,29,-2,0,0,0,1,0,0,0,28,0,0,0,attack,30,1000,no
+weapon,rune pickaxe,26,-2,24,0,0,0,1,0,0,0,29,0,0,0,attack,40,1200,no
+weapon,staff of air,0,-1,7,10,0,2,3,1,10,0,3,0,0,0,attack,1,1500,no
+weapon,staff of earth,1,-1,9,10,0,2,3,1,10,0,5,0,0,0,attack,1,1500,no
+weapon,staff of fire,3,-1,9,10,0,2,3,1,10,0,6,0,0,0,attack,1,1500,no
+weapon,staff of water,0,-1,7,10,0,2,3,1,10,0,3,0,0,0,attack,1,1500,no
+weapon,rune sword,38,26,-2,0,0,0,2,1,0,0,39,0,0,0,attack,40,1800,no
+weapon,rune scimitar,7,45,-2,0,0,0,1,0,0,0,44,0,0,0,attack,40,2400,no
+weapon,dragon dagger,40,25,-4,1,0,0,0,0,1,0,40,0,0,0,attack,60,30000,yes
+weapon,hill giant club,-4,50,65,-4,0,0,0,0,0,-1,70,0,0,0,attack,40,45000,no
+ammo,bronze arrow,0,0,0,0,0,0,0,0,0,0,0,7,0,0,,,2,no
+ammo,iron arrow,0,0,0,0,0,0,0,0,0,0,0,10,0,0,,,5,no
+ammo,steel arrow,0,0,0,0,0,0,0,0,0,0,0,16,0,0,,,8,no
+ammo,mithril arrow,0,0,0,0,0,0,0,0,0,0,0,22,0,0,,,14,no
+ammo,adamant arrow,0,0,0,0,0,0,0,0,0,0,0,31,0,0,,,17,no
+ammo,rune arrow,0,0,0,0,0,0,0,0,0,0,0,49,0,0,,,20,no
+head,chef's hat,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,1,no
+head,wizard hat,0,0,0,2,0,0,0,0,2,0,0,0,0,0,,,20,no
+head,bronze full helm,0,0,0,-6,-3,4,5,3,-1,4,0,0,0,0,defence,1,35,no
+head,iron full helm,0,0,0,-6,-3,6,7,5,-1,6,0,0,0,0,defence,1,70,no
+head,steel full helm,0,0,0,-6,-3,9,10,7,-1,9,0,0,0,0,defence,5,140,no
+head,black full helm,0,0,0,-6,-3,12,13,10,-1,12,0,0,0,0,defence,10,245,no
+head,mithril full helm,0,0,0,-6,-3,13,14,11,-1,13,0,0,0,0,defence,20,420,no
+head,adamant full helm,0,0,0,-6,-3,19,21,16,-1,19,0,0,0,0,defence,30,875,no
+head,rune full helm,0,0,0,-6,-3,30,32,27,-1,30,0,0,0,0,defence,40,2100,no
+head,dragon med helm,0,0,0,-3,0,33,35,32,-1,34,0,0,0,0,defence,60,60000,yes
+body,wizard robe,0,0,0,3,0,0,0,0,3,0,0,0,0,0,,,20,no
+body,leather body,0,0,0,-2,2,8,9,10,4,9,0,0,0,0,defence,1,30,no
+body,bronze platebody,0,0,0,-30,-15,15,14,9,-6,14,0,0,0,0,defence,1,100,no
+body,iron platebody,0,0,0,-30,-15,21,20,12,-6,20,0,0,0,0,defence,1,200,no
+body,steel platebody,0,0,0,-30,-15,32,31,24,-6,31,0,0,0,0,defence,5,400,no
+body,black platebody,0,0,0,-30,-15,41,40,30,-6,40,0,0,0,0,defence,10,700,no
+body,mithril platebody,0,0,0,-30,-15,46,44,38,-6,44,0,0,0,0,defence,20,1200,no
+body,adamant platebody,0,0,0,-30,-15,65,63,55,-6,63,0,0,0,0,defence,30,2500,no
+body,rune platebody,0,0,0,-30,-15,82,80,72,-6,80,0,0,0,0,defence,40,6000,no
+legs,bronze platelegs,0,0,0,-21,-11,8,7,6,-4,7,0,0,0,0,defence,1,70,no
+legs,iron platelegs,0,0,0,-21,-11,11,10,10,-4,10,0,0,0,0,defence,1,140,no
+legs,steel platelegs,0,0,0,-21,-11,17,16,15,-4,16,0,0,0,0,defence,5,280,no
+legs,black platelegs,0,0,0,-21,-11,21,20,19,-4,20,0,0,0,0,defence,10,490,no
+legs,mithril platelegs,0,0,0,-21,-11,24,22,20,-4,22,0,0,0,0,defence,20,840,no
+legs,adamant platelegs,0,0,0,-21,-11,33,31,29,-4,31,0,0,0,0,defence,30,1750,no
+legs,rune platelegs,0,0,0,-21,-11,51,49,47,-4,49,0,0,0,0,defence,40,4200,no
+shield,bronze kiteshield,0,0,0,-8,-3,5,7,6,-1,6,0,0,0,0,defence,1,60,no
+shield,iron kiteshield,0,0,0,-8,-3,8,10,9,-1,9,0,0,0,0,defence,1,120,no
+shield,steel kiteshield,0,0,0,-8,-3,13,15,14,-1,14,0,0,0,0,defence,5,240,no
+shield,black kiteshield,0,0,0,-8,-3,17,19,18,-1,18,0,0,0,0,defence,10,420,no
+shield,mithril kiteshield,0,0,0,-8,-3,18,22,20,-1,20,0,0,0,0,defence,20,720,no
+shield,adamant kiteshield,0,0,0,-8,-3,27,31,29,-1,29,0,0,0,0,defence,30,1500,no
+shield,rune kiteshield,0,0,0,-8,-3,44,48,46,-1,46,0,0,0,0,defence,40,3600,no
+amulet,amulet of accuracy,4,4,4,4,4,0,0,0,0,0,0,0,0,0,,,500,no
+amulet,amulet of defence,0,0,0,0,0,7,7,7,7,7,0,0,0,0,,,600,no
+amulet,holy symbol,0,0,0,0,0,2,2,2,2,2,0,0,0,8,,,800,no
+amulet,amulet of magic,0,0,0,10,0,0,0,0,0,0,0,0,0,0,,,1000,no
+amulet,amulet of power,6,6,6,6,6,6,6,6,6,6,6,0,0,1,,,1500,no
+amulet,amulet of strength,0,0,0,0,0,0,0,0,0,0,10,0,0,0,,,1800,no
+cape,black cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,20,no
+cape,blue cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,20,no
+cape,green cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,20,no
+cape,purple cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,20,no
+cape,red cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,20,no
+cape,yellow cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,20,no
+cape,team cape,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,50,no
+cape,cape of legends,0,0,0,0,0,7,7,7,7,7,1,0,0,0,,,1200,yes
+gloves,leather gloves,0,0,0,0,0,0,1,2,0,0,0,0,0,0,,,12,no
+gloves,hardleather gloves,1,1,1,1,1,1,1,1,1,1,1,0,0,0,,,30,no
+boots,leather boots,0,0,0,0,0,0,1,1,0,0,0,0,0,0,,,12,no
+boots,climbing boots,0,0,0,0,0,0,2,2,0,0,2,0,0,0,,,120,yes
+ring,gold ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,350,no
+ring,ring of recoil,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,500,yes

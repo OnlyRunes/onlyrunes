@@ -44,6 +44,7 @@ def _supports_color():
 COLOR = _supports_color()
 WEB = False          # set by enable_web() when running in the browser (Pyodide)
 BETA = False         # set by enable_beta(); gates dev/test-only commands
+XP_RATE = 2          # global XP multiplier (2x) — faster progression
 
 # Style/colour codes
 _CODES = {
@@ -499,8 +500,63 @@ def _generic_boss_death(name):
     return [_tint(GEN_ROAR, "bred"), _tint(GEN_ROAR, "grey", "dim")]
 
 
-BOSS_INTRO = {"king black dragon": _kbd_intro, "count draynor": _count_intro}
-BOSS_DEATH = {"king black dragon": _kbd_death, "count draynor": _count_death}
+# Obor, the Hill Giant boss — a club-wielding brute (the club swings between
+# frames). Uses ''' delimiters because the art contains double-quotes.
+OBOR_CALM = r'''
+           .-=======-.
+          /  o     o  \
+          |     <     |
+          |   \___/   |
+           \_________/
+          __|       |__
+         /  |       |  \===[#]
+         |  |       |  |
+          \ |       | /
+            |       |
+           _|       |_
+          (__|     |__)
+'''
+OBOR_RAGE = r'''
+           .-=======-.
+          /  O     O  \
+          |     <     |
+          |   \VVV/   |
+           \_________/
+          __|       |__
+      [#]==\  |       |  /
+         |  |       |  |
+          \ |       | /
+            |       |
+           _|       |_
+          (__|     |__)
+'''
+OBOR_DIE = r'''
+
+
+           x       x
+          __|       |__
+         /  |       |  \
+        .-""  rubble  ""-.
+       (  bones & dust... )
+        '-..._______...-'
+'''
+
+
+def _obor_intro(name):
+    return [_tint(OBOR_CALM, "grey"), _tint(OBOR_CALM, "brown", "bold"),
+            _tint(OBOR_RAGE, "orange", "bold"), _tint(OBOR_CALM, "brown", "bold"),
+            _tint(OBOR_RAGE, "bred", "bold")]
+
+
+def _obor_death(name):
+    return [_tint(OBOR_RAGE, "bred"), _tint(OBOR_CALM, "grey"),
+            _tint(OBOR_DIE, "grey", "dim")]
+
+
+BOSS_INTRO = {"king black dragon": _kbd_intro, "count draynor": _count_intro,
+              "obor": _obor_intro}
+BOSS_DEATH = {"king black dragon": _kbd_death, "count draynor": _count_death,
+              "obor": _obor_death}
 
 
 def play_boss_intro(name):
@@ -637,9 +693,9 @@ SKILLS = [
     "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
     "mining", "runecrafting",
     # members skills
-    "thieving", "agility", "slayer",
+    "thieving", "agility", "slayer", "herblore",
 ]
-MEMBERS_SKILLS = {"thieving", "agility", "slayer"}
+MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore"}
 
 
 # ===========================================================================
@@ -698,6 +754,61 @@ for food, heal, val in [("bread", 5, 12), ("cooked shrimp", 3, 5),
     add_item(food, val, heal=heal)
 for burnt in ["burnt shrimp", "burnt fish", "burnt chicken", "burnt meat"]:
     add_item(burnt, 1)
+
+# --- Herblore: herbs, secondaries, vials & potions ------------------------
+add_item("vial of water", 2)
+# grimy herb -> (clean herb, herblore level to clean, clean xp)
+HERBS = {
+    "grimy guam":        ("guam leaf", 3, 2),
+    "grimy marrentill":  ("marrentill", 5, 4),
+    "grimy tarromin":    ("tarromin", 11, 5),
+    "grimy harralander": ("harralander", 20, 6),
+    "grimy ranarr":      ("ranarr weed", 25, 8),
+    "grimy irit":        ("irit leaf", 40, 9),
+    "grimy kwuarm":      ("kwuarm", 54, 11),
+    "grimy cadantine":   ("cadantine", 66, 13),
+}
+for _grimy, (_clean, _lvl, _xp) in HERBS.items():
+    add_item(_grimy, 5)
+    add_item(_clean, 15)
+for _sec, _val in [("eye of newt", 3), ("limpwurt root", 25), ("snape grass", 30),
+                   ("unicorn horn dust", 20), ("chocolate dust", 8),
+                   ("white berries", 40)]:
+    add_item(_sec, _val)
+# potion -> {herb, secondary, level, xp, effect}.  effect = (kind, arg, tier)
+#   ("boost", skill, tier)  temporary +level boost for the current fight
+#   ("restore","prayer"/"energy")   ("cure","poison")
+POTIONS = {
+    "attack potion":   {"herb": "guam leaf", "second": "eye of newt", "lvl": 3,
+                        "xp": 25, "effect": ("boost", "attack", 0), "value": 40},
+    "antipoison":      {"herb": "marrentill", "second": "unicorn horn dust",
+                        "lvl": 5, "xp": 38, "effect": ("cure", "poison", 0),
+                        "value": 50},
+    "strength potion": {"herb": "tarromin", "second": "limpwurt root", "lvl": 12,
+                        "xp": 50, "effect": ("boost", "strength", 0), "value": 60},
+    "energy potion":   {"herb": "harralander", "second": "chocolate dust",
+                        "lvl": 26, "xp": 67, "effect": ("restore", "energy", 0),
+                        "value": 80},
+    "defence potion":  {"herb": "ranarr weed", "second": "white berries",
+                        "lvl": 30, "xp": 75, "effect": ("boost", "defence", 0),
+                        "value": 90},
+    "prayer potion":   {"herb": "ranarr weed", "second": "snape grass", "lvl": 38,
+                        "xp": 88, "effect": ("restore", "prayer", 0), "value": 150},
+    "super attack":    {"herb": "irit leaf", "second": "eye of newt", "lvl": 45,
+                        "xp": 100, "effect": ("boost", "attack", 1), "value": 180},
+    "super strength":  {"herb": "kwuarm", "second": "limpwurt root", "lvl": 55,
+                        "xp": 125, "effect": ("boost", "strength", 1), "value": 220},
+    "super defence":   {"herb": "cadantine", "second": "white berries", "lvl": 66,
+                        "xp": 150, "effect": ("boost", "defence", 1), "value": 260},
+}
+for _pot, _d in POTIONS.items():
+    add_item(_pot, _d["value"], potion=True)
+
+# --- Obor (Hill Giant boss) unlock + drop ---------------------------------
+add_item("giant key", 1)
+add_item("hill giant club", 45000,
+         equip={"slot": "weapon", "att": 30, "str": 36, "req": {"attack": 40}})
+
 # Raw food -> cooked mapping
 RAW_TO_COOKED = {
     "raw shrimp": ("cooked shrimp", "burnt shrimp", 1),
@@ -829,7 +940,7 @@ add_item("rubber tube", 1)
 add_item("dragon med helm", 60000, members=True,
          equip={"slot": "head", "def": 30, "req": {"defence": 60}})
 add_item("dragon dagger", 30000, members=True,
-         equip={"slot": "weapon", "att": 25, "str": 24, "req": {"attack": 60}})
+         equip={"slot": "weapon", "att": 40, "str": 40, "req": {"attack": 60}})
 RAW_TO_COOKED["raw rat meat"] = ("cooked rat meat", "burnt meat", 1)
 COOK_XP["raw rat meat"] = 30
 
@@ -980,6 +1091,9 @@ MONSTERS = {
                                      ("iron arrow", 5, 10, 0.2)]),
     "hill giant": mob(35, 18, 14, 5, [("big bones", 1, 1, 1.0), ("coins", 20, 80, 0.9),
                                       ("steel platelegs", 1, 1, 0.05),
+                                      ("limpwurt root", 1, 1, 0.12),
+                                      ("grimy ranarr", 1, 1, 0.06),
+                                      ("giant key", 1, 1, 0.05),
                                       ("law rune", 1, 3, 0.1)]),
     "count draynor": mob(30, 12, 8, 4, [("bones", 1, 1, 1.0)], weak="stake"),
     # --- additional monsters ---
@@ -1000,6 +1114,8 @@ MONSTERS = {
     # --- members monsters (gated behind membership) ---
     "moss giant": mob(60, 24, 18, 6, [("big bones", 1, 1, 1.0), ("coins", 20, 120, 0.9),
                                       ("mithril sword", 1, 1, 0.06),
+                                      ("grimy harralander", 1, 1, 0.12),
+                                      ("grimy ranarr", 1, 1, 0.08),
                                       ("nature rune", 2, 6, 0.2)], members=True),
     "ice giant": mob(70, 28, 22, 8, [("big bones", 1, 1, 1.0), ("coins", 30, 150, 0.9),
                                      ("adamant arrow", 5, 15, 0.2)], members=True),
@@ -1012,6 +1128,10 @@ MONSTERS = {
                              ("coins", 500, 3000, 1.0), ("rune platebody", 1, 1, 0.15),
                              ("dragon med helm", 1, 1, 0.05),
                              ("ranarr seed", 1, 3, 0.3)], members=True, boss=True),
+    "obor": mob(120, 30, 22, 12, [("big bones", 1, 1, 1.0),
+                ("coins", 200, 1200, 1.0), ("hill giant club", 1, 1, 0.10),
+                ("grimy ranarr", 2, 4, 0.6), ("limpwurt root", 2, 5, 0.6),
+                ("law rune", 3, 8, 0.4)], boss=True),
 }
 
 # Difficulty rank per monster (drives auto-kill caps). Bosses set below.
@@ -1031,7 +1151,7 @@ MONSTER_RANK = {
     "moss giant": "elite", "ice giant": "elite", "lesser demon": "elite",
     "greater demon": "elite",
 }
-_BOSSES = {"king black dragon", "count draynor"}
+_BOSSES = {"king black dragon", "count draynor", "obor"}
 for _name, _m in MONSTERS.items():
     _m["rank"] = "boss" if _name in _BOSSES else MONSTER_RANK.get(_name, "medium")
     if _name in _BOSSES:
@@ -1188,12 +1308,21 @@ ROOMS = {
              "is to the north.",
         exits={"south": "barbarian_village", "north": "wilderness_edge",
                "down": "edgeville_dungeon"},
-        bank=True, furnace=True, npc="slayer_master"),
+        bank=True, furnace=True, npc="slayer_master", shop="herblore"),
     "edgeville_dungeon": dict(
         name="Edgeville Dungeon",
-        desc="A dank dungeon. Hobgoblins and hill giants prowl the dark.",
-        exits={"up": "edgeville", "deeper": "members_dungeon"},
+        desc="A dank dungeon. Hobgoblins and hill giants prowl the dark. A "
+             "huge locked door bars the way to a giant's lair — a giant key "
+             "would open it.",
+        exits={"up": "edgeville", "deeper": "members_dungeon",
+               "giant": "giant_lair"},
         monsters=["hobgoblin", "hill giant", "giant spider"]),
+    "giant_lair": dict(
+        name="Obor's Lair",
+        desc="A cavernous vault littered with shattered bones. Obor, the Hill "
+             "Giant boss, looms in the gloom.",
+        exits={"out": "edgeville_dungeon"},
+        monsters=["obor"], key="giant key"),
     "wilderness_edge": dict(
         name="Edge of the Wilderness",
         desc="Past this ditch lies the lawless Wilderness. Dark wizards and "
@@ -1306,6 +1435,10 @@ SHOPS = {
              "law rune": 240},
     "fishing": {"small fishing net": 5, "fishing rod": 5, "fly fishing rod": 5,
                 "harpoon": 5, "feather": 2},
+    "herblore": {"vial of water": 2, "eye of newt": 3, "limpwurt root": 25,
+                 "snape grass": 30, "unicorn horn dust": 20, "chocolate dust": 8,
+                 "white berries": 40, "grimy guam": 8, "grimy marrentill": 10,
+                 "grimy tarromin": 14},
 }
 
 
@@ -1314,6 +1447,179 @@ SHOPS = {
 # ===========================================================================
 EQUIP_SLOTS = ["weapon", "shield", "head", "body", "legs", "ammo",
                "cape", "amulet", "gloves", "boots", "ring"]
+
+
+# ===========================================================================
+#  OSRS-ACCURATE COMBAT DATA  (per-type attack / defence)
+# ===========================================================================
+# Real OSRS equipment bonuses (from gear_osrs_full.csv) and monster stats
+# (from the OSRS monster data), applied to the ITEMS / MONSTERS tables so
+# combat uses stab / slash / crush / magic / ranged like the real game.
+# Attack keys: astab aslash acrush amagic arange | str rstr mdmg | prayer
+# Defence keys: dstab dslash dcrush dmagic drange
+
+ATK_TYPES = ["stab", "slash", "crush", "magic", "ranged"]
+AKEY = {"stab": "astab", "slash": "aslash", "crush": "acrush",
+        "magic": "amagic", "ranged": "arange"}
+DKEY = {"stab": "dstab", "slash": "dslash", "crush": "dcrush",
+        "magic": "dmagic", "ranged": "drange"}
+
+GEAR_BONUSES = {
+    'adamant arrow': {"rstr":31},
+    'adamant full helm': {"amagic":-6,"arange":-3,"dcrush":16,"dmagic":-1,"drange":19,"dslash":21,"dstab":19},
+    'adamant kiteshield': {"amagic":-8,"arange":-3,"dcrush":29,"dmagic":-1,"drange":29,"dslash":31,"dstab":27},
+    'adamant pickaxe': {"acrush":15,"aslash":-2,"astab":17,"dslash":1,"speed":5,"str":19},
+    'adamant platebody': {"amagic":-30,"arange":-15,"dcrush":55,"dmagic":-6,"drange":63,"dslash":63,"dstab":65},
+    'adamant platelegs': {"amagic":-21,"arange":-11,"dcrush":29,"dmagic":-4,"drange":31,"dslash":31,"dstab":33},
+    'adamant scimitar': {"acrush":-2,"aslash":29,"astab":6,"dslash":1,"speed":4,"str":28},
+    'adamant sword': {"acrush":-2,"aslash":18,"astab":23,"dcrush":1,"dslash":2,"speed":4,"str":24},
+    'amulet of accuracy': {"acrush":4,"amagic":4,"arange":4,"aslash":4,"astab":4},
+    'amulet of defence': {"dcrush":7,"dmagic":7,"drange":7,"dslash":7,"dstab":7},
+    'amulet of magic': {"amagic":10},
+    'amulet of power': {"acrush":6,"amagic":6,"arange":6,"aslash":6,"astab":6,"dcrush":6,"dmagic":6,"drange":6,"dslash":6,"dstab":6,"prayer":1,"str":6},
+    'amulet of strength': {"str":10},
+    'black cape': {"dcrush":1,"drange":2,"dslash":1},
+    'black full helm': {"amagic":-6,"arange":-3,"dcrush":10,"dmagic":-1,"drange":12,"dslash":13,"dstab":12},
+    'black kiteshield': {"amagic":-8,"arange":-3,"dcrush":18,"dmagic":-1,"drange":18,"dslash":19,"dstab":17},
+    'black platebody': {"amagic":-30,"arange":-15,"dcrush":30,"dmagic":-6,"drange":40,"dslash":40,"dstab":41},
+    'black platelegs': {"amagic":-21,"arange":-11,"dcrush":19,"dmagic":-4,"drange":20,"dslash":20,"dstab":21},
+    'black scimitar': {"acrush":-2,"aslash":19,"astab":4,"dslash":1,"speed":4,"str":14},
+    'black sword': {"acrush":-2,"aslash":10,"astab":14,"dcrush":1,"dslash":2,"speed":4,"str":12},
+    'blue cape': {"dcrush":1,"drange":2,"dslash":1},
+    'bronze arrow': {"rstr":7},
+    'bronze full helm': {"amagic":-6,"arange":-3,"dcrush":3,"dmagic":-1,"drange":4,"dslash":5,"dstab":4},
+    'bronze kiteshield': {"amagic":-8,"arange":-3,"dcrush":6,"dmagic":-1,"drange":6,"dslash":7,"dstab":5},
+    'bronze pickaxe': {"acrush":2,"aslash":-2,"astab":4,"dslash":1,"speed":5,"str":5},
+    'bronze platebody': {"amagic":-30,"arange":-15,"dcrush":9,"dmagic":-6,"drange":14,"dslash":14,"dstab":15},
+    'bronze platelegs': {"amagic":-21,"arange":-11,"dcrush":6,"dmagic":-4,"drange":7,"dslash":7,"dstab":8},
+    'bronze scimitar': {"acrush":-2,"aslash":7,"astab":1,"dslash":1,"speed":4,"str":6},
+    'bronze sword': {"acrush":-2,"aslash":3,"astab":4,"dcrush":1,"dslash":2,"speed":4,"str":5},
+    'cape of legends': {"dcrush":7,"dmagic":7,"drange":7,"dslash":7,"dstab":7},
+    "chef's hat": {},
+    'climbing boots': {"dcrush":2,"dslash":2,"str":2},
+    'dragon dagger': {"acrush":-4,"amagic":1,"aslash":25,"astab":40,"dmagic":1,"speed":4,"str":40},
+    'dragon med helm': {"amagic":-3,"dcrush":32,"dmagic":-1,"drange":34,"dslash":35,"dstab":33},
+    'gold ring': {},
+    'green cape': {"dcrush":1,"drange":2,"dslash":1},
+    'hardleather gloves': {"acrush":1,"amagic":1,"arange":1,"aslash":1,"astab":1,"dcrush":1,"dmagic":1,"drange":1,"dslash":1,"dstab":1,"str":1},
+    'hill giant club': {"acrush":65,"amagic":-4,"aslash":50,"astab":-4,"drange":-1,"speed":7,"str":70},
+    'holy symbol': {"dcrush":2,"dmagic":2,"drange":2,"dslash":2,"dstab":2,"prayer":8},
+    'iron arrow': {"rstr":10},
+    'iron full helm': {"amagic":-6,"arange":-3,"dcrush":5,"dmagic":-1,"drange":6,"dslash":7,"dstab":6},
+    'iron kiteshield': {"amagic":-8,"arange":-3,"dcrush":9,"dmagic":-1,"drange":9,"dslash":10,"dstab":8},
+    'iron pickaxe': {"acrush":3,"aslash":-2,"astab":5,"dslash":1,"speed":5,"str":7},
+    'iron platebody': {"amagic":-30,"arange":-15,"dcrush":12,"dmagic":-6,"drange":20,"dslash":20,"dstab":21},
+    'iron platelegs': {"amagic":-21,"arange":-11,"dcrush":10,"dmagic":-4,"drange":10,"dslash":10,"dstab":11},
+    'iron scimitar': {"acrush":-2,"aslash":10,"astab":2,"dslash":1,"speed":4,"str":9},
+    'iron sword': {"acrush":-2,"aslash":4,"astab":6,"dcrush":1,"dslash":2,"speed":4,"str":7},
+    'leather body': {"amagic":-2,"arange":2,"dcrush":10,"dmagic":4,"drange":9,"dslash":9,"dstab":8},
+    'leather boots': {"dcrush":1,"dslash":1},
+    'leather gloves': {"dcrush":2,"dslash":1},
+    'mithril arrow': {"rstr":22},
+    'mithril full helm': {"amagic":-6,"arange":-3,"dcrush":11,"dmagic":-1,"drange":13,"dslash":14,"dstab":13},
+    'mithril kiteshield': {"amagic":-8,"arange":-3,"dcrush":20,"dmagic":-1,"drange":20,"dslash":22,"dstab":18},
+    'mithril pickaxe': {"acrush":10,"aslash":-2,"astab":12,"dslash":1,"speed":5,"str":13},
+    'mithril platebody': {"amagic":-30,"arange":-15,"dcrush":38,"dmagic":-6,"drange":44,"dslash":44,"dstab":46},
+    'mithril platelegs': {"amagic":-21,"arange":-11,"dcrush":20,"dmagic":-4,"drange":22,"dslash":22,"dstab":24},
+    'mithril scimitar': {"acrush":-2,"aslash":21,"astab":5,"dslash":1,"speed":4,"str":20},
+    'mithril sword': {"acrush":-2,"aslash":11,"astab":16,"dcrush":1,"dslash":2,"speed":4,"str":17},
+    'oak shortbow': {"arange":14,"speed":4},
+    'purple cape': {"dcrush":1,"drange":2,"dslash":1},
+    'red cape': {"dcrush":1,"drange":2,"dslash":1},
+    'ring of recoil': {},
+    'rune arrow': {"rstr":49},
+    'rune full helm': {"amagic":-6,"arange":-3,"dcrush":27,"dmagic":-1,"drange":30,"dslash":32,"dstab":30},
+    'rune kiteshield': {"amagic":-8,"arange":-3,"dcrush":46,"dmagic":-1,"drange":46,"dslash":48,"dstab":44},
+    'rune pickaxe': {"acrush":24,"aslash":-2,"astab":26,"dslash":1,"speed":5,"str":29},
+    'rune platebody': {"amagic":-30,"arange":-15,"dcrush":72,"dmagic":-6,"drange":80,"dslash":80,"dstab":82},
+    'rune platelegs': {"amagic":-21,"arange":-11,"dcrush":47,"dmagic":-4,"drange":49,"dslash":49,"dstab":51},
+    'rune scimitar': {"acrush":-2,"aslash":45,"astab":7,"dslash":1,"speed":4,"str":44},
+    'rune sword': {"acrush":-2,"aslash":26,"astab":38,"dcrush":1,"dslash":2,"speed":4,"str":39},
+    'shortbow': {"arange":8,"speed":4},
+    'staff of air': {"acrush":7,"amagic":10,"aslash":-1,"dcrush":1,"dmagic":10,"dslash":3,"dstab":2,"speed":5,"str":3},
+    'staff of earth': {"acrush":9,"amagic":10,"aslash":-1,"astab":1,"dcrush":1,"dmagic":10,"dslash":3,"dstab":2,"speed":5,"str":5},
+    'staff of fire': {"acrush":9,"amagic":10,"aslash":-1,"astab":3,"dcrush":1,"dmagic":10,"dslash":3,"dstab":2,"speed":5,"str":6},
+    'staff of water': {"acrush":7,"amagic":10,"aslash":-1,"dcrush":1,"dmagic":10,"dslash":3,"dstab":2,"speed":5,"str":3},
+    'steel arrow': {"rstr":16},
+    'steel full helm': {"amagic":-6,"arange":-3,"dcrush":7,"dmagic":-1,"drange":9,"dslash":10,"dstab":9},
+    'steel kiteshield': {"amagic":-8,"arange":-3,"dcrush":14,"dmagic":-1,"drange":14,"dslash":15,"dstab":13},
+    'steel pickaxe': {"acrush":6,"aslash":-2,"astab":8,"dslash":1,"speed":5,"str":9},
+    'steel platebody': {"amagic":-30,"arange":-15,"dcrush":24,"dmagic":-6,"drange":31,"dslash":31,"dstab":32},
+    'steel platelegs': {"amagic":-21,"arange":-11,"dcrush":15,"dmagic":-4,"drange":16,"dslash":16,"dstab":17},
+    'steel scimitar': {"acrush":-2,"aslash":15,"astab":3,"dslash":1,"speed":4,"str":14},
+    'steel sword': {"acrush":-2,"aslash":8,"astab":11,"dcrush":1,"dslash":2,"speed":4,"str":12},
+    'team cape': {},
+    'willow shortbow': {"arange":20,"speed":4},
+    'wizard hat': {"amagic":2,"dmagic":2},
+    'wizard robe': {"amagic":3,"dmagic":3},
+    'yellow cape': {"dcrush":1,"drange":2,"dslash":1},
+}
+
+MONSTER_STATS = {
+    'barbarian': {"abonus":8,"atktype":["stab"],"att":6,"cb":8,"dcrush":0,"def":5,"dmagic":0,"drange":0,"dslash":1,"dstab":1,"hp":14,"mage":1,"maxhit":2,"range":1,"sbonus":10,"str":5,"weak":"crush"},
+    'chicken': {"abonus":-47,"atktype":["stab"],"att":1,"cb":1,"dcrush":-42,"def":1,"dmagic":-42,"drange":-42,"dslash":-42,"dstab":-42,"hp":3,"mage":1,"maxhit":0,"range":1,"sbonus":-42,"str":1,"weak":"stab"},
+    'chicken farmer': {"abonus":0,"atktype":["crush"],"att":1,"cb":2,"dcrush":0,"def":1,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":7,"mage":1,"maxhit":1,"range":1,"sbonus":0,"str":1,"weak":"slash"},
+    'count draynor': {"abonus":0,"atktype":["crush"],"att":30,"cb":34,"dcrush":3,"def":30,"dmagic":0,"drange":0,"dslash":1,"dstab":2,"hp":35,"mage":1,"maxhit":3,"range":1,"sbonus":0,"str":25,"weak":"magic"},
+    'cow': {"abonus":-15,"atktype":["crush"],"att":1,"cb":2,"dcrush":-21,"def":1,"dmagic":-21,"drange":-21,"dslash":-21,"dstab":-21,"hp":8,"mage":1,"maxhit":1,"range":1,"sbonus":-15,"str":1,"weak":"stab"},
+    'dark warrior': {"abonus":20,"atktype":["slash"],"att":5,"cb":8,"dcrush":59,"def":5,"dmagic":0,"drange":0,"dslash":79,"dstab":96,"hp":17,"mage":1,"maxhit":2,"range":1,"sbonus":16,"str":5,"weak":"magic"},
+    'dark wizard': {"abonus":0,"atktype":["magic"],"att":5,"cb":7,"dcrush":0,"def":5,"dmagic":3,"drange":0,"dslash":0,"dstab":0,"hp":12,"mage":6,"maxhit":6,"range":1,"sbonus":0,"str":2,"weak":"stab"},
+    'dwarf': {"abonus":5,"atktype":["crush"],"att":6,"cb":7,"dcrush":0,"def":6,"dmagic":5,"drange":10,"dslash":0,"dstab":0,"hp":10,"mage":1,"maxhit":2,"range":1,"sbonus":7,"str":6,"weak":"stab"},
+    'flesh crawler': {"abonus":0,"atktype":["slash"],"att":60,"cb":28,"dcrush":15,"def":10,"dmagic":15,"drange":15,"dslash":15,"dstab":15,"hp":25,"mage":1,"maxhit":1,"range":1,"sbonus":0,"str":2,"weak":"stab"},
+    'giant rat': {"abonus":0,"atktype":["stab"],"att":1,"cb":3,"dcrush":-100,"def":1,"dmagic":0,"drange":-100,"dslash":-100,"dstab":-100,"hp":3,"mage":1,"maxhit":1,"range":1,"sbonus":0,"str":1,"weak":"stab"},
+    'giant spider': {"abonus":-10,"atktype":["stab"],"att":1,"cb":2,"dcrush":-10,"def":1,"dmagic":-10,"drange":-10,"dslash":-10,"dstab":-10,"hp":5,"mage":1,"maxhit":1,"range":1,"sbonus":-10,"str":1,"weak":"stab"},
+    'goblin': {"abonus":-21,"atktype":["crush"],"att":1,"cb":2,"dcrush":-15,"def":1,"dmagic":-15,"drange":-15,"dslash":-15,"dstab":-15,"hp":5,"mage":1,"maxhit":1,"range":1,"sbonus":-15,"str":1,"weak":"stab"},
+    'greater demon': {"abonus":0,"atktype":["slash"],"att":76,"cb":92,"dcrush":0,"def":81,"dmagic":-10,"drange":0,"dslash":0,"dstab":0,"hp":87,"mage":1,"maxhit":9,"range":1,"sbonus":0,"str":78,"weak":"magic"},
+    'guard': {"abonus":5,"atktype":["stab"],"att":8,"cb":10,"dcrush":4,"def":9,"dmagic":2,"drange":3,"dslash":4,"dstab":3,"hp":16,"mage":1,"maxhit":2,"range":1,"sbonus":7,"str":6,"weak":"magic"},
+    'hill giant': {"abonus":18,"atktype":["crush"],"att":18,"cb":28,"dcrush":0,"def":26,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":35,"mage":1,"maxhit":4,"range":1,"sbonus":16,"str":22,"weak":"stab"},
+    'hobgoblin': {"abonus":0,"atktype":["crush"],"att":22,"cb":28,"dcrush":0,"def":24,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":29,"mage":1,"maxhit":3,"range":1,"sbonus":0,"str":24,"weak":"stab"},
+    'ice giant': {"abonus":29,"atktype":["slash"],"att":40,"cb":53,"dcrush":2,"def":40,"dmagic":0,"drange":0,"dslash":3,"dstab":0,"hp":70,"mage":1,"maxhit":7,"range":1,"sbonus":31,"str":40,"weak":"stab"},
+    'imp': {"abonus":-42,"atktype":["stab"],"att":1,"cb":2,"dcrush":-42,"def":1,"dmagic":-42,"drange":-42,"dslash":-42,"dstab":-42,"hp":8,"mage":1,"maxhit":0,"range":1,"sbonus":-37,"str":1,"weak":"stab"},
+    'king black dragon': {"abonus":0,"atktype":["stab","dragonfire"],"att":240,"cb":276,"dcrush":90,"def":240,"dmagic":80,"drange":70,"dslash":90,"dstab":70,"hp":240,"mage":240,"maxhit":25,"range":1,"sbonus":0,"str":240,"weak":"stab"},
+    'lesser demon': {"abonus":0,"atktype":["slash"],"att":68,"cb":82,"dcrush":0,"def":71,"dmagic":-10,"drange":0,"dslash":0,"dstab":0,"hp":79,"mage":1,"maxhit":8,"range":1,"sbonus":0,"str":70,"weak":"magic"},
+    'man': {"abonus":0,"atktype":["crush"],"att":1,"cb":2,"dcrush":-21,"def":1,"dmagic":-21,"drange":-21,"dslash":-21,"dstab":-21,"hp":7,"mage":1,"maxhit":1,"range":1,"sbonus":0,"str":1,"weak":"stab"},
+    'minotaur': {"abonus":0,"atktype":["crush"],"att":12,"cb":12,"dcrush":-21,"def":10,"dmagic":-21,"drange":-21,"dslash":-21,"dstab":-21,"hp":10,"mage":1,"maxhit":2,"range":1,"sbonus":0,"str":10,"weak":"stab"},
+    'moss giant': {"abonus":33,"atktype":["crush"],"att":30,"cb":42,"dcrush":0,"def":30,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":60,"mage":1,"maxhit":6,"range":1,"sbonus":31,"str":30,"weak":"stab"},
+    'obor': {"abonus":100,"atktype":["crush","ranged"],"att":90,"cb":106,"dcrush":45,"def":60,"dmagic":20,"drange":20,"dslash":40,"dstab":35,"hp":120,"mage":1,"maxhit":22,"range":120,"sbonus":68,"str":100,"weak":"magic"},
+    'scorpion': {"abonus":0,"atktype":["stab"],"att":11,"cb":14,"dcrush":15,"def":11,"dmagic":0,"drange":5,"dslash":15,"dstab":5,"hp":17,"mage":1,"maxhit":2,"range":1,"sbonus":0,"str":12,"weak":"magic"},
+    'skeleton': {"abonus":0,"atktype":["melee","crush"],"att":10,"cb":13,"dcrush":-5,"def":7,"dmagic":0,"drange":5,"dslash":5,"dstab":5,"hp":18,"mage":0,"maxhit":2,"range":0,"sbonus":0,"str":11,"weak":"crush"},
+    'thug': {"abonus":5,"atktype":["stab"],"att":7,"cb":10,"dcrush":3,"def":9,"dmagic":0,"drange":0,"dslash":3,"dstab":2,"hp":18,"mage":1,"maxhit":2,"range":1,"sbonus":5,"str":5,"weak":"magic"},
+    'zombie': {"abonus":5,"atktype":["slash"],"att":8,"cb":13,"dcrush":0,"def":10,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":22,"mage":1,"maxhit":2,"range":1,"sbonus":0,"str":9,"weak":"stab"},
+    'zombie rat': {"abonus":0,"atktype":["stab"],"att":2,"cb":3,"dcrush":0,"def":2,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":5,"mage":1,"maxhit":1,"range":1,"sbonus":0,"str":3,"weak":"stab"},
+}
+
+
+def _apply_osrs_gear():
+    """Replace simplified item bonuses with real OSRS per-type bonuses."""
+    for name, b in GEAR_BONUSES.items():
+        it = ITEMS.get(name)
+        if not it or not it.get("equip"):
+            continue
+        eq = it["equip"]
+        for old in ("att", "def", "ranged", "magic"):
+            eq.pop(old, None)
+        eq.update(b)
+
+
+def _apply_osrs_monsters():
+    """Give monsters real OSRS levels, max hits and per-type defences."""
+    for name, s in MONSTER_STATS.items():
+        m = MONSTERS.get(name)
+        if not m:
+            continue
+        m["hp"] = s["hp"]
+        m["attack"] = s["att"]
+        m["defence"] = s["def"]
+        m["max_hit"] = s["maxhit"]
+        m["abonus"] = s.get("abonus", 0)
+        m["atktype"] = s.get("atktype") or ["crush"]
+        m["weakness"] = s.get("weak", "crush")
+        m["dbonus"] = {"stab": s["dstab"], "slash": s["dslash"],
+                       "crush": s["dcrush"], "magic": s["dmagic"],
+                       "ranged": s["drange"]}
+
+
+_apply_osrs_gear()
+_apply_osrs_monsters()
 
 
 class Player:
@@ -1327,6 +1633,7 @@ class Player:
         self.bank = {}
         self.equipment = {slot: None for slot in EQUIP_SLOTS}
         self.style = "melee"      # melee / ranged / magic
+        self.attack_type = "slash"  # melee sub-type: stab / slash / crush
         self.autocast = "wind strike"
         self.quests = {}          # quest_key -> stage string
         self.automap = "compass"  # off / compass / full — mini-map on each move
@@ -1340,6 +1647,11 @@ class Player:
         self.poison = 0           # remaining poison ticks (transient combat fx)
         self.frozen = False       # next attack fails (ice breath)
         self.stat_drain = {}      # skill -> levels drained (shock breath)
+        self.stat_boost = {}      # skill -> levels boosted (potions; transient)
+        self.achievements = []    # unlocked achievement keys
+        self.kills = 0            # total monsters defeated
+        self.bosses = []          # boss names defeated
+        self.potions_made = 0     # potions brewed (for the Herbalist achievement)
         # starter kit — now includes basic armour so new adventurers aren't
         # one-shot fodder (combat felt punishing with just a sword + 10 HP).
         for it, q in [("bronze sword", 1), ("bronze full helm", 1),
@@ -1358,8 +1670,13 @@ class Player:
     # --- skills ---------------------------------------------------------
     def lvl(self, skill):
         base = level_from_xp(self.skills[skill])
-        drain = getattr(self, "stat_drain", {}).get(skill, 0)
-        return max(1, base - drain)
+        base -= getattr(self, "stat_drain", {}).get(skill, 0)
+        base += getattr(self, "stat_boost", {}).get(skill, 0)
+        return max(1, base)
+
+    def base_lvl(self, skill):
+        """Unboosted/undrained level (for requirements that ignore potions)."""
+        return level_from_xp(self.skills[skill])
 
     @property
     def max_hp(self):
@@ -1391,10 +1708,12 @@ class Player:
         return False
 
     def prayer_drain(self):
-        return sum(PRAYERS.get(n, (0, 0, {}, None))[1] for n in self.active_prayers)
+        base = sum(PRAYERS.get(n, (0, 0, {}, None))[1] for n in self.active_prayers)
+        # prayer bonus from gear (e.g. holy symbol) slows the drain
+        return base / (1 + self.equip_bonus("prayer") / 30)
 
     def gain_xp(self, skill, amount):
-        amount = int(amount)
+        amount = int(amount * XP_RATE)        # global XP rate (2x)
         before = self.lvl(skill)
         self.skills[skill] += amount
         print(paint(f"  +{amount} {skill} xp", "bcyan"))
@@ -1472,6 +1791,8 @@ class Player:
             self.add(self.equipment[slot])
         self.take(item)
         self.equipment[slot] = item
+        if slot == "weapon":            # default to the weapon's best melee type
+            self.attack_type = _best_attack_type(item)
         if not silent:
             say(f"You equip the {item}.")
         return True
@@ -1494,25 +1815,33 @@ def _accuracy(att_roll, def_roll):
     return att_roll / (2 * (def_roll + 1))
 
 
+def _best_attack_type(item):
+    """The melee attack type (stab/slash/crush) a weapon hits best with."""
+    eq = ITEMS.get(item, {}).get("equip", {})
+    vals = {t: eq.get(AKEY[t], 0) for t in ("stab", "slash", "crush")}
+    return max(vals, key=vals.get) if any(v > 0 for v in vals.values()) else "slash"
+
+
 def _player_attack(p, m):
-    """Return (damage, skill_xp_dict, label) for one player attack."""
+    """Return (kind, atype, att_roll, max_hit) for one player attack, or None."""
     if p.style == "ranged":
         bow = p.equipment["weapon"]
         ammo = p.equipment["ammo"]
-        if not bow or ITEMS[bow].get("equip", {}).get("ranged") is None:
+        if not bow or "arange" not in ITEMS[bow].get("equip", {}):
             say("You need a bow equipped to use ranged.")
             return None
         if not ammo or p.count_ammo() <= 0:
             say("You're out of arrows!")
             return None
-        rng_bonus = p.equip_bonus("ranged")
-        att_roll = (p.lvl("ranged") + 9) * (rng_bonus + 64)
-        max_hit = int(0.5 + (p.lvl("ranged") + 9) * (rng_bonus + 64) / 640)
+        acc = p.equip_bonus("arange")
+        rstr = p.equip_bonus("rstr")
+        eff = p.lvl("ranged") + 9
+        att_roll = eff * (acc + 64)
+        max_hit = int(0.5 + eff * (rstr + 64) / 640)
         p.take(ammo)  # consume one arrow
         if p.count(ammo) == 0:
             p.equipment["ammo"] = None
-        skill_xp = {"ranged": 0, "hitpoints": 0}
-        return ("ranged", att_roll, max_hit, skill_xp)
+        return ("ranged", "ranged", att_roll, max_hit)
     if p.style == "magic":
         spell = SPELLS.get(p.autocast)
         if not spell or spell["type"] != "combat":
@@ -1524,19 +1853,19 @@ def _player_attack(p, m):
         if not _consume_runes(p, spell["runes"]):
             say(f"You don't have the runes for {p.autocast}.")
             return None
-        mag_bonus = p.equip_bonus("magic")
-        att_roll = (p.lvl("magic") + 9) * (mag_bonus + 64)
-        return ("magic", att_roll, spell["max"], {"magic": spell["xp"], "hitpoints": 0})
-    # melee (prayers boost effective attack/strength)
-    atk_bonus = p.equip_bonus("att")
+        att_roll = (p.lvl("magic") + 9) * (p.equip_bonus("amagic") + 64)
+        return ("magic", "magic", att_roll, spell["max"])
+    # melee: accuracy uses the chosen attack type; damage uses strength bonus
+    atype = getattr(p, "attack_type", "slash")
+    if atype not in ("stab", "slash", "crush"):
+        atype = "slash"
+    atk_bonus = p.equip_bonus(AKEY[atype])
     str_bonus = p.equip_bonus("str")
     att_lvl = int(p.lvl("attack") * p.prayer_mult("attack"))
     str_lvl = int(p.lvl("strength") * p.prayer_mult("strength"))
     att_roll = (att_lvl + 9) * (atk_bonus + 64)
-    eff_str = str_lvl + 9
-    max_hit = int(0.5 + eff_str * (str_bonus + 64) / 640)
-    return ("melee", att_roll, max_hit, {"attack": 0, "strength": 0,
-                                         "defence": 0, "hitpoints": 0})
+    max_hit = int(0.5 + (str_lvl + 9) * (str_bonus + 64) / 640)
+    return ("melee", atype, att_roll, max_hit)
 
 
 STYLE_COLOR = {"melee": "bred", "ranged": "bgreen", "magic": "bblue"}
@@ -1549,21 +1878,25 @@ def _new_monster(mname):
     return m
 
 
+VERB = {"stab": "stab", "slash": "slash", "crush": "crush",
+        "ranged": "shoot", "magic": "blast"}
+
+
 def _resolve_player_hit(p, m):
     """One player swing at m. Prints. Returns 'won', 'noattack', or None."""
     atk = _player_attack(p, m)
     if atk is None:
         return "noattack"
-    kind, att_roll, max_hit, _xp = atk
-    def_roll = (m["defence"] + 9) * 64
+    kind, atype, att_roll, max_hit = atk
+    def_bonus = m.get("dbonus", {}).get(atype, 0)     # monster's defence vs this type
+    def_roll = (m["defence"] + 9) * (def_bonus + 64)
     if random.random() < _accuracy(att_roll, def_roll):
         dmg = random.randint(0, max_hit)
         m["cur"] -= dmg
-        verb = {"melee": "slash", "ranged": "shoot", "magic": "blast"}[kind]
-        print("  " + paint(f"You {verb} the {m['name']} for {dmg}!", "bgreen")
+        print("  " + paint(f"You {VERB[atype]} the {m['name']} for {dmg}!", "bgreen")
               + "  " + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred"))
     else:
-        miss = "splash on" if kind == "magic" else "miss"
+        miss = "splash on" if kind == "magic" else "fail to hit"
         print("  " + paint(f"You {miss} the {m['name']}.", "grey"))
     return "won" if m["cur"] <= 0 else None
 
@@ -1573,6 +1906,7 @@ def _clear_status(p):
     p.poison = 0
     p.frozen = False
     p.stat_drain = {}
+    p.stat_boost = {}
 
 
 def _tick_poison(p):
@@ -1608,9 +1942,9 @@ def _kbd_take_turn(p, m):
     atk = random.choices(KBD_ATTACKS, weights=[a["w"] for a in KBD_ATTACKS])[0]
     animate(atk["builder"](), delay=0.1, center=True)
     say(f"The King Black Dragon {atk['verb']} {atk['label']}!", *atk["color"])
-    m_att_roll = (m["attack"] + 9) * 64
-    def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
-    p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
+    m_att_roll = (m["attack"] + 9) * (m.get("abonus", 0) + 64)
+    dtype = "crush" if atk["key"] == "melee" else "magic"   # breaths are magical
+    p_def_roll = _player_def_roll(p, dtype)
     if random.random() < _accuracy(m_att_roll, p_def_roll):
         dmg = random.randint(0, max(1, int(m["max_hit"] * atk["mult"])))
         prot = "melee" if atk["key"] == "melee" else "magic"  # prayer mitigates
@@ -1637,18 +1971,34 @@ def _kbd_take_turn(p, m):
 BOSS_TURN = {"king black dragon": _kbd_take_turn}
 
 
+def _monster_atk_type(m):
+    """The damage type a monster attacks with (stab/slash/crush/magic/ranged)."""
+    for t in (m.get("atktype") or []):
+        if t in DKEY:
+            return t
+    return "crush"                       # 'melee'/'dragonfire'/unknown -> crush
+
+
+def _player_def_roll(p, atype):
+    """Player's defence roll against an incoming attack of the given type."""
+    def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
+    return (def_lvl + 9) * (p.equip_bonus(DKEY[atype]) + 64)
+
+
 def _resolve_monster_hit(p, m):
     """Monster swings at the player. Prints, drains prayer. Returns 'died' or None."""
     if m.get("boss"):
         handler = BOSS_TURN.get(m["name"])
         if handler:
             return handler(p, m)        # varied boss attacks (e.g. KBD breaths)
-    m_att_roll = (m["attack"] + 9) * 64
-    def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
-    p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
+    atype = _monster_atk_type(m)
+    m_att_roll = (m["attack"] + 9) * (m.get("abonus", 0) + 64)
+    p_def_roll = _player_def_roll(p, atype)
     if random.random() < _accuracy(m_att_roll, p_def_roll):
         dmg = random.randint(0, m["max_hit"])
-        if p.prayer_protects("melee"):
+        prot = "magic" if atype == "magic" else \
+            ("ranged" if atype == "ranged" else "melee")
+        if p.prayer_protects(prot):
             dmg = int(dmg * 0.5)
         p.hp -= dmg
         print("  " + paint(f"The {m['name']} hits you for {dmg}.", "bred")
@@ -1671,6 +2021,12 @@ def _victory(p, m):
     else:
         show_art(ART_VICTORY, "gold", center=True)
     say(f"You have defeated the {m['name']}!", "bgreen", "bold")
+    p.kills = getattr(p, "kills", 0) + 1
+    if m.get("boss"):
+        bs = getattr(p, "bosses", [])
+        if m["name"] not in bs:
+            bs.append(m["name"])
+        p.bosses = bs
     _award_combat_xp(p, m["hp"])
     _roll_drops(p, m)
     if p.hp < p.max_hp:          # a kill restores some HP (scales with level)
@@ -1719,13 +2075,18 @@ def _combat_prompt(p):
         status.append(paint("frozen", "bcyan"))
     if getattr(p, "stat_drain", None):
         status.append(paint(f"-{max(p.stat_drain.values())} stats", "bblue"))
+    if getattr(p, "stat_boost", None):
+        status.append(paint(f"+{max(p.stat_boost.values())} boost", "lime"))
     if status:
-        print("  " + paint("Afflictions: ", "grey") + ", ".join(status))
+        print("  " + paint("Status: ", "grey") + ", ".join(status))
     foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
+    pots = [i for i in p.inventory if ITEMS.get(i, {}).get("potion")]
     food_hint = f" ({foods[0]})" if foods else ""
+    drink_hint = f" ({pots[0]})" if pots else ""
     pray_hint = f" [{', '.join(p.active_prayers)}]" if p.active_prayers else ""
     print("  " + paint("Your move: ", "bcyan")
-          + paint(f"attack · eat{food_hint} · pray{pray_hint} · flee", "grey"))
+          + paint(f"attack · eat{food_hint} · drink{drink_hint} · pray{pray_hint}"
+                  " · flee", "grey"))
 
 
 def _start_combat(p, mname):
@@ -1737,9 +2098,16 @@ def _start_combat(p, mname):
     else:
         show_art(ART_SWORDS, "grey")
     banner(f"{mname.upper()}", color="bred", line_color="red")
+    weak = p.combat.get("weakness")
+    if weak:
+        hint = "" if p.style != "melee" else \
+            paint(f"  (try 'style {weak}')" if weak in ("stab", "slash", "crush")
+                  else "", "grey")
+        print("  " + paint(f"Weakness: {weak}", "byellow") + hint)
     print("  " + paint("Style: ", "grey")
           + paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold")
-          + paint("   (type 'auto' style fights with 'fight <foe> auto')", "grey"))
+          + paint(f" / {getattr(p, 'attack_type', 'slash')}", "grey")
+          + paint("   ('auto' fights with 'fight <foe> auto')", "grey"))
     _combat_prompt(p)
 
 
@@ -1804,6 +2172,11 @@ def combat_action(p, raw):
         if not food or not p.has(food):
             return say("You have no food to eat!", "grey")
         cmd_eat(p, food)
+    elif verb == "drink":
+        pots = [i for i in p.inventory if ITEMS.get(i, {}).get("potion")]
+        if not (arg or pots):
+            return say("You have no potions to drink!", "grey")
+        cmd_drink(p, arg)
     elif verb == "pray":
         before = list(p.active_prayers)
         cmd_pray(p, arg)
@@ -1850,8 +2223,13 @@ def _roll_drops(p, m):
             qty = random.randint(lo, hi)
             if qty > 0:
                 p.add(item, qty)
-                tint = "gold" if item == "coins" else "byellow"
-                print("  " + paint(f"Loot: {item} x{qty}", tint))
+                value = ITEMS.get(item, {}).get("value", 0) * qty
+                if item != "coins" and value >= 5000:   # rare/valuable highlight
+                    print("  " + paint(f"✦ Valuable drop: {item} x{qty}!",
+                                       "gold", "bold"))
+                else:
+                    tint = "gold" if item == "coins" else "byellow"
+                    print("  " + paint(f"Loot: {item} x{qty}", tint))
                 got = True
     if not got:
         say("  No loot this time.", "grey")
@@ -2262,6 +2640,13 @@ def cmd_go(p, arg):
         say("(Type 'membership' to unlock members content in this tribute game.)",
             "grey")
         return
+    key = ROOMS[dest].get("key")        # some doors need (and consume) a key
+    if key and p.location != dest:
+        if not p.has(key):
+            say(f"The way is locked. You need a {key} to enter.", "byellow")
+            return
+        p.take(key)
+        say(f"You unlock the door with the {key}.", "bgreen")
     if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
         toll = ROOMS[p.location]["toll"]
         if not p.has("coins", toll):
@@ -2281,6 +2666,7 @@ SKILL_COLOR = {
     "fishing": "bcyan", "firemaking": "orange", "crafting": "brown",
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
     "thieving": "purple", "agility": "lime", "slayer": "teal",
+    "herblore": "lime",
 }
 
 
@@ -2325,9 +2711,21 @@ def cmd_equipment(p, _a):
     banner("Worn Equipment")
     for slot in EQUIP_SLOTS:
         say(f"  {slot:7}: {p.equipment[slot] or '(empty)'}")
-    say(f"\nBonuses — att {p.equip_bonus('att'):+d}  str {p.equip_bonus('str'):+d}"
-        f"  def {p.equip_bonus('def'):+d}  ranged {p.equip_bonus('ranged'):+d}"
-        f"  magic {p.equip_bonus('magic'):+d}")
+    eb = p.equip_bonus
+    say("")
+    print("  " + paint("Attack ", "white")
+          + paint(f"stab {eb('astab'):+d}  slash {eb('aslash'):+d}  "
+                  f"crush {eb('acrush'):+d}  magic {eb('amagic'):+d}  "
+                  f"ranged {eb('arange'):+d}", "bcyan"))
+    print("  " + paint("Defence", "white")
+          + paint(f" stab {eb('dstab'):+d}  slash {eb('dslash'):+d}  "
+                  f"crush {eb('dcrush'):+d}  magic {eb('dmagic'):+d}  "
+                  f"ranged {eb('drange'):+d}", "byellow"))
+    print("  " + paint("Other  ", "white")
+          + paint(f" melee-str {eb('str'):+d}  ranged-str {eb('rstr'):+d}  "
+                  f"magic-dmg {eb('mdmg'):+d}%  prayer {eb('prayer'):+d}", "grey"))
+    print("  " + paint(f"Melee stance: {getattr(p, 'attack_type', 'slash')}  "
+                       f"(change with 'style stab|slash|crush')", "grey"))
 
 
 def cmd_equip(p, arg):
@@ -2348,11 +2746,29 @@ def cmd_unequip(p, arg):
 
 def cmd_style(p, arg):
     s = arg.strip().lower()
-    if s not in ("melee", "ranged", "magic"):
-        say(f"Current style: {p.style}. Choose: melee, ranged, magic.")
+    if s in ("stab", "slash", "crush"):       # melee attack stance
+        p.attack_type = s
+        p.style = "melee"
+        wpn = p.equipment.get("weapon")
+        bonus = ITEMS.get(wpn, {}).get("equip", {}).get(AKEY[s], 0) if wpn else 0
+        note = "" if bonus > 0 else paint("  (your weapon isn't suited to that — "
+                                          "accuracy will suffer)", "grey")
+        say(f"You switch to a {s}bing stance." if s == "stab"
+            else f"You switch to a {s}ing stance.", "bcyan")
+        if note:
+            print(note)
         return
-    p.style = s
-    say(f"Combat style set to {s}.")
+    if s in ("melee", "ranged", "magic"):
+        p.style = s
+        extra = ""
+        if s == "melee":
+            extra = f" (attack type: {getattr(p, 'attack_type', 'slash')})"
+        say(f"Combat style set to {s}.{extra}")
+        return
+    say(f"Current style: {p.style} "
+        f"(melee type: {getattr(p, 'attack_type', 'slash')}).", "bcyan")
+    say("Choose a style: melee, ranged, magic — or a melee stance: "
+        "stab, slash, crush.", "grey")
 
 
 def cmd_autocast(p, arg):
@@ -2671,6 +3087,119 @@ def cmd_eat(p, arg):
     p.take(item)
     p.hp = min(p.max_hp, p.hp + ITEMS[item]["heal"])
     say(f"You eat the {item}. (HP: {p.hp}/{p.max_hp})")
+
+
+# --- Herblore: clean grimy herbs, brew potions, drink them -----------------
+def _herblore_gate(p):
+    if not getattr(p, "members", False):
+        say("Herblore is members-only. Type 'membership' to unlock it.", "bmagenta")
+        return False
+    return True
+
+
+def cmd_clean(p, arg):
+    if not _herblore_gate(p):
+        return
+    name = arg.strip().lower()
+    grimies = [g for g in HERBS if p.has(g)]
+    if not name:
+        if not grimies:
+            say("You have no grimy herbs to clean. Buy some in Edgeville, or "
+                "get them as monster drops.", "grey")
+            return
+        name = grimies[0]
+    if name not in HERBS:                       # accept "clean guam" / "clean ranarr"
+        match = [g for g in HERBS if name in g]
+        if match:
+            name = match[0]
+    if name not in HERBS:
+        say("That isn't a grimy herb.", "grey")
+        return
+    if not p.has(name):
+        say(f"You have no {name}.", "grey")
+        return
+    clean, lvl, xp = HERBS[name]
+    if p.lvl("herblore") < lvl:
+        say(f"You need Herblore level {lvl} to clean {name}.", "byellow")
+        return
+    p.take(name)
+    p.add(clean)
+    say(f"You clean the {name} into a {clean}.", "lime")
+    p.gain_xp("herblore", xp)
+
+
+def cmd_brew(p, arg):
+    if not _herblore_gate(p):
+        return
+    name = arg.strip().lower()
+    if not name:
+        say("Brew which potion? You know: " + ", ".join(POTIONS), "lime")
+        say("Each needs a clean herb + a vial of water + a secondary ingredient.",
+            "grey")
+        return
+    if name not in POTIONS:
+        match = [pn for pn in POTIONS if pn.startswith(name)]
+        if len(match) == 1:
+            name = match[0]
+    if name not in POTIONS:
+        say("You don't know how to brew that.", "grey")
+        return
+    rec = POTIONS[name]
+    if p.lvl("herblore") < rec["lvl"]:
+        say(f"You need Herblore level {rec['lvl']} to brew {name}.", "byellow")
+        return
+    need = ["vial of water", rec["herb"], rec["second"]]
+    missing = [i for i in need if not p.has(i)]
+    if missing:
+        say("You still need: " + ", ".join(missing), "byellow")
+        return
+    for i in need:
+        p.take(i)
+    p.add(name)
+    p.potions_made = getattr(p, "potions_made", 0) + 1
+    article = "an" if name[:1] in "aeiou" else "a"
+    say(f"You mix {article} {name}.", "lime", "bold")
+    p.gain_xp("herblore", rec["xp"])
+
+
+def _boost_amount(p, skill, tier):
+    base = p.base_lvl(skill)
+    return (5 + int(base * 0.15)) if tier >= 1 else (3 + int(base * 0.10))
+
+
+def cmd_drink(p, arg):
+    name = arg.strip().lower()
+    pots = [i for i in p.inventory if ITEMS.get(i, {}).get("potion")]
+    if not name:
+        if not pots:
+            say("You have no potions to drink. Brew some with Herblore.", "grey")
+            return
+        name = pots[0]
+    if name not in POTIONS:
+        match = [pn for pn in pots if pn.startswith(name)]
+        if len(match) == 1:
+            name = match[0]
+    if not ITEMS.get(name, {}).get("potion") or not p.has(name):
+        say(f"You have no {name} to drink.", "grey")
+        return
+    kind, target, tier = POTIONS[name]["effect"]
+    p.take(name)
+    if kind == "boost":
+        amt = _boost_amount(p, target, tier)
+        p.stat_boost[target] = max(p.stat_boost.get(target, 0), amt)
+        say(f"You drink the {name}. Your {target} is boosted by {amt}!",
+            "lime", "bold")
+    elif kind == "restore" and target == "prayer":
+        amt = int(p.prayer_max() * 0.3) + 7
+        p.prayer_points = min(p.prayer_max(), p.prayer_points + amt)
+        say(f"You drink the {name}. Prayer points: {p.prayer_points}/{p.prayer_max()}.",
+            "bwhite", "bold")
+    elif kind == "restore" and target == "energy":
+        p.run_energy = min(100, getattr(p, "run_energy", 100) + 40)
+        say(f"You drink the {name}. Run energy: {int(p.run_energy)}/100.", "lime")
+    elif kind == "cure" and target == "poison":
+        p.poison = 0
+        say(f"You drink the {name}. The poison is neutralised.", "bgreen")
 
 
 def cmd_cast(p, arg):
@@ -3389,6 +3918,81 @@ def cmd_quests(p, _a):
         print(f"  {title:20} " + paint(st, color))
 
 
+# ===========================================================================
+#  ACHIEVEMENTS
+# ===========================================================================
+ACHIEVEMENTS = {
+    "first_blood":  ("First Blood", "Defeat your first monster."),
+    "apprentice":   ("Apprentice", "Reach total level 100."),
+    "adventurer":   ("Adventurer", "Reach total level 500."),
+    "veteran":      ("Veteran", "Reach total level 1000."),
+    "skill_master": ("Skill Master", "Reach level 99 in any skill."),
+    "quester":      ("Quester", "Complete 3 quests."),
+    "hero":         ("Hero of Gielinor", "Complete every quest."),
+    "herbalist":    ("Herbalist", "Brew your first potion."),
+    "dragonslayer": ("Dragonslayer", "Defeat the King Black Dragon."),
+    "giant_slayer": ("Giant Slayer", "Defeat Obor, the Hill Giant boss."),
+    "rich":         ("Wealthy", "Hold 100,000 coins."),
+}
+
+
+def _earned_achievements(p):
+    got = set()
+    total = sum(p.base_lvl(s) for s in SKILLS)
+    if getattr(p, "kills", 0) >= 1:
+        got.add("first_blood")
+    if total >= 100:
+        got.add("apprentice")
+    if total >= 500:
+        got.add("adventurer")
+    if total >= 1000:
+        got.add("veteran")
+    if any(p.base_lvl(s) >= 99 for s in SKILLS):
+        got.add("skill_master")
+    done = sum(1 for k in ALL_QUESTS if _q(p, k) == "complete")
+    if done >= 3:
+        got.add("quester")
+    if done >= len(ALL_QUESTS):
+        got.add("hero")
+    if getattr(p, "potions_made", 0) >= 1:
+        got.add("herbalist")
+    bosses = getattr(p, "bosses", [])
+    if "king black dragon" in bosses:
+        got.add("dragonslayer")
+    if "obor" in bosses:
+        got.add("giant_slayer")
+    if p.coins >= 100000:
+        got.add("rich")
+    return got
+
+
+def _check_achievements(p):
+    """Unlock + announce any newly earned achievements."""
+    have = getattr(p, "achievements", None)
+    if have is None:
+        p.achievements = have = []
+    for key in _earned_achievements(p):
+        if key not in have:
+            have.append(key)
+            title, desc = ACHIEVEMENTS[key]
+            print()
+            banner("ACHIEVEMENT UNLOCKED", color="gold", line_color="byellow")
+            print("  " + paint("★ " + title, "byellow", "bold")
+                  + paint("  —  " + desc, "grey"))
+
+
+def cmd_achievements(p, _a):
+    have = set(getattr(p, "achievements", []))
+    banner(f"Achievements  ({len(have)}/{len(ACHIEVEMENTS)})", color="gold")
+    for key, (title, desc) in ACHIEVEMENTS.items():
+        if key in have:
+            print("  " + paint("★ ", "byellow")
+                  + paint(f"{title:18}", "byellow", "bold") + paint(desc, "grey"))
+        else:
+            print("  " + paint("☆ ", "grey")
+                  + paint(f"{title:18}", "grey") + paint(desc, "grey"))
+
+
 def cmd_task(p, _a):
     if not getattr(p, "members", False):
         say("Slayer is members-only. Type 'membership' to unlock it.", "bmagenta")
@@ -3441,11 +4045,16 @@ def serialize(p):
     """Return a plain-dict snapshot of a player (for file or browser saves)."""
     return {"name": p.name, "location": p.location, "skills": p.skills,
             "hp": p.hp, "inventory": p.inventory, "bank": p.bank,
-            "equipment": p.equipment, "style": p.style, "autocast": p.autocast,
+            "equipment": p.equipment, "style": p.style,
+            "attack_type": getattr(p, "attack_type", "slash"), "autocast": p.autocast,
             "quests": p.quests, "members": p.members,
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
             "run_energy": p.run_energy, "slayer_task": p.slayer_task,
-            "slayer_points": p.slayer_points}
+            "slayer_points": p.slayer_points,
+            "achievements": list(getattr(p, "achievements", [])),
+            "kills": getattr(p, "kills", 0),
+            "bosses": list(getattr(p, "bosses", [])),
+            "potions_made": getattr(p, "potions_made", 0)}
 
 
 def deserialize(data):
@@ -3460,6 +4069,7 @@ def deserialize(data):
     eq.update(data.get("equipment", {}))
     p.equipment = eq
     p.style = data.get("style", "melee")
+    p.attack_type = data.get("attack_type", "slash")
     p.autocast = data.get("autocast", "wind strike")
     p.quests = data.get("quests", {})
     p.members = data.get("members", False)
@@ -3468,6 +4078,10 @@ def deserialize(data):
     p.run_energy = data.get("run_energy", 100)
     p.slayer_task = data.get("slayer_task", None)
     p.slayer_points = data.get("slayer_points", 0)
+    p.achievements = data.get("achievements", [])
+    p.kills = data.get("kills", 0)
+    p.bosses = data.get("bosses", [])
+    p.potions_made = data.get("potions_made", 0)
     # restore quest-spawned monster
     if p.quests.get("vampyre_slayer") == "started" and \
             "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
@@ -3500,7 +4114,8 @@ def cmd_help(_p, _a):
     groups = {
         "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
         "Info": "stats, inventory (i), equipment, quests, examine <item>",
-        "Combat": "fight [monster], style <melee|ranged|magic>, autocast <spell>, eat [food]",
+        "Combat": "fight [monster], style <melee|ranged|magic|stab|slash|crush>, "
+                  "autocast <spell>, eat [food], drink [potion]",
         "Gear": "equip <item>, unequip <slot>",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
@@ -3528,9 +4143,15 @@ def cmd_examine(p, arg):
     if "equip" in info:
         eq = info["equip"]
         bits.append("slot " + eq["slot"])
-        for f in ("att", "str", "def", "ranged", "magic"):
+        labels = [("astab", "stab"), ("aslash", "slash"), ("acrush", "crush"),
+                  ("amagic", "atk-mage"), ("arange", "atk-rng"),
+                  ("str", "str"), ("rstr", "rng-str"), ("mdmg", "mage-dmg%"),
+                  ("dstab", "def-stab"), ("dslash", "def-slash"),
+                  ("dcrush", "def-crush"), ("dmagic", "def-mage"),
+                  ("drange", "def-rng"), ("prayer", "prayer")]
+        for f, lbl in labels:
             if eq.get(f):
-                bits.append(f"{f} {eq[f]:+d}")
+                bits.append(f"{lbl} {eq[f]:+d}")
     say(f"{item}: " + ", ".join(bits))
 
 
@@ -3539,12 +4160,16 @@ DIRECTIONS = {"n": "north", "s": "south", "e": "east", "w": "west",
 
 def _best_gear_for_style(style):
     """Best-in-slot item per equipment slot for a combat style (ignores reqs)."""
+    def defsum(eq):
+        return sum(eq.get(k, 0) for k in ("dstab", "dslash", "dcrush",
+                                          "dmagic", "drange"))
     def score(eq):
         if style == "ranged":
-            return eq.get("ranged", 0) * 3 + eq.get("def", 0) * 0.1
+            return eq.get("arange", 0) * 2 + eq.get("rstr", 0) * 3 + defsum(eq) * 0.05
         if style == "magic":
-            return eq.get("magic", 0) * 3 + eq.get("def", 0) * 0.1
-        return eq.get("att", 0) + eq.get("str", 0) * 2 + eq.get("def", 0) * 0.1
+            return eq.get("amagic", 0) * 3 + eq.get("mdmg", 0) * 2 + defsum(eq) * 0.05
+        best_atk = max(eq.get("astab", 0), eq.get("aslash", 0), eq.get("acrush", 0))
+        return best_atk + eq.get("str", 0) * 2 + defsum(eq) * 0.05
     best, best_score = {}, {}
     for name, info in ITEMS.items():
         eq = info.get("equip")
@@ -3618,6 +4243,7 @@ HANDLERS = {
     "smelt": cmd_smelt, "smith": cmd_smith,
     "spin": cmd_spin, "tan": cmd_tan, "craft": cmd_craft, "craftrune": cmd_craftrune,
     "eat": cmd_eat,
+    "clean": cmd_clean, "brew": cmd_brew, "mix": cmd_brew, "drink": cmd_drink,
     "cast": cmd_cast,
     "bank": cmd_bank, "deposit": cmd_deposit, "withdraw": cmd_withdraw,
     "shop": cmd_shop, "store": cmd_shop, "buy": cmd_buy, "sell": cmd_sell,
@@ -3627,6 +4253,8 @@ HANDLERS = {
     "collect": cmd_collect, "milk": cmd_milk, "pick": cmd_pick,
     "mill": cmd_mill, "shear": cmd_shear,
     "quests": cmd_quests, "quest": cmd_quests, "journal": cmd_quests,
+    "achievements": cmd_achievements, "achievement": cmd_achievements,
+    "diary": cmd_achievements,
     "examine": cmd_examine,
     "map": cmd_map, "automap": cmd_automap, "membership": cmd_membership,
     "pray": cmd_pray, "prayer": cmd_pray, "prayers": cmd_pray,
@@ -3651,6 +4279,7 @@ def dispatch(player, raw):
             return False
         combat_action(player, raw)
         _regen_energy(player)
+        _check_achievements(player)
         return True
     if not raw:
         return True
@@ -3673,6 +4302,7 @@ def dispatch(player, raw):
     # acting (anything but travelling) slowly restores run energy
     if verb not in ("travel", "rest"):
         _regen_energy(player)
+    _check_achievements(player)
     return True
 
 
@@ -3835,9 +4465,12 @@ def web_room_actions(player):
     if getattr(player, "combat", None) is not None:
         m = player.combat
         foods = [i for i in player.inventory if "heal" in ITEMS.get(i, {})]
+        pots = [i for i in player.inventory if ITEMS.get(i, {}).get("potion")]
         acts = [{"label": "Attack", "cmd": "attack"}]
         if foods:
             acts.append({"label": f"Eat {foods[0]}", "cmd": f"eat {foods[0]}"})
+        if pots:
+            acts.append({"label": f"Drink {pots[0]}", "cmd": f"drink {pots[0]}"})
         acts.append({"label": "Pray", "cmd": "pray"})
         acts.append({"label": "Flee", "cmd": "flee"})
         return json.dumps([{"name": f"fighting {m['name']}", "kind": "monster",
