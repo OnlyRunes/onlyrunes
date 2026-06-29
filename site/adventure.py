@@ -2559,6 +2559,10 @@ def cmd_travel(p, arg):
         say(f"You don't know the way to '{arg}'. Cities: "
             + ", ".join(TRAVEL_NAMES))
         return
+    if ROOMS[room].get("members") and not getattr(p, "members", False):
+        say(f"{ROOMS[room]['name']} is in members' lands — you can't travel "
+            "there yet. Type 'membership' to unlock it.", "bmagenta")
+        return
     if p.location == room:
         say(f"You're already in {ROOMS[room]['name']}.")
         return
@@ -2842,11 +2846,13 @@ def cmd_fish(p, arg):
         say("No fishing spot here.")
         return
     # choose a tool the player has
-    tool_map = {"net": "net", "rod": "rod", "fly": "fly"}
+    tool_map = {"net": "net", "rod": "rod", "fly": "fly",
+                "harpoon": "harpoon", "cage": "cage"}
     usable = [t for t in tools if p.find_tool(tool_map[t])]
     if not usable:
         needed = {"net": "small fishing net", "rod": "fishing rod",
-                  "fly": "fly fishing rod"}
+                  "fly": "fly fishing rod", "harpoon": "harpoon",
+                  "cage": "lobster pot"}
         say("You need: " + " or ".join(needed[t] for t in tools))
         return
     tool = usable[0]
@@ -4540,6 +4546,139 @@ def player_to_json(player):
 
 def player_from_json(text):
     return deserialize(json.loads(text))
+
+
+# ===========================================================================
+#  WORLD EXPANSION  (Kandarin route, Karamja, guilds, wilderness, fishing)
+# ===========================================================================
+# --- Catherby fishing food (lobster / tuna / swordfish) -------------------
+add_item("lobster pot", 20, tool="cage")
+for _raw, _cooked, _heal, _val, _cxp, _clvl in [
+        ("raw tuna", "tuna", 10, 60, 100, 30),
+        ("raw lobster", "lobster", 12, 80, 120, 40),
+        ("raw swordfish", "swordfish", 14, 100, 140, 50)]:
+    add_item(_raw, _val // 2)
+    add_item(_cooked, _val, heal=_heal)
+    add_item("burnt " + _cooked, 1)
+    RAW_TO_COOKED[_raw] = (_cooked, "burnt " + _cooked, _clvl)
+    COOK_XP[_raw] = _cxp
+FISH["harpoon"] = [("raw tuna", 35, 80), ("raw swordfish", 50, 100)]
+FISH["cage"] = [("raw lobster", 40, 90)]
+SHOPS["fishing"]["harpoon"] = 5
+SHOPS["fishing"]["lobster pot"] = 20
+SHOPS["crafting"] = {"needle": 1, "thread": 5, "chisel": 1, "ball of wool": 12,
+                     "leather": 20, "thread ": 5}
+PICKPOCKET["monk"] = (5, 12, 20, 2)
+
+
+def _add_mob(name, s, drops, members=False, rank="hard"):
+    m = mob(s["hp"], s["att"], s["def"], s["maxhit"], drops, members=members)
+    m["rank"] = rank
+    m["abonus"] = s.get("abonus", 0)
+    m["atktype"] = s.get("atktype", ["crush"])
+    m["weakness"] = s.get("weak", "crush")
+    m["dbonus"] = {"stab": s["dstab"], "slash": s["dslash"], "crush": s["dcrush"],
+                   "magic": s["dmagic"], "ranged": s["drange"]}
+    MONSTERS[name] = m
+
+
+_add_mob("chaos druid", {"abonus":0,"atktype":["crush"],"att":8,"cb":13,"dcrush":0,"def":12,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":20,"maxhit":2,"str":8,"weak":"stab"}, [("bones", 1, 1, 1.0), ("coins", 1, 28, 0.7),
+    ("grimy guam", 1, 2, 0.3), ("grimy marrentill", 1, 2, 0.25),
+    ("grimy tarromin", 1, 1, 0.15), ("grimy ranarr", 1, 1, 0.05),
+    ("law rune", 1, 3, 0.1)], members=True, rank="medium")
+_add_mob("white wolf", {"abonus":0,"atktype":["stab"],"att":20,"cb":25,"dcrush":0,"def":22,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":34,"maxhit":3,"str":16,"weak":"stab"}, [("bones", 1, 1, 1.0), ("coins", 1, 20, 0.5)],
+    members=True, rank="hard")
+_add_mob("deadly red spider", {"abonus":0,"atktype":["stab"],"att":30,"cb":34,"dcrush":7,"def":30,"dmagic":12,"drange":16,"dslash":16,"dstab":15,"hp":35,"maxhit":3,"str":25,"weak":"crush"}, [("bones", 1, 1, 1.0), ("coins", 5, 40, 0.6),
+    ("grimy harralander", 1, 2, 0.2), ("steel arrow", 5, 15, 0.3)],
+    members=True, rank="hard")
+_add_mob("jogre", {"abonus":22,"atktype":["crush"],"att":43,"cb":53,"dcrush":0,"def":43,"dmagic":0,"drange":0,"dslash":0,"dstab":0,"hp":60,"maxhit":7,"str":43,"weak":"stab"}, [("bones", 1, 1, 1.0), ("big bones", 1, 1, 0.3),
+    ("coins", 10, 60, 0.8)], members=True, rank="elite")
+_add_mob("paladin", {"abonus":0,"atktype":["slash"],"att":134,"cb":49,"dcrush":40,"def":28,"dmagic":30,"drange":20,"dslash":40,"dstab":20,"hp":55,"maxhit":6,"str":48,"weak":"stab"}, [("bones", 1, 1, 1.0), ("coins", 80, 220, 1.0),
+    ("law rune", 1, 4, 0.2)], members=True, rank="elite")
+
+# --- New rooms ------------------------------------------------------------
+ROOMS.update({
+    "mining_guild": dict(name="Mining Guild",
+        desc="A bustling guild mine rich with coal, gold, mithril and "
+             "adamantite ore.",
+        exits={"out": "dwarven_mine"},
+        rocks=["coal", "gold", "mithril", "adamantite"]),
+    "crafting_guild": dict(name="Crafting Guild",
+        desc="Master crafters work here. A tannery, a spinning wheel and a "
+             "supply shop serve members of the guild.",
+        exits={"out": "falador_west"},
+        tanner=True, spinning_wheel=True, shop="crafting"),
+    "monastery": dict(name="Edgeville Monastery",
+        desc="A peaceful monastery. Monks tend an altar where prayer can be "
+             "restored — and their pockets jingle with coin.",
+        exits={"east": "edgeville"},
+        prayer_altar=True, pickpocket=["monk"]),
+    "deep_wilderness": dict(name="Deep Wilderness",
+        desc="The lawless wastes stretch north. Dark warriors and giants roam, "
+             "and the air hums with danger.",
+        exits={"south": "wilderness_edge"},
+        monsters=["dark warrior", "hill giant", "hobgoblin"]),
+    # ---- Kandarin (members) via Taverley -----------------------------------
+    "taverley": dict(name="Taverley",
+        desc="A druidic village west of Falador, gateway to Kandarin. A bank "
+             "stands by the road, and a dungeon yawns below. (members)",
+        exits={"east": "falador_west", "down": "taverley_dungeon",
+               "west": "white_wolf_mountain"},
+        bank=True, members=True),
+    "taverley_dungeon": dict(name="Taverley Dungeon",
+        desc="A sprawling cavern. Chaos druids gather herbs while giants stomp "
+             "in the dark. (members)",
+        exits={"up": "taverley"},
+        monsters=["chaos druid", "hill giant", "deadly red spider"], members=True),
+    "white_wolf_mountain": dict(name="White Wolf Mountain",
+        desc="A snow-capped pass between Taverley and Catherby, prowled by "
+             "white wolves. (members)",
+        exits={"east": "taverley", "west": "catherby"},
+        monsters=["white wolf"], members=True),
+    "catherby": dict(name="Catherby",
+        desc="A seaside town with the finest fishing in Kandarin — tuna, "
+             "swordfish and lobster. A bank sits by the shore. (members)",
+        exits={"east": "white_wolf_mountain", "north": "seers_village"},
+        bank=True, fish_tools=["net", "harpoon", "cage"], members=True),
+    "seers_village": dict(name="Seers' Village",
+        desc="A quiet village beside Camelot, with a bank and roads west to "
+             "Ardougne. (members)",
+        exits={"south": "catherby", "west": "ardougne"},
+        bank=True, members=True),
+    "ardougne": dict(name="Ardougne",
+        desc="A grand split city. The market square bustles with stalls and "
+             "pickpocketable crowds; paladins patrol the palace. (members)",
+        exits={"east": "seers_village"},
+        bank=True, pickpocket=["man", "woman"], monsters=["paladin"],
+        members=True),
+    # ---- Karamja extension (members) ---------------------------------------
+    "brimhaven": dict(name="Brimhaven",
+        desc="A tropical port on eastern Karamja. Jogres lumber through the "
+             "jungle and a bank serves adventurers. (members)",
+        exits={"west": "karamja_port"},
+        bank=True, monsters=["jogre", "scorpion"], members=True),
+    "karamja_volcano": dict(name="Karamja Volcano",
+        desc="A smoking caldera riddled with lava tunnels and deadly red "
+             "spiders. (members)",
+        exits={"out": "karamja_port"},
+        monsters=["deadly red spider"], members=True),
+})
+
+# --- Wire new exits into existing rooms -----------------------------------
+ROOMS["dwarven_mine"]["exits"]["guild"] = "mining_guild"
+ROOMS["falador_west"]["exits"]["guild"] = "crafting_guild"
+ROOMS["falador_west"]["exits"]["west"] = "taverley"
+ROOMS["edgeville"]["exits"]["west"] = "monastery"
+ROOMS["wilderness_edge"]["exits"]["north"] = "deep_wilderness"
+ROOMS["karamja_port"]["exits"]["east"] = "brimhaven"
+ROOMS["karamja_port"]["exits"]["volcano"] = "karamja_volcano"
+
+# --- New travel destinations ----------------------------------------------
+TRAVEL_HUBS.update({"taverley": "taverley", "catherby": "catherby",
+                    "seers village": "seers_village", "seers": "seers_village",
+                    "ardougne": "ardougne", "brimhaven": "brimhaven"})
+TRAVEL_NAMES.extend(["Taverley", "Catherby", "Seers' Village", "Ardougne",
+                     "Brimhaven"])
 
 
 if __name__ == "__main__":
