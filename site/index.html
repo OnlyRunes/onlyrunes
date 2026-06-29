@@ -248,6 +248,9 @@
       pyodide.FS.writeFile("adventure.py", code);
       mod = pyodide.pyimport("adventure");
       mod.enable_web();
+      // dev/test commands (maxme) only on beta + local dev, never on live
+      const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      if (IS_BETA || IS_LOCAL) mod.enable_beta();
     } catch (e) {
       w("\r\n\x1b[91mFailed to load the game: " + e + "\x1b[0m\r\n");
       w("\x1b[90m(If you opened this as a file, run a local server instead —\r\n");

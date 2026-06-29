@@ -43,6 +43,7 @@ def _supports_color():
 
 COLOR = _supports_color()
 WEB = False          # set by enable_web() when running in the browser (Pyodide)
+BETA = False         # set by enable_beta(); gates dev/test-only commands
 
 # Style/colour codes
 _CODES = {
@@ -862,13 +863,13 @@ MONSTERS = {
     "cow": mob(8, 1, 1, 1, [("bones", 1, 1, 1.0), ("cowhide", 1, 1, 1.0),
                             ("raw beef", 1, 1, 1.0)]),
     "goblin": mob(5, 1, 1, 2, [("bones", 1, 1, 1.0), ("coins", 1, 12, 0.7)]),
-    "giant rat": mob(8, 2, 1, 2, [("bones", 1, 1, 1.0), ("raw beef", 1, 1, 0.5)]),
+    "giant rat": mob(5, 1, 1, 1, [("bones", 1, 1, 1.0), ("raw beef", 1, 1, 0.5)]),
     "barbarian": mob(18, 7, 5, 3, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.8),
                                    ("bronze sword", 1, 1, 0.1)]),
     "guard": mob(22, 9, 8, 3, [("bones", 1, 1, 1.0), ("coins", 10, 40, 0.9)]),
-    "scorpion": mob(14, 7, 5, 3, [("bones", 1, 1, 0.0)]),
-    "skeleton": mob(18, 9, 6, 3, [("bones", 1, 1, 1.0), ("coins", 5, 25, 0.6)]),
-    "zombie": mob(18, 9, 6, 4, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.6)]),
+    "scorpion": mob(10, 4, 3, 2, [("bones", 1, 1, 0.0)]),
+    "skeleton": mob(16, 7, 5, 3, [("bones", 1, 1, 1.0), ("coins", 5, 25, 0.6)]),
+    "zombie": mob(16, 7, 5, 3, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.6)]),
     "dark wizard": mob(14, 7, 5, 4, [("bones", 1, 1, 1.0), ("mind rune", 1, 5, 0.5),
                                      ("chaos rune", 1, 2, 0.2)]),
     "hobgoblin": mob(28, 14, 10, 4, [("bones", 1, 1, 1.0), ("coins", 10, 50, 0.8),
@@ -878,7 +879,7 @@ MONSTERS = {
                                       ("law rune", 1, 3, 0.1)]),
     "count draynor": mob(30, 12, 8, 4, [("bones", 1, 1, 1.0)], weak="stake"),
     # --- additional monsters ---
-    "giant spider": mob(20, 12, 8, 2, [("bones", 1, 1, 1.0), ("coins", 1, 15, 0.5)]),
+    "giant spider": mob(16, 8, 5, 2, [("bones", 1, 1, 1.0), ("coins", 1, 15, 0.5)]),
     "dwarf": mob(14, 8, 6, 2, [("bones", 1, 1, 1.0), ("coins", 3, 25, 0.9)]),
     "minotaur": mob(18, 10, 7, 3, [("bones", 1, 1, 1.0), ("coins", 5, 30, 0.9),
                                    ("iron arrow", 5, 15, 0.4)]),
@@ -1232,13 +1233,20 @@ class Player:
         self.run_energy = 100     # 0-100; spent travelling, regained by acting
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
-        # starter kit
-        for it, q in [("bronze sword", 1), ("bronze pickaxe", 1),
+        # starter kit — now includes basic armour so new adventurers aren't
+        # one-shot fodder (combat felt punishing with just a sword + 10 HP).
+        for it, q in [("bronze sword", 1), ("bronze full helm", 1),
+                      ("bronze platebody", 1), ("bronze platelegs", 1),
+                      ("bronze kiteshield", 1), ("leather gloves", 1),
+                      ("leather boots", 1), ("bronze pickaxe", 1),
                       ("bronze axe", 1), ("small fishing net", 1),
                       ("tinderbox", 1), ("hammer", 1), ("shears", 1),
-                      ("bread", 1), ("coins", 25)]:
+                      ("bread", 3), ("coins", 25)]:
             self.add(it, q)
-        self.equip_item("bronze sword", silent=True)
+        for it in ("bronze sword", "bronze full helm", "bronze platebody",
+                   "bronze platelegs", "bronze kiteshield", "leather gloves",
+                   "leather boots"):
+            self.equip_item(it, silent=True)
 
     # --- skills ---------------------------------------------------------
     def lvl(self, skill):
@@ -1483,9 +1491,10 @@ def _victory(p, m):
     say(f"You have defeated the {m['name']}!", "bgreen", "bold")
     _award_combat_xp(p, m["hp"])
     _roll_drops(p, m)
-    if p.hp < p.max_hp:          # a kill always restores 1 HP
-        p.hp = min(p.max_hp, p.hp + 1)
-        print("  " + paint("You recover 1 HP from the victory.", "grey"))
+    if p.hp < p.max_hp:          # a kill restores some HP (scales with level)
+        heal = max(1, p.max_hp // 12)
+        p.hp = min(p.max_hp, p.hp + heal)
+        print("  " + paint(f"You recover {heal} HP from the victory.", "grey"))
 
 
 def fight_auto(p, mname):
@@ -2663,6 +2672,10 @@ def _grind_fight(p, target, count):
     kills = 0
     outcome = "done"
     for n in range(1, count + 1):
+        # don't wade into another to-the-death fight while badly hurt
+        if p.hp <= p.max_hp * 0.4 and kills > 0:
+            outcome = "retreat"
+            break
         before_xp = {s: p.skills[s] for s in SKILLS}
         before_inv = {i: q for i, q in p.inventory.items()}
         before_lvls = {s: p.lvl(s) for s in SKILLS}
@@ -3314,6 +3327,69 @@ def cmd_examine(p, arg):
 DIRECTIONS = {"n": "north", "s": "south", "e": "east", "w": "west",
               "u": "up", "d": "down"}
 
+def _best_gear_for_style(style):
+    """Best-in-slot item per equipment slot for a combat style (ignores reqs)."""
+    def score(eq):
+        if style == "ranged":
+            return eq.get("ranged", 0) * 3 + eq.get("def", 0) * 0.1
+        if style == "magic":
+            return eq.get("magic", 0) * 3 + eq.get("def", 0) * 0.1
+        return eq.get("att", 0) + eq.get("str", 0) * 2 + eq.get("def", 0) * 0.1
+    best, best_score = {}, {}
+    for name, info in ITEMS.items():
+        eq = info.get("equip")
+        slot = eq.get("slot") if eq else None
+        if not slot:
+            continue
+        sc = score(eq)
+        if sc <= 0:                       # irrelevant to this style
+            continue
+        if slot not in best_score or sc > best_score[slot]:
+            best_score[slot], best[slot] = sc, name
+    return best
+
+
+def cmd_devmax(p, arg):
+    """[beta only] Max all skills + equip best gear for the current style."""
+    if not BETA:
+        return say("You don't know how to do that. Type 'help'.")
+    for s in SKILLS:
+        p.skills[s] = _XP_TABLE[99]
+    p.members = True
+    p.hp = p.max_hp
+    p.prayer_points = p.prayer_max()
+    p.run_energy = 100
+    # stock every rune so magic always works
+    runes = set()
+    for sp in SPELLS.values():
+        runes.update(sp.get("runes", {}))
+    for r in runes:
+        if r in ITEMS:
+            p.add(r, 100000)
+    # wipe loadout, then equip best-in-slot for the active style
+    for slot in list(p.equipment):
+        p.equipment[slot] = None
+    for slot, item in _best_gear_for_style(p.style).items():
+        p.add(item)
+        p.equip_item(item, silent=True)
+    if p.style == "ranged" and p.equipment.get("ammo"):
+        p.add(p.equipment["ammo"], 100000)          # a full quiver
+    if p.style == "magic":
+        combat = [s for s, d in SPELLS.items() if d.get("type") == "combat"]
+        if combat:
+            p.autocast = max(combat, key=lambda s: SPELLS[s]["max"])
+    banner("DEV MODE", color="bmagenta", line_color="purple")
+    say(f"All skills set to 99, members unlocked, best {p.style} gear equipped.",
+        "bmagenta", "bold")
+    if p.style == "magic":
+        say(f"Autocasting {p.autocast}; runes stocked.", "grey")
+    elif p.style == "ranged":
+        say("Quiver stocked with arrows.", "grey")
+    say("Tip: change style with 'style', then run 'maxme' again to re-gear.",
+        "grey")
+    cmd_equipment(p, "")
+
+
 HANDLERS = {
     "look": cmd_look, "l": cmd_look, "exits": cmd_look,
     "go": cmd_go,
@@ -3350,6 +3426,8 @@ HANDLERS = {
     "task": cmd_task, "slayer": cmd_task,
     "save": cmd_save, "load": cmd_load,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
+    # dev/test only — no-op unless enable_beta() was called (beta/localhost)
+    "maxme": cmd_devmax, "devmax": cmd_devmax, "dev": cmd_devmax,
 }
 
 
@@ -3434,6 +3512,12 @@ def enable_web():
     global COLOR, WEB
     COLOR = True
     WEB = True
+
+
+def enable_beta():
+    """Unlock dev/test-only commands (the browser calls this on beta/localhost)."""
+    global BETA
+    BETA = True
 
 
 def _capture(fn, *args, **kwargs):
