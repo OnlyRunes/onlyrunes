@@ -1,7 +1,6 @@
 # OnlyRunes — Gear & Bonuses (OSRS per-type model)
 
-_Auto-generated from `adventure.py`. Real OSRS bonuses for the items this game uses._
-_Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng · Str=melee str, RngStr=ranged str, Mdmg%=magic dmg, Pray=prayer. `M`=members._
+_Auto-generated from `adventure.py`. `M`=members._
 
 ## Weapon
 
@@ -23,6 +22,7 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Mithril Pickaxe | +12 | -2 | +10 | · | · | · | +1 | · | · | · | +13 | · | · | · | attack 20 | 240 |  |
 | Black Scimitar | +4 | +19 | -2 | · | · | · | +1 | · | · | · | +14 | · | · | · | attack 10 | 280 |  |
 | Mithril Sword | +16 | +11 | -2 | · | · | · | +2 | +1 | · | · | +17 | · | · | · | attack 20 | 360 |  |
+| Maple Shortbow | · | · | · | · | +29 | · | · | · | · | · | · | · | · | · | ranged 30 | 400 |  |
 | Mithril Scimitar | +5 | +21 | -2 | · | · | · | +1 | · | · | · | +20 | · | · | · | attack 20 | 480 |  |
 | Adamant Pickaxe | +17 | -2 | +15 | · | · | · | +1 | · | · | · | +19 | · | · | · | attack 30 | 500 |  |
 | Adamant Sword | +23 | +18 | -2 | · | · | · | +2 | +1 | · | · | +24 | · | · | · | attack 30 | 750 |  |
@@ -32,10 +32,17 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Staff Of Water | · | -1 | +7 | +10 | · | +2 | +3 | +1 | +10 | · | +3 | · | · | · | attack 1 | 1,500 |  |
 | Staff Of Earth | +1 | -1 | +9 | +10 | · | +2 | +3 | +1 | +10 | · | +5 | · | · | · | attack 1 | 1,500 |  |
 | Staff Of Fire | +3 | -1 | +9 | +10 | · | +2 | +3 | +1 | +10 | · | +6 | · | · | · | attack 1 | 1,500 |  |
+| Magic Shortbow | · | · | · | · | +69 | · | · | · | · | · | · | · | · | · | ranged 50 | 1,600 | ✓ |
 | Rune Sword | +38 | +26 | -2 | · | · | · | +2 | +1 | · | · | +39 | · | · | · | attack 40 | 1,800 |  |
 | Rune Scimitar | +7 | +45 | -2 | · | · | · | +1 | · | · | · | +44 | · | · | · | attack 40 | 2,400 |  |
+| Rune Crossbow | · | · | · | · | +90 | · | · | · | · | · | · | · | · | · | ranged 61 | 16,200 | ✓ |
 | Dragon Dagger | +40 | +25 | -4 | +1 | · | · | · | · | +1 | · | +40 | · | · | · | attack 60 | 30,000 | ✓ |
 | Hill Giant Club | -4 | +50 | +65 | -4 | · | · | · | · | · | -1 | +70 | · | · | · | attack 40 | 45,000 |  |
+| Dragon Mace | +40 | -2 | +60 | · | · | · | · | · | · | · | +55 | · | · | +5 | attack 60 | 50,000 | ✓ |
+| Granite Maul | · | · | +81 | · | · | · | · | · | · | · | +79 | · | · | · | attack 50, strength 50 | 50,000 | ✓ |
+| Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100,000 | ✓ |
+| Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100,000 | ✓ |
+| Abyssal Whip | · | +82 | · | · | · | · | · | · | · | · | +82 | · | · | · | attack 70 | 120,001 | ✓ |
 
 ## Ammo
 
@@ -47,6 +54,8 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Mithril Arrow | · | · | · | · | · | · | · | · | · | · | · | +22 | · | · | — | 14 |  |
 | Adamant Arrow | · | · | · | · | · | · | · | · | · | · | · | +31 | · | · | — | 17 |  |
 | Rune Arrow | · | · | · | · | · | · | · | · | · | · | · | +49 | · | · | — | 20 |  |
+| Adamant Bolts | · | · | · | · | · | · | · | · | · | · | · | +100 | · | · | ranged 36 | 58 | ✓ |
+| Runite Bolts | · | · | · | · | · | · | · | · | · | · | · | +115 | · | · | ranged 61 | 300 | ✓ |
 
 ## Head
 
@@ -57,11 +66,14 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Bronze Full Helm | · | · | · | -6 | -3 | +4 | +5 | +3 | -1 | +4 | · | · | · | · | defence 1 | 35 |  |
 | Iron Full Helm | · | · | · | -6 | -3 | +6 | +7 | +5 | -1 | +6 | · | · | · | · | defence 1 | 70 |  |
 | Steel Full Helm | · | · | · | -6 | -3 | +9 | +10 | +7 | -1 | +9 | · | · | · | · | defence 5 | 140 |  |
+| Coif | · | · | · | -1 | +2 | +4 | +6 | +8 | +4 | +4 | · | · | · | · | — | 200 |  |
 | Black Full Helm | · | · | · | -6 | -3 | +12 | +13 | +10 | -1 | +12 | · | · | · | · | defence 10 | 245 |  |
 | Mithril Full Helm | · | · | · | -6 | -3 | +13 | +14 | +11 | -1 | +13 | · | · | · | · | defence 20 | 420 |  |
 | Adamant Full Helm | · | · | · | -6 | -3 | +19 | +21 | +16 | -1 | +19 | · | · | · | · | defence 30 | 875 |  |
 | Rune Full Helm | · | · | · | -6 | -3 | +30 | +32 | +27 | -1 | +30 | · | · | · | · | defence 40 | 2,100 |  |
+| Mystic Hat | · | · | · | +4 | · | · | · | · | +4 | · | · | · | · | · | magic 40, defence 20 | 15,000 | ✓ |
 | Dragon Med Helm | · | · | · | -3 | · | +33 | +35 | +32 | -1 | +34 | · | · | · | · | defence 60 | 60,000 | ✓ |
+| Berserker Helm | · | · | · | -5 | -5 | +31 | +29 | +33 | · | +30 | +3 | · | · | · | defence 45 | 60,000 | ✓ |
 
 ## Body
 
@@ -74,8 +86,12 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Steel Platebody | · | · | · | -30 | -15 | +32 | +31 | +24 | -6 | +31 | · | · | · | · | defence 5 | 400 |  |
 | Black Platebody | · | · | · | -30 | -15 | +41 | +40 | +30 | -6 | +40 | · | · | · | · | defence 10 | 700 |  |
 | Mithril Platebody | · | · | · | -30 | -15 | +46 | +44 | +38 | -6 | +44 | · | · | · | · | defence 20 | 1,200 |  |
+| Snakeskin Body | · | · | · | -5 | +12 | +25 | +28 | +32 | +15 | +35 | · | · | · | · | ranged 30, defence 30 | 1,250 | ✓ |
 | Adamant Platebody | · | · | · | -30 | -15 | +65 | +63 | +55 | -6 | +63 | · | · | · | · | defence 30 | 2,500 |  |
 | Rune Platebody | · | · | · | -30 | -15 | +82 | +80 | +72 | -6 | +80 | · | · | · | · | defence 40 | 6,000 |  |
+| Green D'Hide Body | · | · | · | -15 | +15 | +18 | +27 | +24 | +20 | +35 | · | · | · | · | ranged 40, defence 40 | 7,800 |  |
+| Mystic Robe Top | · | · | · | +20 | · | · | · | · | +20 | · | · | · | · | · | magic 40, defence 20 | 120,000 | ✓ |
+| Dragon Chainbody | · | · | · | -15 | · | +81 | +93 | +98 | -3 | +82 | · | · | · | · | defence 60 | 250,000 | ✓ |
 
 ## Legs
 
@@ -87,7 +103,10 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Black Platelegs | · | · | · | -21 | -11 | +21 | +20 | +19 | -4 | +20 | · | · | · | · | defence 10 | 490 |  |
 | Mithril Platelegs | · | · | · | -21 | -11 | +24 | +22 | +20 | -4 | +22 | · | · | · | · | defence 20 | 840 |  |
 | Adamant Platelegs | · | · | · | -21 | -11 | +33 | +31 | +29 | -4 | +31 | · | · | · | · | defence 30 | 1,750 |  |
+| Green D'Hide Chaps | · | · | · | -10 | +8 | +12 | +15 | +18 | +8 | +17 | · | · | · | · | ranged 40 | 3,900 |  |
 | Rune Platelegs | · | · | · | -21 | -11 | +51 | +49 | +47 | -4 | +49 | · | · | · | · | defence 40 | 4,200 |  |
+| Mystic Robe Bottom | · | · | · | +15 | · | · | · | · | +15 | · | · | · | · | · | magic 40, defence 20 | 80,000 | ✓ |
+| Dragon Platelegs | · | · | · | -21 | -11 | +68 | +66 | +63 | -4 | +65 | · | · | · | · | defence 60 | 270,000 | ✓ |
 
 ## Shield
 
@@ -100,6 +119,7 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Mithril Kiteshield | · | · | · | -8 | -3 | +18 | +22 | +20 | -1 | +20 | · | · | · | · | defence 20 | 720 |  |
 | Adamant Kiteshield | · | · | · | -8 | -3 | +27 | +31 | +29 | -1 | +29 | · | · | · | · | defence 30 | 1,500 |  |
 | Rune Kiteshield | · | · | · | -8 | -3 | +44 | +48 | +46 | -1 | +46 | · | · | · | · | defence 40 | 3,600 |  |
+| Dragon Kiteshield | · | · | · | -8 | -3 | +56 | +60 | +58 | -1 | +58 | · | · | · | · | defence 60 | 1,600,000 | ✓ |
 
 ## Amulet
 
@@ -111,6 +131,7 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 | Amulet Of Magic | · | · | · | +10 | · | · | · | · | · | · | · | · | · | · | — | 1,000 |  |
 | Amulet Of Power | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | · | · | +1 | — | 1,500 |  |
 | Amulet Of Strength | · | · | · | · | · | · | · | · | · | · | +10 | · | · | · | — | 1,800 |  |
+| Amulet Of Glory | +10 | +10 | +10 | +10 | +10 | +3 | +3 | +3 | +3 | +3 | +6 | · | · | +3 | — | 17,625 | ✓ |
 
 ## Cape
 
@@ -131,6 +152,8 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Leather Gloves | · | · | · | · | · | · | +1 | +2 | · | · | · | · | · | · | — | 12 |  |
 | Hardleather Gloves | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | · | · | · | — | 30 |  |
+| Green D'Hide Vambraces | · | · | · | -10 | +8 | +1 | +2 | +2 | +2 | · | · | · | · | · | ranged 40 | 2,500 |  |
+| Mystic Gloves | · | · | · | +3 | · | · | · | · | +3 | · | · | · | · | · | magic 40, defence 20 | 10,000 | ✓ |
 
 ## Boots
 
@@ -138,6 +161,8 @@ _Attack: stab/slash/crush/aMag/aRng · Defence: dStab/dSlash/dCrush/dMag/dRng ·
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Leather Boots | · | · | · | · | · | · | +1 | +1 | · | · | · | · | · | · | — | 12 |  |
 | Climbing Boots | · | · | · | · | · | · | +2 | +2 | · | · | +2 | · | · | · | — | 120 | ✓ |
+| Mystic Boots | · | · | · | +3 | · | · | · | · | +3 | · | · | · | · | · | magic 40, defence 20 | 10,000 | ✓ |
+| Dragon Boots | · | · | · | -3 | -1 | +16 | +17 | +18 | · | · | +4 | · | · | · | defence 60 | 20,000 | ✓ |
 
 ## Ring
 

@@ -4680,6 +4680,49 @@ TRAVEL_HUBS.update({"taverley": "taverley", "catherby": "catherby",
 TRAVEL_NAMES.extend(["Taverley", "Catherby", "Seers' Village", "Ardougne",
                      "Brimhaven"])
 
+# ===========================================================================
+#  COMBAT-TRIANGLE GEAR EXPANSION  (real OSRS gear for all 3 styles)
+# ===========================================================================
+# Obtainable at the Grand Exchange ('ge buy <item>'); top-tier also drops.
+add_item('dragon scimitar', 100000, equip={'astab': 8, 'aslash': 67, 'acrush': -2, 'dslash': 1, 'str': 66, 'slot': 'weapon', 'req': {'attack': 60}}, members=True)
+add_item('abyssal whip', 120001, equip={'aslash': 82, 'str': 82, 'slot': 'weapon', 'req': {'attack': 70}}, members=True)
+add_item('dragon mace', 50000, equip={'astab': 40, 'aslash': -2, 'acrush': 60, 'str': 55, 'prayer': 5, 'slot': 'weapon', 'req': {'attack': 60}}, members=True)
+add_item('dragon longsword', 100000, equip={'astab': 58, 'aslash': 69, 'acrush': -2, 'dslash': 3, 'dcrush': 2, 'str': 71, 'slot': 'weapon', 'req': {'attack': 60}}, members=True)
+add_item('granite maul', 50000, equip={'acrush': 81, 'str': 79, 'slot': 'weapon', 'req': {'attack': 50, 'strength': 50}}, members=True)
+add_item('dragon platelegs', 270000, equip={'amagic': -21, 'arange': -11, 'dstab': 68, 'dslash': 66, 'dcrush': 63, 'dmagic': -4, 'drange': 65, 'slot': 'legs', 'req': {'defence': 60}}, members=True)
+add_item('dragon chainbody', 250000, equip={'amagic': -15, 'dstab': 81, 'dslash': 93, 'dcrush': 98, 'dmagic': -3, 'drange': 82, 'slot': 'body', 'req': {'defence': 60}}, members=True)
+add_item('dragon kiteshield', 1600000, equip={'amagic': -8, 'arange': -3, 'dstab': 56, 'dslash': 60, 'dcrush': 58, 'dmagic': -1, 'drange': 58, 'slot': 'shield', 'req': {'defence': 60}}, members=True)
+add_item('dragon boots', 20000, equip={'amagic': -3, 'arange': -1, 'dstab': 16, 'dslash': 17, 'dcrush': 18, 'str': 4, 'slot': 'boots', 'req': {'defence': 60}}, members=True)
+add_item('berserker helm', 60000, equip={'amagic': -5, 'arange': -5, 'dstab': 31, 'dslash': 29, 'dcrush': 33, 'drange': 30, 'str': 3, 'slot': 'head', 'req': {'defence': 45}}, members=True)
+add_item('maple shortbow', 400, equip={'arange': 29, 'slot': 'weapon', 'req': {'ranged': 30}})
+add_item('magic shortbow', 1600, equip={'arange': 69, 'slot': 'weapon', 'req': {'ranged': 50}}, members=True)
+add_item('rune crossbow', 16200, equip={'arange': 90, 'slot': 'weapon', 'req': {'ranged': 61}}, members=True)
+add_item('runite bolts', 300, equip={'rstr': 115, 'slot': 'ammo', 'req': {'ranged': 61}}, members=True)
+add_item('adamant bolts', 58, equip={'rstr': 100, 'slot': 'ammo', 'req': {'ranged': 36}}, members=True)
+add_item("green d'hide body", 7800, equip={'amagic': -15, 'arange': 15, 'dstab': 18, 'dslash': 27, 'dcrush': 24, 'dmagic': 20, 'drange': 35, 'slot': 'body', 'req': {'ranged': 40, 'defence': 40}})
+add_item("green d'hide chaps", 3900, equip={'amagic': -10, 'arange': 8, 'dstab': 12, 'dslash': 15, 'dcrush': 18, 'dmagic': 8, 'drange': 17, 'slot': 'legs', 'req': {'ranged': 40}})
+add_item("green d'hide vambraces", 2500, equip={'amagic': -10, 'arange': 8, 'dstab': 1, 'dslash': 2, 'dcrush': 2, 'dmagic': 2, 'slot': 'gloves', 'req': {'ranged': 40}})
+add_item('coif', 200, equip={'amagic': -1, 'arange': 2, 'dstab': 4, 'dslash': 6, 'dcrush': 8, 'dmagic': 4, 'drange': 4, 'slot': 'head'})
+add_item('snakeskin body', 1250, equip={'amagic': -5, 'arange': 12, 'dstab': 25, 'dslash': 28, 'dcrush': 32, 'dmagic': 15, 'drange': 35, 'slot': 'body', 'req': {'ranged': 30, 'defence': 30}}, members=True)
+add_item('mystic hat', 15000, equip={'amagic': 4, 'dmagic': 4, 'slot': 'head', 'req': {'magic': 40, 'defence': 20}}, members=True)
+add_item('mystic robe top', 120000, equip={'amagic': 20, 'dmagic': 20, 'slot': 'body', 'req': {'magic': 40, 'defence': 20}}, members=True)
+add_item('mystic robe bottom', 80000, equip={'amagic': 15, 'dmagic': 15, 'slot': 'legs', 'req': {'magic': 40, 'defence': 20}}, members=True)
+add_item('mystic gloves', 10000, equip={'amagic': 3, 'dmagic': 3, 'slot': 'gloves', 'req': {'magic': 40, 'defence': 20}}, members=True)
+add_item('mystic boots', 10000, equip={'amagic': 3, 'dmagic': 3, 'slot': 'boots', 'req': {'magic': 40, 'defence': 20}}, members=True)
+add_item('amulet of glory', 17625, equip={'astab': 10, 'aslash': 10, 'acrush': 10, 'amagic': 10, 'arange': 10, 'dstab': 3, 'dslash': 3, 'dcrush': 3, 'dmagic': 3, 'drange': 3, 'str': 6, 'prayer': 3, 'slot': 'amulet'}, members=True)
+
+SPELLS.update({
+    "wind blast":  {"type":"combat","max":13,"lvl":41,"xp":25.5,"runes":{"air rune":3,"death rune":1}},
+    "water blast": {"type":"combat","max":14,"lvl":47,"xp":28.5,"runes":{"water rune":3,"air rune":3,"death rune":1}},
+    "earth blast": {"type":"combat","max":15,"lvl":53,"xp":31.5,"runes":{"earth rune":4,"air rune":3,"death rune":1}},
+    "fire blast":  {"type":"combat","max":16,"lvl":59,"xp":34.5,"runes":{"fire rune":5,"air rune":4,"death rune":1}},
+})
+
+MONSTERS["king black dragon"]["drops"].append(("dragon platelegs", 1, 1, 0.03))
+MONSTERS["obor"]["drops"].append(("dragon mace", 1, 1, 0.06))
+MONSTERS["greater demon"]["drops"].append(("abyssal whip", 1, 1, 0.01))
+
+
 
 if __name__ == "__main__":
     main()
