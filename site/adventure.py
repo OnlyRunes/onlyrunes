@@ -1671,6 +1671,7 @@ class Player:
         self.kill_log = {}        # monster name -> kill count (bestiary)
         self.bosses = []          # boss names defeated
         self.potions_made = 0     # potions brewed (for the Herbalist achievement)
+        self.tips_seen = []       # one-time tips already shown (e.g. backup nudge)
         # starter kit — now includes basic armour so new adventurers aren't
         # one-shot fodder (combat felt punishing with just a sword + 10 HP).
         for it, q in [("bronze sword", 1), ("bronze full helm", 1),
@@ -4190,7 +4191,8 @@ def serialize(p):
             "kills": getattr(p, "kills", 0),
             "kill_log": dict(getattr(p, "kill_log", {})),
             "bosses": list(getattr(p, "bosses", [])),
-            "potions_made": getattr(p, "potions_made", 0)}
+            "potions_made": getattr(p, "potions_made", 0),
+            "tips_seen": list(getattr(p, "tips_seen", []))}
 
 
 def deserialize(data):
@@ -4219,6 +4221,7 @@ def deserialize(data):
     p.kill_log = data.get("kill_log", {})
     p.bosses = data.get("bosses", [])
     p.potions_made = data.get("potions_made", 0)
+    p.tips_seen = data.get("tips_seen", [])
     # restore quest-spawned monster
     if p.quests.get("vampyre_slayer") == "started" and \
             "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
@@ -4262,11 +4265,48 @@ def cmd_help(_p, _a):
         "Town": "bank, deposit/withdraw <item> [n], shop, buy/sell <item> [n], "
                 "ge buy/sell <item> [n]",
         "Quests": "talk, search",
-        "System": "save, help, quit",
+        "System": "save, tutorial, feedback, help, quit",
     }
     for g, c in groups.items():
         say(f"\n{g}:")
         say("  " + c)
+
+
+GITHUB_ISSUES = "https://github.com/OnlyRunes/onlyrunes/issues"
+
+
+def _intro_tips():
+    """A concise getting-started guide for brand-new players."""
+    banner("Getting Started", color="bgreen", line_color="green")
+    for k, v in [
+        ("Move", "type a direction (n/s/e/w) — or tap the arrow buttons."),
+        ("Look", "'look' shows what's here, who's around, and your exits."),
+        ("Fight", "'fight chicken' (or tap a creature). Win XP and loot."),
+        ("Progress", "'stats' for levels, 'inventory' for items, 'equipment' for gear."),
+        ("Spend", "'bank' to store loot; 'shop' and 'ge' to buy & sell."),
+        ("Help", "'help' lists every command; 'tutorial' shows this again."),
+    ]:
+        print("  " + paint(f"{k}: ", "byellow") + paint(v, "white"))
+    print("  " + paint("First goal: ", "bcyan")
+          + paint("head west to the cow field, win a few fights, then bank your "
+                  "loot and cook the raw beef.", "white"))
+    print("  " + paint("⚑ Heads up: ", "byellow")
+          + paint("your progress saves in THIS browser only. Type ", "grey")
+          + paint("save export", "byellow")
+          + paint(" to back it up (vital before switching devices).", "grey"))
+
+
+def cmd_tutorial(_p, _a):
+    _intro_tips()
+
+
+def cmd_feedback(_p, _a):
+    banner("Feedback & Bug Reports", color="bcyan", line_color="teal")
+    say("  Found a bug, got stuck, or have an idea? We'd love to hear it!", "white")
+    print("  " + paint("Report it here: ", "white")
+          + paint(GITHUB_ISSUES, "bcyan", "bold"))
+    say("  Tip: include what you were doing and (if you can) your character name.",
+        "grey")
 
 
 def _drop_rarity(chance):
@@ -4460,10 +4500,33 @@ HANDLERS = {
     "travel": cmd_travel, "rest": cmd_rest,
     "task": cmd_task, "slayer": cmd_task,
     "save": cmd_save, "load": cmd_load,
+    "tutorial": cmd_tutorial, "guide": cmd_tutorial, "intro": cmd_tutorial,
+    "feedback": cmd_feedback, "bug": cmd_feedback, "report": cmd_feedback,
     "help": cmd_help, "commands": cmd_help, "?": cmd_help,
-    # dev/test only — no-op unless enable_beta() was called (beta/localhost)
+    # dev/test only — no-op unless enable_beta() was called (beta/localhost).
+    # Hidden from web autocomplete/help even on beta (see web_commands()).
     "maxme": cmd_devmax, "devmax": cmd_devmax, "dev": cmd_devmax,
 }
+
+# verbs kept out of the web tab-completion list (dev tools; still runnable)
+_HIDDEN_VERBS = {"maxme", "devmax", "dev"}
+
+
+def _backup_nudge(p):
+    """One-time reminder to export a save once a player has some progress."""
+    seen = getattr(p, "tips_seen", None)
+    if seen is None:
+        seen = p.tips_seen = []
+    if "backup" in seen:
+        return
+    if p.combat_level() >= 10 or sum(p.lvl(s) for s in SKILLS) >= 60:
+        seen.append("backup")
+        print()
+        print("  " + paint("⚑ Tip: ", "byellow")
+              + paint("you're making progress! Your game saves in this browser "
+                      "only — type ", "grey")
+              + paint("save export", "byellow")
+              + paint(" to back it up so you never lose your character.", "grey"))
 
 
 def dispatch(player, raw):
@@ -4477,6 +4540,7 @@ def dispatch(player, raw):
         combat_action(player, raw)
         _regen_energy(player)
         _check_achievements(player)
+        _backup_nudge(player)
         return True
     if not raw:
         return True
@@ -4500,6 +4564,7 @@ def dispatch(player, raw):
     if verb not in ("travel", "rest"):
         _regen_energy(player)
     _check_achievements(player)
+    _backup_nudge(player)
     return True
 
 
@@ -4507,6 +4572,8 @@ def run(player, greet=True):
     if greet:
         print(paint(f"\nWelcome to Gielinor, {player.name}! ", "bgreen", "bold")
               + paint("Type 'help' for commands.", "grey"))
+        _intro_tips()
+        print()
         cmd_look(player, "")
     while True:
         try:
@@ -4576,10 +4643,12 @@ def web_logo():
 
 
 def web_welcome(player):
-    """Welcome line + room description when a session begins."""
+    """Welcome line + getting-started guide + room, for a brand-new session."""
     def _show():
         print(paint(f"\nWelcome to Gielinor, {player.name}! ", "bgreen", "bold")
-              + paint("Type 'help' for commands.", "grey"))
+              + paint("New here? This will get you going:", "grey"))
+        _intro_tips()
+        print()
         cmd_look(player, "")
     return _capture(_show)
 
@@ -4657,8 +4726,8 @@ def _room_exits(player):
 def web_commands():
     """Sorted command verbs for the browser's tab-completion / history."""
     verbs = set(HANDLERS) | set(DIRECTIONS)
-    if not BETA:                      # hide dev commands unless on beta/local
-        verbs -= {"maxme", "devmax", "dev"}
+    # dev tools stay runnable on beta but are hidden from autocomplete/help
+    verbs -= _HIDDEN_VERBS
     verbs.discard("?")
     return json.dumps(sorted(verbs))
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="build" content="2026-06-29-ui">
+<meta name="build" content="2026-06-29-onboarding">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
@@ -131,10 +131,12 @@
     #statusbar { gap: 8px 12px; font-size: 12px; padding: 6px 9px; }
     .meter { width: 56px; }
     .hint { font-size: 12px; }
-    .btn, .navbtn { padding: 8px 12px; font-size: 13px; }
+    /* bigger, finger-friendly tap targets on phones (~44px min) */
+    .btn, .navbtn { padding: 10px 13px; font-size: 13px; min-height: 42px; }
     .chip { padding: 6px 8px; }
     .chip .name { font-size: 13px; }
-    .chip .act { padding: 7px 12px; font-size: 13px; }
+    .chip .act { padding: 10px 13px; font-size: 13px; min-height: 42px; }
+    #sendBtn { padding: 0 18px; min-height: 44px; }
     footer { font-size: 11px; padding: 12px 10px 22px; }
   }
 </style>
@@ -429,7 +431,8 @@
       const qb = document.getElementById("quickbar");
       const cmds = [["Look", "look"], ["Stats", "stats"], ["Inventory", "inventory"],
                     ["Equipment", "equipment"], ["Map", "map"], ["Quests", "quests"],
-                    ["Bestiary", "bestiary"], ["Help", "help"]];
+                    ["Bestiary", "bestiary"], ["Tutorial", "tutorial"],
+                    ["Help", "help"], ["Feedback", "feedback"]];
       for (const [label, cmd] of cmds) {
         const b = document.createElement("button");
         b.className = "btn"; b.textContent = label;
