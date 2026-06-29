@@ -883,6 +883,17 @@ for mname, req, t in METALS:
                  "str": 2 + t, "req": {"attack": req}})
         add_item(f"{mname} axe", 16 * v, tool="axe", tier=t)
 
+# --- Daggers (stab weapons; real OSRS per-type bonuses) -------------------
+# Smith menu lists "dagger"; these make it real and give an early stab option.
+_DAGGER_STATS = {"bronze": (4, 2, 3), "iron": (5, 3, 4), "steel": (8, 4, 7),
+                 "black": (10, 5, 7), "mithril": (11, 5, 10),
+                 "adamant": (15, 8, 14), "rune": (25, 12, 24)}
+for mname, req, t in METALS:
+    astab, aslash, strb = _DAGGER_STATS[mname]
+    add_item(f"{mname} dagger", 10 * TIER_VALUE[t],
+             equip={"slot": "weapon", "astab": astab, "aslash": aslash,
+                    "acrush": -4, "str": strb, "req": {"attack": req}})
+
 # --- Ranged gear ----------------------------------------------------------
 add_item("shortbow", 20, equip={"slot": "weapon", "ranged": 8, "req": {"ranged": 1}})
 add_item("oak shortbow", 40, equip={"slot": "weapon", "ranged": 14, "req": {"ranged": 5}})
@@ -1823,9 +1834,23 @@ class Player:
 #  COMBAT
 # ===========================================================================
 def _accuracy(att_roll, def_roll):
+    # clamp rolls so heavy off-style gear (very negative bonuses) can't push the
+    # probability below 0 / above 1 — keeps the result a sane [0,1] chance.
+    att_roll = max(0, att_roll)
+    def_roll = max(0, def_roll)
     if att_roll > def_roll:
         return 1 - (def_roll + 2) / (2 * (att_roll + 1))
     return att_roll / (2 * (def_roll + 1))
+
+
+def _style_atk_bonus(p):
+    """The player's offensive accuracy bonus for their current combat style."""
+    if p.style == "ranged":
+        return p.equip_bonus("arange")
+    if p.style == "magic":
+        return p.equip_bonus("amagic")
+    atype = getattr(p, "attack_type", "slash")
+    return p.equip_bonus(AKEY.get(atype, "aslash"))
 
 
 def _best_attack_type(item):
@@ -2148,6 +2173,10 @@ def _start_combat(p, mname):
           + paint(p.style, STYLE_COLOR.get(p.style, "white"), "bold")
           + paint(f" / {getattr(p, 'attack_type', 'slash')}", "grey")
           + paint("   ('auto' fights with 'fight <foe> auto')", "grey"))
+    if _style_atk_bonus(p) < 0:        # off-style gear sabotages accuracy
+        print("  " + paint(f"⚠ Your gear has poor {p.style} attack — expect "
+                           f"misses. Wear {p.style} gear (see 'equipment').",
+                           "byellow"))
     _combat_prompt(p)
 
 
@@ -4738,7 +4767,7 @@ FISH["cage"] = [("raw lobster", 40, 90)]
 SHOPS["fishing"]["harpoon"] = 5
 SHOPS["fishing"]["lobster pot"] = 20
 SHOPS["crafting"] = {"needle": 1, "thread": 5, "chisel": 1, "ball of wool": 12,
-                     "leather": 20, "thread ": 5}
+                     "leather": 20}
 PICKPOCKET["monk"] = (5, 12, 20, 2)
 
 
