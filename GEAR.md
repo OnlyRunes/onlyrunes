@@ -16,15 +16,19 @@ _Auto-generated from `adventure.py`. `M`=members._
 | Willow Shortbow | · | · | · | · | +20 | · | · | · | · | · | · | · | · | · | ranged 20 | 70 |  |
 | Iron Scimitar | +2 | +10 | -2 | · | · | · | +1 | · | · | · | +9 | · | · | · | attack 1 | 80 |  |
 | Steel Pickaxe | +8 | -2 | +6 | · | · | · | +1 | · | · | · | +9 | · | · | · | attack 5 | 80 |  |
+| Longbow | · | · | · | · | +8 | · | · | · | · | · | · | · | · | · | ranged 1 | 80 |  |
 | Steel Sword | +11 | +8 | -2 | · | · | · | +2 | +1 | · | · | +12 | · | · | · | attack 5 | 120 |  |
 | Steel Scimitar | +3 | +15 | -2 | · | · | · | +1 | · | · | · | +14 | · | · | · | attack 5 | 160 |  |
+| Oak Longbow | · | · | · | · | +14 | · | · | · | · | · | · | · | · | · | ranged 5 | 160 |  |
 | Black Sword | +14 | +10 | -2 | · | · | · | +2 | +1 | · | · | +12 | · | · | · | attack 10 | 210 |  |
 | Mithril Pickaxe | +12 | -2 | +10 | · | · | · | +1 | · | · | · | +13 | · | · | · | attack 20 | 240 |  |
 | Black Scimitar | +4 | +19 | -2 | · | · | · | +1 | · | · | · | +14 | · | · | · | attack 10 | 280 |  |
+| Willow Longbow | · | · | · | · | +20 | · | · | · | · | · | · | · | · | · | ranged 20 | 320 | ✓ |
 | Mithril Sword | +16 | +11 | -2 | · | · | · | +2 | +1 | · | · | +17 | · | · | · | attack 20 | 360 |  |
 | Maple Shortbow | · | · | · | · | +29 | · | · | · | · | · | · | · | · | · | ranged 30 | 400 |  |
 | Mithril Scimitar | +5 | +21 | -2 | · | · | · | +1 | · | · | · | +20 | · | · | · | attack 20 | 480 |  |
 | Adamant Pickaxe | +17 | -2 | +15 | · | · | · | +1 | · | · | · | +19 | · | · | · | attack 30 | 500 |  |
+| Maple Longbow | · | · | · | · | +29 | · | · | · | · | · | · | · | · | · | ranged 30 | 640 | ✓ |
 | Adamant Sword | +23 | +18 | -2 | · | · | · | +2 | +1 | · | · | +24 | · | · | · | attack 30 | 750 |  |
 | Adamant Scimitar | +6 | +29 | -2 | · | · | · | +1 | · | · | · | +28 | · | · | · | attack 30 | 1,000 |  |
 | Rune Pickaxe | +26 | -2 | +24 | · | · | · | +1 | · | · | · | +29 | · | · | · | attack 40 | 1,200 |  |

@@ -684,9 +684,9 @@ SKILLS = [
     "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
     "mining", "runecrafting",
     # members skills
-    "thieving", "agility", "slayer", "herblore",
+    "thieving", "agility", "slayer", "herblore", "fletching",
 ]
-MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore"}
+MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore", "fletching"}
 
 
 # ===========================================================================
@@ -2661,7 +2661,7 @@ SKILL_COLOR = {
     "fishing": "bcyan", "firemaking": "orange", "crafting": "brown",
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
     "thieving": "purple", "agility": "lime", "slayer": "teal",
-    "herblore": "lime",
+    "herblore": "lime", "fletching": "bcyan",
 }
 
 
@@ -2996,13 +2996,25 @@ def cmd_smith(p, arg):
     p.gain_xp("smithing", nbars * (12 + base_lvl // 3))
 
 
-def cmd_spin(p, _a):
+def cmd_spin(p, arg):
     r = ROOMS[p.location]
     if not r.get("spinning_wheel"):
-        say("You need a spinning wheel (Lumbridge Castle).")
+        say("You need a spinning wheel (Lumbridge Castle, Crafting Guild).")
+        return
+    want = arg.strip().lower()
+    # flax -> bow string (Crafting); wool -> ball of wool
+    if (want in ("flax", "bow string", "bowstring")) or (not want and p.has("flax")
+                                                         and not p.has("wool")):
+        if not p.has("flax"):
+            say("You have no flax to spin.")
+            return
+        p.take("flax")
+        p.add("bow string")
+        say("You spin the flax into a bow string.", "bcyan")
+        p.gain_xp("crafting", 15)
         return
     if not p.has("wool"):
-        say("You have no wool to spin.")
+        say("You have no wool (or flax) to spin.")
         return
     p.take("wool")
     p.add("ball of wool")
@@ -4739,6 +4751,106 @@ MONSTER_ART.update({
     'paladin': '\n      .+.\n     [o o]   a paladin\n     /|+|\\\n',
     'white wolf': '\n     /\\_/\\\n    ( o o )   a white wolf\n     >\\^/<\n',
 })
+
+
+# ===========================================================================
+#  FLETCHING  (members skill: carve logs into bows, string them with flax)
+# ===========================================================================
+add_item("knife", 6, tool="knife")
+add_item("flax", 4)
+add_item("bow string", 12)
+add_item("maple logs", 64, log_fm_xp=135)
+add_item("longbow", 80, equip={"slot": "weapon", "arange": 8, "req": {"ranged": 1}})
+add_item("oak longbow", 160, equip={"slot": "weapon", "arange": 14, "req": {"ranged": 5}})
+add_item("willow longbow", 320, members=True,
+         equip={"slot": "weapon", "arange": 20, "req": {"ranged": 20}})
+add_item("maple longbow", 640, members=True,
+         equip={"slot": "weapon", "arange": 29, "req": {"ranged": 30}})
+for _u in ["shortbow (u)", "longbow (u)", "oak shortbow (u)", "oak longbow (u)",
+           "willow shortbow (u)", "willow longbow (u)", "maple shortbow (u)",
+           "maple longbow (u)"]:
+    add_item(_u, 8)
+
+FLETCH_CUT = {
+    "logs": [("shortbow (u)", 5, 5), ("longbow (u)", 10, 10)],
+    "oak logs": [("oak shortbow (u)", 20, 16), ("oak longbow (u)", 25, 25)],
+    "willow logs": [("willow shortbow (u)", 35, 33), ("willow longbow (u)", 40, 42)],
+    "maple logs": [("maple shortbow (u)", 50, 50), ("maple longbow (u)", 55, 58)],
+}
+FLETCH_STRING = {
+    "shortbow (u)": ("shortbow", 5, 5), "longbow (u)": ("longbow", 10, 10),
+    "oak shortbow (u)": ("oak shortbow", 20, 16), "oak longbow (u)": ("oak longbow", 25, 25),
+    "willow shortbow (u)": ("willow shortbow", 35, 33),
+    "willow longbow (u)": ("willow longbow", 40, 42),
+    "maple shortbow (u)": ("maple shortbow", 50, 50),
+    "maple longbow (u)": ("maple longbow", 55, 58),
+}
+
+
+def cmd_fletch(p, arg):
+    if not getattr(p, "members", False):
+        say("Fletching is members-only. Type 'membership' to unlock it.", "bmagenta")
+        return
+    name = arg.strip().lower()
+    cut = {u: (log, lvl, xp) for log, opts in FLETCH_CUT.items()
+           for u, lvl, xp in opts}
+    if not name:
+        opts = []
+        if p.has("knife"):
+            for u, (log, lvl, xp) in cut.items():
+                if p.has(log) and p.lvl("fletching") >= lvl:
+                    opts.append(u)
+        for u, (bow, lvl, xp) in FLETCH_STRING.items():
+            if p.has(u) and p.has("bow string") and p.lvl("fletching") >= lvl:
+                opts.append(bow)
+        say("Fletch what? You can make: " + (", ".join(opts) if opts else
+            "(need a knife + logs, or an unstrung bow + a bow string)"), "bcyan")
+        return
+    for u, (bow, lvl, xp) in FLETCH_STRING.items():
+        if name == bow:
+            if not p.has(u):
+                say(f"You need a {u} first - fletch one from logs.", "byellow")
+                return
+            if not p.has("bow string"):
+                say("You need a bow string (spin flax on a spinning wheel).", "byellow")
+                return
+            if p.lvl("fletching") < lvl:
+                say(f"You need Fletching level {lvl} to make a {bow}.", "byellow")
+                return
+            p.take(u); p.take("bow string"); p.add(bow)
+            say(f"You string the {u} into a {bow}.", "bcyan")
+            p.gain_xp("fletching", xp)
+            return
+    if name in cut:
+        log, lvl, xp = cut[name]
+        if not p.has("knife"):
+            say("You need a knife to fletch.", "byellow")
+            return
+        if not p.has(log):
+            say(f"You need {log} to fletch a {name}.", "byellow")
+            return
+        if p.lvl("fletching") < lvl:
+            say(f"You need Fletching level {lvl} to fletch a {name}.", "byellow")
+            return
+        p.take(log); p.add(name)
+        say(f"You carve the {log} into a {name}.", "bcyan")
+        p.gain_xp("fletching", xp)
+        return
+    say("You can't fletch that. Type 'fletch' to see options.", "grey")
+
+
+HANDLERS["fletch"] = cmd_fletch
+HANDLERS["string"] = cmd_fletch
+
+# Sources in Kandarin + supply shops
+TREES["maple"] = ("maple logs", 45, 100)
+ROOMS["seers_village"]["trees"] = ["maple"]
+ROOMS["seers_village"]["spinning_wheel"] = True
+ROOMS["catherby"]["trees"] = ["tree", "oak", "willow"]
+SHOPS["general"]["knife"] = 6
+SHOPS["crafting"]["knife"] = 6
+SHOPS["crafting"]["flax"] = 4
+SHOPS["crafting"]["bow string"] = 12
 
 
 if __name__ == "__main__":
