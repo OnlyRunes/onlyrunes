@@ -268,60 +268,94 @@ ART_DRAGON = r"""
 """
 
 # ---- Boss animation frames -----------------------------------------------
-# The three-headed King Black Dragon: a rigid body so the frames animate in
-# place; only the eyes, the fire plume (left) and the colour change.
+# The three-headed King Black Dragon: horned heads, spread membrane wings,
+# clawed body and tail. The body (rows 1, 4-15) is identical across the intro
+# frames so it animates rock-steady in place — only the heads (eyes/jaws) and
+# the colour change as it wakes, roars and breathes fire.
 KBD_CALM = r"""
-                /\   /\   /\
-               (oo) (oo) (oo)
-                \    |    /
-           ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
+       /\_/\      /\_/\      /\_/\
+      < o o >    < o o >    < o o >
+       \._./      \._./      \._./
+         \          |          /
+     _    \____     |     ____/    _
+    / \_      \ \   |   / /      _/ \
+   / /\ \______\ \__|__/ /______/ /\ \
+  / /  \________ \     / ________/  \ \
+  \/   /        \|     |/        \   \/
+        \________/|   |\________/
+              \   \\ //   /
+               \___\_V_/___/
+                   /| |\
+                  /_| |_\
+                    \_/
 """
-KBD_FIRE1 = r"""
-                /\   /\   /\
-      ~=*>     (^^) (oo) (^^)
-     ~==*>      \    |    /
-           ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
+KBD_RAGE = r"""
+       /\_/\      /\_/\      /\_/\
+      < O O >    < O O >    < O O >
+       \VVV/      \VVV/      \VVV/
+         \          |          /
+     _    \____     |     ____/    _
+    / \_      \ \   |   / /      _/ \
+   / /\ \______\ \__|__/ /______/ /\ \
+  / /  \________ \     / ________/  \ \
+  \/   /        \|     |/        \   \/
+        \________/|   |\________/
+              \   \\ //   /
+               \___\_V_/___/
+                   /| |\
+                  /_| |_\
+                    \_/
 """
-KBD_FIRE2 = r"""
-                /\   /\   /\
-   ~~==**>     (XX) (^^) (XX)
-  ~~===***>     \    |    /
-   ~~==**> ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
+KBD_BLAZE = r"""
+       /\_/\      /\_/\      /\_/\
+     <(@ @)>    <(@ @)>    <(@ @)>
+      }\≈≈≈/{    }\≈≈≈/{    }\≈≈≈/{
+         \          |          /
+     _    \____     |     ____/    _
+    / \_      \ \   |   / /      _/ \
+   / /\ \______\ \__|__/ /______/ /\ \
+  / /  \________ \     / ________/  \ \
+  \/   /        \|     |/        \   \/
+        \________/|   |\________/
+              \   \\ //   /
+               \___\_V_/___/
+                   /| |\
+                  /_| |_\
+                    \_/
 """
 KBD_DIE1 = r"""
-                \/   \/   \/
-               (xx) (xx) (xx)
-                \    |    /
-           ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
+       /\_/\      /\_/\      /\_/\
+      < x x >    < x x >    < x x >
+       \___/      \___/      \___/
+         \          |          /
+     _    \____     |     ____/    _
+    / \_      \ \   |   / /      _/ \
+   / /\ \______\ \__|__/ /______/ /\ \
+  / /  \________ \     / ________/  \ \
+  \/   /        \|     |/        \   \/
+        \________/|   |\________/
+              \   \\ //   /
+               \___\_V_/___/
+                   /| |\
+                  /_| |_\
+                    \_/
 """
 KBD_DIE2 = r"""
-               (xx)(xx)(xx)
-              ___\__|__/___
-             /     \|/      \
-            /  __   |   __   \
-            \_/  \_____/  \_/
+      x_x   x_x   x_x
+       \  \  |  /  /
+    _   \__\_|_/__/   _
+   / \____  \   /  ____/ \
+   \    \ \__\_/__/ /    /
+    \____\__     __/____/
+            \ \ / /
+             \_V_/
+             / | \
 """
 KBD_DIE3 = r"""
-              .  .  .   .
-           __  .  __  .   __
-          (xx)__(xx)__(xx)
-         ~~~ rubble & ash ~~~
+        .  .   .    .
+     __   .  __   .   __
+    (xx)__   ''   __(xx)
+   ~ ~ ashes & rubble ~ ~
 """
 
 # Count Draynor: a giant vampyre that flares its wings and bares its fangs.
@@ -364,15 +398,17 @@ GEN_ROAR = r"""
 
 
 def _kbd_intro(name):
+    # emerges from the dark -> wakes -> roars -> breathes fire -> settles enraged
     return [_tint(KBD_CALM, "grey"), _tint(KBD_CALM, "bred", "bold"),
-            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
-            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
-            _tint(KBD_CALM, "bred", "bold")]
+            _tint(KBD_RAGE, "bred", "bold"), _tint(KBD_BLAZE, "orange", "bold"),
+            _tint(KBD_BLAZE, "byellow", "bold"), _tint(KBD_RAGE, "orange", "bold"),
+            _tint(KBD_BLAZE, "byellow", "bold"), _tint(KBD_RAGE, "bred", "bold")]
 
 
 def _kbd_death(name):
-    return [_tint(KBD_DIE1, "bred"), _tint(KBD_DIE1, "grey"),
-            _tint(KBD_DIE2, "grey"), _tint(KBD_DIE3, "grey", "dim")]
+    return [_tint(KBD_RAGE, "bred"), _tint(KBD_DIE1, "bred"),
+            _tint(KBD_DIE1, "grey"), _tint(KBD_DIE2, "grey"),
+            _tint(KBD_DIE3, "grey", "dim")]
 
 
 def _count_intro(name):
