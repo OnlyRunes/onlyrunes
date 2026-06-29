@@ -4590,6 +4590,11 @@ def web_command(player, line):
 def web_status(player):
     """Compact live status for the browser status bar (HUD)."""
     drain = getattr(player, "stat_drain", {}) or {}
+    m = getattr(player, "combat", None)
+    enemy = None
+    if m:
+        enemy = {"name": m["name"], "hp": max(0, m["cur"]), "max": m["hp"],
+                 "level": m.get("level")}
     return json.dumps({
         "name": player.name,
         "combat": player.combat_level(),
@@ -4599,11 +4604,13 @@ def web_status(player):
         "total": sum(player.lvl(s) for s in SKILLS),
         "location": ROOMS[player.location]["name"],
         "style": player.style,
+        "stance": getattr(player, "attack_type", "slash"),
         "energy": int(getattr(player, "run_energy", 100)),
         "members": bool(getattr(player, "members", False)),
         "prayer": int(getattr(player, "prayer_points", 0)),
         "prayer_max": player.prayer_max(),
-        "in_combat": getattr(player, "combat", None) is not None,
+        "in_combat": m is not None,
+        "enemy": enemy,
         "poison": int(getattr(player, "poison", 0)),
         "frozen": bool(getattr(player, "frozen", False)),
         "drain": max(drain.values()) if drain else 0,
@@ -4640,6 +4647,7 @@ def web_room_actions(player):
         if pots:
             acts.append({"label": f"Drink {pots[0]}", "cmd": f"drink {pots[0]}"})
         acts.append({"label": "Pray", "cmd": "pray"})
+        acts.append({"label": "Examine", "cmd": f"examine {m['name']}"})
         acts.append({"label": "Flee", "cmd": "flee"})
         return json.dumps([{"name": f"fighting {m['name']}", "kind": "monster",
                             "actions": acts}])
@@ -4650,6 +4658,7 @@ def web_room_actions(player):
             {"label": "Attack", "cmd": f"fight {m}"},
             {"label": "Auto ×5", "cmd": f"fight {m} 5"},
             {"label": "Auto all", "cmd": f"fight {m} all"},
+            {"label": "Examine", "cmd": f"examine {m}"},
         ]})
     for t in r.get("trees", []):
         label = "tree" if t == "tree" else f"{t} tree"

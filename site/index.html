@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="build" content="2026-06-28-ui">
+<meta name="build" content="2026-06-29-ui">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
@@ -56,7 +56,8 @@
   .meter > i { display: block; height: 100%; width: 100%;
     transition: width .18s ease, background .18s ease; }
   .m-hp { background: #3fa34d; } .m-pray { background: #4a90d6; }
-  .m-run { background: #caa53a; }
+  .m-run { background: #caa53a; } .m-foe { background: #d64f4f; }
+  #st-foe b#foe-name { color: #ff8a8a; }
   #afflict { display: inline-flex; gap: 6px; }
   .aff { font-size: 11px; padding: 1px 7px; border-radius: 8px;
     border: 1px solid; font-family: ui-monospace, Menlo, Consolas, monospace; }
@@ -153,6 +154,7 @@
       <span><span class="lbl">GP</span> <b id="st-gp">0</b></span>
       <span><span class="lbl">at</span> <b id="st-loc">—</b></span>
       <span class="lbl" id="st-style"></span>
+      <span id="st-foe" style="display:none"><span class="lbl">vs</span> <b id="foe-name">—</b> <span class="meter"><i id="foefill" class="m-foe"></i></span> <b id="foe-hp"></b></span>
       <span id="afflict"></span>
     </div>
     <div id="terminal" aria-label="Game terminal"></div>
@@ -341,11 +343,24 @@
       document.getElementById("st-pray").textContent = (st.prayer ?? 0) + "/" + (st.prayer_max ?? 0);
       document.getElementById("st-gp").textContent = (st.coins || 0).toLocaleString();
       document.getElementById("st-loc").textContent = st.location;
-      document.getElementById("st-style").textContent = st.style + (st.members ? " · member" : "");
+      const styleTxt = st.style + (st.style === "melee" && st.stance ? "/" + st.stance : "")
+        + (st.members ? " · member" : "");
+      document.getElementById("st-style").textContent = styleTxt;
       document.getElementById("st-energy").textContent = (st.energy ?? 100) + "%";
       setMeter("hpfill", st.hp, st.max_hp, "hp");
       setMeter("prayfill", st.prayer ?? 0, st.prayer_max ?? 1);
       setMeter("runfill", st.energy ?? 100, 100);
+      // live enemy HP bar (only while fighting)
+      const foe = document.getElementById("st-foe");
+      if (st.enemy) {
+        foe.style.display = "";
+        document.getElementById("foe-name").textContent =
+          st.enemy.name + (st.enemy.level ? " (lvl " + st.enemy.level + ")" : "");
+        document.getElementById("foe-hp").textContent = st.enemy.hp + "/" + st.enemy.max;
+        setMeter("foefill", st.enemy.hp, st.enemy.max);
+      } else {
+        foe.style.display = "none";
+      }
       // live combat afflictions (poison / frozen / stat drain)
       const aff = document.getElementById("afflict");
       let h = "";
@@ -414,7 +429,7 @@
       const qb = document.getElementById("quickbar");
       const cmds = [["Look", "look"], ["Stats", "stats"], ["Inventory", "inventory"],
                     ["Equipment", "equipment"], ["Map", "map"], ["Quests", "quests"],
-                    ["Help", "help"]];
+                    ["Bestiary", "bestiary"], ["Help", "help"]];
       for (const [label, cmd] of cmds) {
         const b = document.createElement("button");
         b.className = "btn"; b.textContent = label;
