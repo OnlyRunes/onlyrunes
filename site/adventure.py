@@ -268,94 +268,78 @@ ART_DRAGON = r"""
 """
 
 # ---- Boss animation frames -----------------------------------------------
-# The three-headed King Black Dragon: horned heads, spread membrane wings,
-# clawed body and tail. The body (rows 1, 4-15) is identical across the intro
-# frames so it animates rock-steady in place — only the heads (eyes/jaws) and
-# the colour change as it wakes, roars and breathes fire.
+# The three-headed King Black Dragon. The body is identical across the intro
+# frames (only the eyes, the left fire-plume and colour change) so it animates
+# rock-steady in place. KBD_BREATH* is a short fire-breath played each time the
+# dragon attacks you during the fight.
 KBD_CALM = r"""
-       /\_/\      /\_/\      /\_/\
-      < o o >    < o o >    < o o >
-       \._./      \._./      \._./
-         \          |          /
-     _    \____     |     ____/    _
-    / \_      \ \   |   / /      _/ \
-   / /\ \______\ \__|__/ /______/ /\ \
-  / /  \________ \     / ________/  \ \
-  \/   /        \|     |/        \   \/
-        \________/|   |\________/
-              \   \\ //   /
-               \___\_V_/___/
-                   /| |\
-                  /_| |_\
-                    \_/
+                /\   /\   /\
+               (oo) (oo) (oo)
+                \    |    /
+           ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+                 \_____,~>
 """
-KBD_RAGE = r"""
-       /\_/\      /\_/\      /\_/\
-      < O O >    < O O >    < O O >
-       \VVV/      \VVV/      \VVV/
-         \          |          /
-     _    \____     |     ____/    _
-    / \_      \ \   |   / /      _/ \
-   / /\ \______\ \__|__/ /______/ /\ \
-  / /  \________ \     / ________/  \ \
-  \/   /        \|     |/        \   \/
-        \________/|   |\________/
-              \   \\ //   /
-               \___\_V_/___/
-                   /| |\
-                  /_| |_\
-                    \_/
+KBD_FIRE1 = r"""
+                /\   /\   /\
+      ~=*>     (^^) (oo) (^^)
+     ~==*>      \    |    /
+           ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+                 \_____,~>
 """
-KBD_BLAZE = r"""
-       /\_/\      /\_/\      /\_/\
-     <(@ @)>    <(@ @)>    <(@ @)>
-      }\≈≈≈/{    }\≈≈≈/{    }\≈≈≈/{
-         \          |          /
-     _    \____     |     ____/    _
-    / \_      \ \   |   / /      _/ \
-   / /\ \______\ \__|__/ /______/ /\ \
-  / /  \________ \     / ________/  \ \
-  \/   /        \|     |/        \   \/
-        \________/|   |\________/
-              \   \\ //   /
-               \___\_V_/___/
-                   /| |\
-                  /_| |_\
-                    \_/
+KBD_FIRE2 = r"""
+                /\   /\   /\
+   ~~==**>     (XX) (^^) (XX)
+  ~~===***>     \    |    /
+   ~~==**> ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+                 \_____,~>
 """
 KBD_DIE1 = r"""
-       /\_/\      /\_/\      /\_/\
-      < x x >    < x x >    < x x >
-       \___/      \___/      \___/
-         \          |          /
-     _    \____     |     ____/    _
-    / \_      \ \   |   / /      _/ \
-   / /\ \______\ \__|__/ /______/ /\ \
-  / /  \________ \     / ________/  \ \
-  \/   /        \|     |/        \   \/
-        \________/|   |\________/
-              \   \\ //   /
-               \___\_V_/___/
-                   /| |\
-                  /_| |_\
-                    \_/
+                \/   \/   \/
+               (xx) (xx) (xx)
+                \    |    /
+           ______\___|___/______
+          /      \   |   /      \
+         /  /\    \__|__/    /\   \
+         \_/  \____________/  \_/
+                /_|     |_\
+                 \_____,~>
 """
 KBD_DIE2 = r"""
-      x_x   x_x   x_x
-       \  \  |  /  /
-    _   \__\_|_/__/   _
-   / \____  \   /  ____/ \
-   \    \ \__\_/__/ /    /
-    \____\__     __/____/
-            \ \ / /
-             \_V_/
-             / | \
+               (xx)(xx)(xx)
+              ___\__|__/___
+             /     \|/      \
+            /  __   |   __   \
+            \_/  \_____/  \_/
 """
 KBD_DIE3 = r"""
-        .  .   .    .
-     __   .  __   .   __
-    (xx)__   ''   __(xx)
-   ~ ~ ashes & rubble ~ ~
+              .  .  .   .
+           __  .  __  .   __
+          (xx)__(xx)__(xx)
+         ~~~ rubble & ash ~~~
+"""
+# Short fire-breath played when the dragon takes its turn in combat.
+KBD_BREATH1 = r"""
+               (vv) (vv) (vv)
+                }    |    {
+                ( ~≈≈≈≈~ )
+"""
+KBD_BREATH2 = r"""
+               (VV) (VV) (VV)
+              }}}  \|/  {{{
+           (  ~≈≈≈ FIRE ≈≈≈~  )
+            ~~≈≈≈≈≈≈≈≈≈≈≈≈≈~~
 """
 
 # Count Draynor: a giant vampyre that flares its wings and bares its fangs.
@@ -398,17 +382,21 @@ GEN_ROAR = r"""
 
 
 def _kbd_intro(name):
-    # emerges from the dark -> wakes -> roars -> breathes fire -> settles enraged
     return [_tint(KBD_CALM, "grey"), _tint(KBD_CALM, "bred", "bold"),
-            _tint(KBD_RAGE, "bred", "bold"), _tint(KBD_BLAZE, "orange", "bold"),
-            _tint(KBD_BLAZE, "byellow", "bold"), _tint(KBD_RAGE, "orange", "bold"),
-            _tint(KBD_BLAZE, "byellow", "bold"), _tint(KBD_RAGE, "bred", "bold")]
+            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
+            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
+            _tint(KBD_CALM, "bred", "bold")]
 
 
 def _kbd_death(name):
-    return [_tint(KBD_RAGE, "bred"), _tint(KBD_DIE1, "bred"),
-            _tint(KBD_DIE1, "grey"), _tint(KBD_DIE2, "grey"),
-            _tint(KBD_DIE3, "grey", "dim")]
+    return [_tint(KBD_DIE1, "bred"), _tint(KBD_DIE1, "grey"),
+            _tint(KBD_DIE2, "grey"), _tint(KBD_DIE3, "grey", "dim")]
+
+
+def _kbd_attack(name):
+    return [_tint(KBD_BREATH1, "orange", "bold"),
+            _tint(KBD_BREATH2, "byellow", "bold"),
+            _tint(KBD_BREATH2, "bred", "bold")]
 
 
 def _count_intro(name):
@@ -433,6 +421,8 @@ def _generic_boss_death(name):
 
 BOSS_INTRO = {"king black dragon": _kbd_intro, "count draynor": _count_intro}
 BOSS_DEATH = {"king black dragon": _kbd_death, "count draynor": _count_death}
+# played each time the boss attacks during the fight (None = no per-turn anim)
+BOSS_ATTACK = {"king black dragon": _kbd_attack}
 
 
 def play_boss_intro(name):
@@ -447,6 +437,13 @@ def play_boss_death(name):
     builder = BOSS_DEATH.get(name, _generic_boss_death)
     animate(builder(name), delay=0.18, center=True)
     show_art(ART_VICTORY, "gold", center=True)
+
+
+def play_boss_attack(name):
+    """Short attack flourish on the boss's turn (e.g. KBD breathes fire)."""
+    builder = BOSS_ATTACK.get(name)
+    if builder:
+        animate(builder(name), delay=0.1, center=True)
 
 
 # Small per-monster art shown at the start of a fight.
@@ -1497,6 +1494,8 @@ def _resolve_player_hit(p, m):
 
 def _resolve_monster_hit(p, m):
     """Monster swings at the player. Prints, drains prayer. Returns 'died' or None."""
+    if m.get("boss") and BOSS_ATTACK.get(m["name"]):
+        play_boss_attack(m["name"])     # boss flourish on its turn (e.g. fire)
     m_att_roll = (m["attack"] + 9) * 64
     def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
     p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
