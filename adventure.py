@@ -259,15 +259,6 @@ ART_QUEST = r"""
     '-----------------------------------------'
 """
 
-ART_DRAGON = r"""
-                       /  \\__
-                      /  /  \ \___
-       ___           (  (    )    \
-      / _ \___________\  \  /  /\   )
-     ( (_)            /  /  \ \  \ /
-      \___/          (__(    )__)
-"""
-
 # ---- Boss animation frames -----------------------------------------------
 # The three-headed King Black Dragon. The body is identical across the intro
 # frames (only the eyes, the left fire-plume and colour change) so it animates
@@ -4722,6 +4713,32 @@ MONSTERS["king black dragon"]["drops"].append(("dragon platelegs", 1, 1, 0.03))
 MONSTERS["obor"]["drops"].append(("dragon mace", 1, 1, 0.06))
 MONSTERS["greater demon"]["drops"].append(("abyssal whip", 1, 1, 0.01))
 
+
+
+# ===========================================================================
+#  MONSTER SPRITES  (art shown at the start of a fight)
+# ===========================================================================
+MONSTER_ART.update({
+    'man': '\n       o\n      /|\\    a man\n      / \\\n',
+    'chicken farmer': '\n      _o_\n      /|\\    a chicken farmer\n      / \\\n',
+    'imp': "\n     ,vv,\n     (oo)   an imp\n     /''\\\n",
+    'dwarf': '\n      ___\n     (o o)   a dwarf\n     )WWW(\n',
+    'minotaur': '\n     \\(oo)/   a minotaur\n      /||\\\n     _/  \\_\n',
+    'thug': '\n      [--]\n     ([oo])   a thug\n      /||\\\n',
+    'dark warrior': '\n      .--.\n     |x  x|   a dark warrior\n     /|##|\\\n',
+    'giant spider': '\n    /\\(oo)/\\   a giant spider\n    \\/_/\\_\\/\n',
+    'deadly red spider': '\n    /\\(xx)/\\   a deadly red spider\n    \\/>><<\\/\n',
+    'flesh crawler': '\n    (((o)))   a flesh crawler\n     >====<\n     ^^^^^^\n',
+    'zombie rat': '\n     (\\_/)\n    =(x.x)=   a zombie rat\n     (")(")\n',
+    'moss giant': '\n     #####\n    ( o  o )   a moss giant\n    /|####|\\\n',
+    'ice giant': '\n     *****\n    ( o  o )   an ice giant\n    /|::::|\\\n',
+    'lesser demon': '\n     \\(oo)/   a lesser demon\n      )##(\n      /VV\\\n',
+    'greater demon': '\n    \\\\(@@)//   a GREATER demon\n      )###(\n     /|VVV|\\\n',
+    'chaos druid': '\n      ,-.\n     (o o)   a chaos druid\n     )~~~(\n',
+    'jogre': '\n      ____\n    ( o  o )   a jogre\n    |  ==  |\n    /|    |\\\n',
+    'paladin': '\n      .+.\n     [o o]   a paladin\n     /|+|\\\n',
+    'white wolf': '\n     /\\_/\\\n    ( o o )   a white wolf\n     >\\^/<\n',
+})
 
 
 if __name__ == "__main__":
