@@ -2272,7 +2272,7 @@ REGIONS = {
     "draynor_manor": "Draynor",
     "varrock_gate": "Varrock", "varrock_square": "Varrock",
     "varrock_west_bank": "Varrock", "varrock_east_bank": "Varrock",
-    "grand_exchange": "Varrock", "varrock_palace": "Varrock",
+    "grand_exchange": "Grand Exchange", "varrock_palace": "Varrock",
     "essence_mine": "Varrock",
     "barbarian_village": "Barbarian",
     "edgeville": "Edgeville", "edgeville_dungeon": "Edgeville",
@@ -2288,9 +2288,9 @@ REGIONS = {
 }
 
 REGION_MAP = r"""
-                   [Wilderness]
-                        |
-    [Edgeville]----[Barbarian]----[Varrock]----[Grand Exch]
+                   [Wilderness]  [Grand Exch]
+                        |              |
+    [Edgeville]----[Barbarian]----[Varrock]
          |              |              |
     [Falador]----------/          [Lumbridge]----[AlKharid]
          |                          /       \
@@ -2306,6 +2306,7 @@ _REGION_TOKEN = {
     "Falador": "[Falador]", "Lumbridge": "[Lumbridge]",
     "AlKharid": "[AlKharid]", "Rimmington": "[Rimmington]",
     "Draynor": "[Draynor]", "PortSarim": "[PortSarim]", "Karamja": "[Karamja]",
+    "Grand Exchange": "[Grand Exch]",
 }
 
 
