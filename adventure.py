@@ -270,8 +270,8 @@ ART_DRAGON = r"""
 # ---- Boss animation frames -----------------------------------------------
 # The three-headed King Black Dragon. The body is identical across the intro
 # frames (only the eyes, the left fire-plume and colour change) so it animates
-# rock-steady in place. KBD_BREATH* is a short fire-breath played each time the
-# dragon attacks you during the fight.
+# rock-steady in place. The KBD_BR_* sets are its varied per-turn attacks
+# (melee bite + four dragonfire breaths), played when it attacks you in combat.
 KBD_CALM = r"""
                 /\   /\   /\
                (oo) (oo) (oo)
@@ -329,17 +329,60 @@ KBD_DIE3 = r"""
           (xx)__(xx)__(xx)
          ~~~ rubble & ash ~~~
 """
-# Short fire-breath played when the dragon takes its turn in combat.
-KBD_BREATH1 = r"""
+# The KBD's varied attacks (faithful to OSRS): melee + four dragonfire breaths,
+# each with its own short animation played on the dragon's turn.
+KBD_BR_FIRE1 = r"""
                (vv) (vv) (vv)
                 }    |    {
                 ( ~≈≈≈≈~ )
 """
-KBD_BREATH2 = r"""
+KBD_BR_FIRE2 = r"""
                (VV) (VV) (VV)
               }}}  \|/  {{{
            (  ~≈≈≈ FIRE ≈≈≈~  )
             ~~≈≈≈≈≈≈≈≈≈≈≈≈≈~~
+"""
+KBD_BR_BITE1 = r"""
+               (oo) (oo) (oo)
+               /VV\ /VV\ /VV\
+              >=== CHOMP ===<
+"""
+KBD_BR_BITE2 = r"""
+               (><) (><) (><)
+               \WW/ \WW/ \WW/
+             >>=== CRUNCH ===<<
+"""
+KBD_BR_SHOCK1 = r"""
+               (oo) (oo) (oo)
+                \z/  \z/  \z/
+               z ~=ZAP=~ z
+"""
+KBD_BR_SHOCK2 = r"""
+               (@@) (@@) (@@)
+              \_z_\ /_z_/ z
+             z~=*= SHOCK =*=~z
+"""
+KBD_BR_ICE1 = r"""
+               (oo) (oo) (oo)
+                *.   .*   *.
+               *.* . . *.*
+"""
+KBD_BR_ICE2 = r"""
+               (oo) (oo) (oo)
+              .*+. *+* .+*.
+             *+* FREEZE! +*+
+              .  *  .  *  .
+"""
+KBD_BR_POISON1 = r"""
+               (oo) (oo) (oo)
+                o O  o O  O o
+               ( ~ o ~ o ~ )
+"""
+KBD_BR_POISON2 = r"""
+               (oo) (oo) (oo)
+              O o O  o  O o O
+            ( ~o~ POISON ~o~ )
+             ~ . ~ . ~ . ~ .
 """
 
 # Count Draynor: a giant vampyre that flares its wings and bares its fangs.
@@ -393,10 +436,47 @@ def _kbd_death(name):
             _tint(KBD_DIE2, "grey"), _tint(KBD_DIE3, "grey", "dim")]
 
 
-def _kbd_attack(name):
-    return [_tint(KBD_BREATH1, "orange", "bold"),
-            _tint(KBD_BREATH2, "byellow", "bold"),
-            _tint(KBD_BREATH2, "bred", "bold")]
+def _kbd_br_fire(_=None):
+    return [_tint(KBD_BR_FIRE1, "orange", "bold"),
+            _tint(KBD_BR_FIRE2, "byellow", "bold"),
+            _tint(KBD_BR_FIRE2, "bred", "bold")]
+
+
+def _kbd_br_bite(_=None):
+    return [_tint(KBD_BR_BITE1, "grey"), _tint(KBD_BR_BITE2, "bred", "bold")]
+
+
+def _kbd_br_shock(_=None):
+    return [_tint(KBD_BR_SHOCK1, "bblue", "bold"),
+            _tint(KBD_BR_SHOCK2, "bcyan", "bold"),
+            _tint(KBD_BR_SHOCK2, "bwhite", "bold")]
+
+
+def _kbd_br_ice(_=None):
+    return [_tint(KBD_BR_ICE1, "bcyan"), _tint(KBD_BR_ICE2, "bwhite", "bold"),
+            _tint(KBD_BR_ICE1, "bcyan", "bold")]
+
+
+def _kbd_br_poison(_=None):
+    return [_tint(KBD_BR_POISON1, "green"), _tint(KBD_BR_POISON2, "bgreen", "bold"),
+            _tint(KBD_BR_POISON1, "green", "bold")]
+
+
+# Each KBD turn picks one of these (weighted). Mults scale its base max hit;
+# normal dragonfire hits hardest, the elemental breaths trade damage for an
+# effect (faithful to OSRS: shock drains stats, ice freezes, poison poisons).
+KBD_ATTACKS = [
+    {"key": "fire",   "label": "a torrent of dragonfire", "verb": "unleashes",
+     "color": ("orange", "bold"),  "builder": _kbd_br_fire,   "mult": 1.4, "w": 3},
+    {"key": "melee",  "label": "its three fanged maws",   "verb": "snaps with",
+     "color": ("bred", "bold"),    "builder": _kbd_br_bite,   "mult": 1.0, "w": 3},
+    {"key": "shock",  "label": "a crackling shock breath", "verb": "breathes",
+     "color": ("bblue", "bold"),   "builder": _kbd_br_shock,  "mult": 0.85, "w": 2},
+    {"key": "ice",    "label": "a freezing ice breath",    "verb": "breathes",
+     "color": ("bcyan", "bold"),   "builder": _kbd_br_ice,    "mult": 0.8, "w": 2},
+    {"key": "poison", "label": "a cloud of poison breath", "verb": "breathes",
+     "color": ("bgreen", "bold"),  "builder": _kbd_br_poison, "mult": 0.8, "w": 2},
+]
 
 
 def _count_intro(name):
@@ -421,8 +501,6 @@ def _generic_boss_death(name):
 
 BOSS_INTRO = {"king black dragon": _kbd_intro, "count draynor": _count_intro}
 BOSS_DEATH = {"king black dragon": _kbd_death, "count draynor": _count_death}
-# played each time the boss attacks during the fight (None = no per-turn anim)
-BOSS_ATTACK = {"king black dragon": _kbd_attack}
 
 
 def play_boss_intro(name):
@@ -437,13 +515,6 @@ def play_boss_death(name):
     builder = BOSS_DEATH.get(name, _generic_boss_death)
     animate(builder(name), delay=0.18, center=True)
     show_art(ART_VICTORY, "gold", center=True)
-
-
-def play_boss_attack(name):
-    """Short attack flourish on the boss's turn (e.g. KBD breathes fire)."""
-    builder = BOSS_ATTACK.get(name)
-    if builder:
-        animate(builder(name), delay=0.1, center=True)
 
 
 # Small per-monster art shown at the start of a fight.
@@ -1266,6 +1337,9 @@ class Player:
         self.run_energy = 100     # 0-100; spent travelling, regained by acting
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
+        self.poison = 0           # remaining poison ticks (transient combat fx)
+        self.frozen = False       # next attack fails (ice breath)
+        self.stat_drain = {}      # skill -> levels drained (shock breath)
         # starter kit — now includes basic armour so new adventurers aren't
         # one-shot fodder (combat felt punishing with just a sword + 10 HP).
         for it, q in [("bronze sword", 1), ("bronze full helm", 1),
@@ -1283,7 +1357,9 @@ class Player:
 
     # --- skills ---------------------------------------------------------
     def lvl(self, skill):
-        return level_from_xp(self.skills[skill])
+        base = level_from_xp(self.skills[skill])
+        drain = getattr(self, "stat_drain", {}).get(skill, 0)
+        return max(1, base - drain)
 
     @property
     def max_hp(self):
@@ -1492,10 +1568,81 @@ def _resolve_player_hit(p, m):
     return "won" if m["cur"] <= 0 else None
 
 
+def _clear_status(p):
+    """Drop transient combat status effects (when a fight ends)."""
+    p.poison = 0
+    p.frozen = False
+    p.stat_drain = {}
+
+
+def _tick_poison(p):
+    """Apply one tick of poison at the start of the player's turn."""
+    if getattr(p, "poison", 0) <= 0:
+        return
+    dmg = 3
+    p.poison -= 1
+    p.hp -= dmg
+    print("  " + paint(f"Poison courses through you for {dmg}.", "bgreen")
+          + "  " + paint("HP ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 18))
+
+
+def _apply_kbd_effect(p, key):
+    """The lingering effect of a KBD breath that lands on you."""
+    if key == "poison":
+        p.poison = 4
+        print("  " + paint("The poison takes hold — it will sear you each turn!",
+                           "bgreen"))
+    elif key == "ice":
+        p.frozen = True
+        print("  " + paint("You are frozen solid — your next strike will fail!",
+                           "bcyan"))
+    elif key == "shock":
+        for s in ("attack", "strength", "defence", "ranged", "magic"):
+            p.stat_drain[s] = p.stat_drain.get(s, 0) + 2
+        print("  " + paint("Crackling energy saps your stats! (-2 combat levels)",
+                           "bblue"))
+
+
+def _kbd_take_turn(p, m):
+    """The King Black Dragon's turn: pick one of its varied attacks."""
+    atk = random.choices(KBD_ATTACKS, weights=[a["w"] for a in KBD_ATTACKS])[0]
+    animate(atk["builder"](), delay=0.1, center=True)
+    say(f"The King Black Dragon {atk['verb']} {atk['label']}!", *atk["color"])
+    m_att_roll = (m["attack"] + 9) * 64
+    def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
+    p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
+    if random.random() < _accuracy(m_att_roll, p_def_roll):
+        dmg = random.randint(0, max(1, int(m["max_hit"] * atk["mult"])))
+        prot = "melee" if atk["key"] == "melee" else "magic"  # prayer mitigates
+        if p.prayer_protects(prot):
+            dmg = int(dmg * 0.5)
+        p.hp -= dmg
+        print("  " + paint(f"It strikes you for {dmg}.", "bred")
+              + "  " + paint("HP ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 18))
+        if p.hp > 0:
+            _apply_kbd_effect(p, atk["key"])
+    else:
+        print("  " + paint("You weather the assault.", "grey"))
+    if p.active_prayers:
+        p.prayer_points -= p.prayer_drain()
+        if p.prayer_points <= 0:
+            p.prayer_points = 0
+            p.active_prayers = []
+            print("  " + paint("Your prayers flicker out (no prayer points).",
+                               "bmagenta"))
+    return "died" if p.hp <= 0 else None
+
+
+# Bosses with bespoke, varied turns (else the generic swing below is used).
+BOSS_TURN = {"king black dragon": _kbd_take_turn}
+
+
 def _resolve_monster_hit(p, m):
     """Monster swings at the player. Prints, drains prayer. Returns 'died' or None."""
-    if m.get("boss") and BOSS_ATTACK.get(m["name"]):
-        play_boss_attack(m["name"])     # boss flourish on its turn (e.g. fire)
+    if m.get("boss"):
+        handler = BOSS_TURN.get(m["name"])
+        if handler:
+            return handler(p, m)        # varied boss attacks (e.g. KBD breaths)
     m_att_roll = (m["attack"] + 9) * 64
     def_lvl = int(p.lvl("defence") * p.prayer_mult("defence"))
     p_def_roll = (def_lvl + 9) * (p.equip_bonus("def") + 64)
@@ -1565,6 +1712,15 @@ def _combat_prompt(p):
     print("  " + paint(f"{m['name']}: ", "white")
           + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred")
           + paint("    You: ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 14))
+    status = []
+    if getattr(p, "poison", 0) > 0:
+        status.append(paint(f"poisoned ({p.poison})", "bgreen"))
+    if getattr(p, "frozen", False):
+        status.append(paint("frozen", "bcyan"))
+    if getattr(p, "stat_drain", None):
+        status.append(paint(f"-{max(p.stat_drain.values())} stats", "bblue"))
+    if status:
+        print("  " + paint("Afflictions: ", "grey") + ", ".join(status))
     foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
     food_hint = f" ({foods[0]})" if foods else ""
     pray_hint = f" [{', '.join(p.active_prayers)}]" if p.active_prayers else ""
@@ -1590,6 +1746,7 @@ def _start_combat(p, mname):
 def _end_combat_victory(p):
     m = p.combat
     p.combat = None
+    _clear_status(p)
     _victory(p, m)
     _quest_on_kill(p, m["name"])
 
@@ -1621,13 +1778,26 @@ def combat_action(p, raw):
     if verb == "pray" and not arg:
         return cmd_pray(p, "")          # checking prayers is free
 
+    # status effects tick at the start of a turn-consuming action
+    if verb in ("attack", "eat", "pray", "flee") and getattr(p, "poison", 0) > 0:
+        _tick_poison(p)
+        if p.hp <= 0:
+            p.combat = None
+            _clear_status(p)
+            return _handle_death(p)
+
     # actions that take your turn (monster then retaliates)
     if verb == "attack":
-        r = _resolve_player_hit(p, m)
-        if r == "noattack":
-            return                      # couldn't attack (no ammo/runes)
-        if r == "won":
-            return _end_combat_victory(p)
+        if getattr(p, "frozen", False):
+            p.frozen = False            # one wasted attack, then you thaw
+            say("You are frozen solid — your strike fails! You shatter the ice.",
+                "bcyan")
+        else:
+            r = _resolve_player_hit(p, m)
+            if r == "noattack":
+                return                  # couldn't attack (no ammo/runes)
+            if r == "won":
+                return _end_combat_victory(p)
     elif verb == "eat":
         foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
         food = arg or (foods[0] if foods else "")
@@ -1640,10 +1810,14 @@ def combat_action(p, raw):
         if list(p.active_prayers) == before and arg not in PRAYERS:
             return                      # invalid prayer name: no turn lost
     elif verb == "flee":
-        if random.random() < 0.55:
+        if getattr(p, "frozen", False):
+            say("You can't flee — you're frozen solid!", "bcyan")
+        elif random.random() < 0.55:
             p.combat = None
+            _clear_status(p)
             return say("You break off and flee the battle!", "byellow")
-        say("You fail to escape!", "grey")
+        else:
+            say("You fail to escape!", "grey")
     else:
         return say("You're locked in combat! Use: attack, eat, pray, or flee.",
                    "bred")
@@ -2689,6 +2863,7 @@ def cmd_ge(p, arg):
 
 # --- combat & farm actions ------------------------------------------------
 def _handle_death(p):
+    _clear_status(p)
     show_art(ART_DEATH, "bred")
     banner("YOU HAVE DIED", color="bred", line_color="red")
     say("You wake in Lumbridge, your wounds bound. Your items are safe.", "grey")
@@ -3615,7 +3790,8 @@ def web_command(player, line):
 
 
 def web_status(player):
-    """Compact live status for the browser status bar."""
+    """Compact live status for the browser status bar (HUD)."""
+    drain = getattr(player, "stat_drain", {}) or {}
     return json.dumps({
         "name": player.name,
         "combat": player.combat_level(),
@@ -3627,7 +3803,30 @@ def web_status(player):
         "style": player.style,
         "energy": int(getattr(player, "run_energy", 100)),
         "members": bool(getattr(player, "members", False)),
+        "prayer": int(getattr(player, "prayer_points", 0)),
+        "prayer_max": player.prayer_max(),
+        "in_combat": getattr(player, "combat", None) is not None,
+        "poison": int(getattr(player, "poison", 0)),
+        "frozen": bool(getattr(player, "frozen", False)),
+        "drain": max(drain.values()) if drain else 0,
+        "exits": _room_exits(player),
     })
+
+
+def _room_exits(player):
+    """Ordered list of the current room's exits, for clickable nav buttons."""
+    ex = ROOMS[player.location].get("exits", {})
+    order = ["north", "east", "south", "west", "up", "down"]
+    return [d for d in order if d in ex] + [d for d in ex if d not in order]
+
+
+def web_commands():
+    """Sorted command verbs for the browser's tab-completion / history."""
+    verbs = set(HANDLERS) | set(DIRECTIONS)
+    if not BETA:                      # hide dev commands unless on beta/local
+        verbs -= {"maxme", "devmax", "dev"}
+    verbs.discard("?")
+    return json.dumps(sorted(verbs))
 
 
 def web_room_actions(player):
