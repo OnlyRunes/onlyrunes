@@ -1616,6 +1616,7 @@ def _apply_osrs_monsters():
         m["attack"] = s["att"]
         m["defence"] = s["def"]
         m["max_hit"] = s["maxhit"]
+        m["level"] = s.get("cb")
         m["abonus"] = s.get("abonus", 0)
         m["atktype"] = s.get("atktype") or ["crush"]
         m["weakness"] = s.get("weak", "crush")
@@ -1656,6 +1657,7 @@ class Player:
         self.stat_boost = {}      # skill -> levels boosted (potions; transient)
         self.achievements = []    # unlocked achievement keys
         self.kills = 0            # total monsters defeated
+        self.kill_log = {}        # monster name -> kill count (bestiary)
         self.bosses = []          # boss names defeated
         self.potions_made = 0     # potions brewed (for the Herbalist achievement)
         # starter kit — now includes basic armour so new adventurers aren't
@@ -2046,6 +2048,12 @@ def _victory(p, m):
         show_art(ART_VICTORY, "gold", center=True)
     say(f"You have defeated the {m['name']}!", "bgreen", "bold")
     p.kills = getattr(p, "kills", 0) + 1
+    log = getattr(p, "kill_log", None)
+    if log is None:
+        log = p.kill_log = {}
+    log[m["name"]] = log.get(m["name"], 0) + 1
+    if log[m["name"]] in (10, 50, 100, 500, 1000):
+        say(f"  Bestiary: {log[m['name']]} {m['name']} kills!", "bcyan")
     if m.get("boss"):
         bs = getattr(p, "bosses", [])
         if m["name"] not in bs:
@@ -2068,7 +2076,9 @@ def fight_auto(p, mname):
         show_art(MONSTER_ART[mname], "bred")
     else:
         show_art(ART_SWORDS, "grey")
-    banner(f"{mname.upper()}  (auto)", color="bred", line_color="red")
+    lvl = m.get("level")
+    lbl = f"{mname.upper()}" + (f"  (lvl {lvl})" if lvl else "") + "  (auto)"
+    banner(lbl, color="bred", line_color="red")
     print("  " + paint(f"{mname}: ", "white")
           + bar_meter(m["cur"], m["hp"], 18, fill_color="bred"))
     while m["cur"] > 0 and p.hp > 0:
@@ -2125,7 +2135,9 @@ def _start_combat(p, mname):
         show_art(MONSTER_ART[mname], "bred")
     else:
         show_art(ART_SWORDS, "grey")
-    banner(f"{mname.upper()}", color="bred", line_color="red")
+    lvl = p.combat.get("level")
+    title = f"{mname.upper()}" + (f"  (lvl {lvl})" if lvl else "")
+    banner(title, color="bred", line_color="red")
     weak = p.combat.get("weakness")
     if weak:
         hint = "" if p.style != "melee" else \
@@ -2246,12 +2258,14 @@ def _award_combat_xp(p, mhp):
 
 def _roll_drops(p, m):
     got = False
+    total = 0
     for item, lo, hi, chance in m["drops"]:
         if random.random() < chance:
             qty = random.randint(lo, hi)
             if qty > 0:
                 p.add(item, qty)
                 value = ITEMS.get(item, {}).get("value", 0) * qty
+                total += value
                 if item != "coins" and value >= 5000:   # rare/valuable highlight
                     print("  " + paint(f"✦ Valuable drop: {item} x{qty}!",
                                        "gold", "bold"))
@@ -2261,6 +2275,8 @@ def _roll_drops(p, m):
                 got = True
     if not got:
         say("  No loot this time.", "grey")
+    elif total > 0:
+        print("  " + paint(f"Loot value: {total:,} gp", "grey"))
 
 
 def _consume_runes(p, runes):
@@ -4143,6 +4159,7 @@ def serialize(p):
             "slayer_points": p.slayer_points,
             "achievements": list(getattr(p, "achievements", [])),
             "kills": getattr(p, "kills", 0),
+            "kill_log": dict(getattr(p, "kill_log", {})),
             "bosses": list(getattr(p, "bosses", [])),
             "potions_made": getattr(p, "potions_made", 0)}
 
@@ -4170,6 +4187,7 @@ def deserialize(data):
     p.slayer_points = data.get("slayer_points", 0)
     p.achievements = data.get("achievements", [])
     p.kills = data.get("kills", 0)
+    p.kill_log = data.get("kill_log", {})
     p.bosses = data.get("bosses", [])
     p.potions_made = data.get("potions_made", 0)
     # restore quest-spawned monster
@@ -4203,7 +4221,8 @@ def cmd_help(_p, _a):
     banner("Commands")
     groups = {
         "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
-        "Info": "stats [skill], inventory (i), equipment, quests, examine <item>",
+        "Info": "stats [skill], inventory (i), equipment, quests, "
+                "examine <item|creature>, bestiary",
         "Combat": "fight [monster], style <melee|ranged|magic|stab|slash|crush>, "
                   "autocast <spell>, eat [food], drink [potion]",
         "Gear": "equip <item>, unequip <slot>",
@@ -4221,12 +4240,54 @@ def cmd_help(_p, _a):
         say("  " + c)
 
 
+def _drop_rarity(chance):
+    """Bucket a drop chance into a coloured rarity label."""
+    if chance >= 1.0:
+        return ("always", "white")
+    if chance >= 0.5:
+        return ("common", "bgreen")
+    if chance >= 0.15:
+        return ("uncommon", "bcyan")
+    if chance >= 0.04:
+        return ("rare", "bmagenta")
+    return ("very rare", "gold")
+
+
+def _examine_monster(p, name):
+    m = MONSTERS[name]
+    log = getattr(p, "kill_log", {}) or {}
+    killed = log.get(name, 0)
+    title = name.title()
+    if m.get("level"):
+        title += f"  —  combat level {m['level']}"
+    banner(title, color="bred", line_color="red")
+    print("  " + paint(f"Hitpoints {m['hp']}", "bred")
+          + paint(f"    Max hit {m['max_hit']}", "white")
+          + paint(f"    Attacks with {'/'.join(m.get('atktype', ['crush']))}",
+                  "grey"))
+    weak = m.get("weakness") or m.get("weak")
+    if weak:
+        print("  " + paint(f"Weakness: {weak}", "byellow"))
+    print("  " + paint(f"Slain: {killed}", "bcyan")
+          + (paint("   [members]", "bmagenta") if m.get("members") else "")
+          + (paint("   [BOSS]", "bred", "bold") if m.get("boss") else ""))
+    say("  Drops:", "grey")
+    for item, lo, hi, chance in sorted(m["drops"], key=lambda d: -d[3]):
+        rlabel, rcolor = _drop_rarity(chance)
+        qty = f"{lo}-{hi}" if hi > lo else f"{lo}"
+        print("    " + paint(f"{item} ", item_rarity_color(item))
+              + paint(f"x{qty}", "grey")
+              + paint(f"  ({rlabel})", rcolor))
+
+
 def cmd_examine(p, arg):
-    item = arg.strip().lower()
-    if item not in ITEMS:
-        say("No such item.")
+    name = arg.strip().lower()
+    if name in MONSTERS:
+        return _examine_monster(p, name)
+    if name not in ITEMS:
+        say("No such item or creature to examine.")
         return
-    info = ITEMS[item]
+    info = ITEMS[name]
     bits = [f"value {info['value']}"]
     if "heal" in info:
         bits.append(f"heals {info['heal']}")
@@ -4242,7 +4303,23 @@ def cmd_examine(p, arg):
         for f, lbl in labels:
             if eq.get(f):
                 bits.append(f"{lbl} {eq[f]:+d}")
-    say(f"{item}: " + ", ".join(bits))
+    say(f"{name}: " + ", ".join(bits))
+
+
+def cmd_bestiary(p, _a):
+    log = {k: v for k, v in (getattr(p, "kill_log", {}) or {}).items() if v > 0}
+    total = getattr(p, "kills", 0)
+    banner(f"Bestiary  —  {total:,} kills", color="bred", line_color="red")
+    if not log:
+        say("  You haven't slain anything yet. Go forth and fight!", "grey")
+        return
+    say(f"  {len(log)} unique creatures slain.", "grey")
+    for name, n in sorted(log.items(), key=lambda kv: -kv[1]):
+        is_boss = MONSTERS.get(name, {}).get("boss")
+        mark = paint(" ☠", "bred") if is_boss else ""
+        print("  " + paint(f"{name:22}", "white")
+              + paint(f"x{n}", "bcyan") + mark)
+    say("\n  Tip: 'examine <creature>' shows stats, weakness and drops.", "grey")
 
 
 DIRECTIONS = {"n": "north", "s": "south", "e": "east", "w": "west",
@@ -4345,7 +4422,8 @@ HANDLERS = {
     "quests": cmd_quests, "quest": cmd_quests, "journal": cmd_quests,
     "achievements": cmd_achievements, "achievement": cmd_achievements,
     "diary": cmd_achievements,
-    "examine": cmd_examine,
+    "examine": cmd_examine, "inspect": cmd_examine,
+    "bestiary": cmd_bestiary, "kills": cmd_bestiary, "killlog": cmd_bestiary,
     "map": cmd_map, "automap": cmd_automap, "membership": cmd_membership,
     "pray": cmd_pray, "prayer": cmd_pray, "prayers": cmd_pray,
     "pickpocket": cmd_pickpocket, "thieve": cmd_pickpocket, "steal": cmd_pickpocket,
@@ -4658,6 +4736,7 @@ PICKPOCKET["monk"] = (5, 12, 20, 2)
 def _add_mob(name, s, drops, members=False, rank="hard"):
     m = mob(s["hp"], s["att"], s["def"], s["maxhit"], drops, members=members)
     m["rank"] = rank
+    m["level"] = s.get("cb")
     m["abonus"] = s.get("abonus", 0)
     m["atktype"] = s.get("atktype", ["crush"])
     m["weakness"] = s.get("weak", "crush")
