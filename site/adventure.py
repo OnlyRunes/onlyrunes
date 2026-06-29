@@ -679,6 +679,21 @@ def level_from_xp(xp):
     return level
 
 
+def xp_progress(xp):
+    """Progress toward the next level for a skill's total xp.
+
+    Returns (level, xp_into_level, xp_for_this_level, xp_to_next). At level 99
+    the span/remaining are 0 (maxed)."""
+    lvl = level_from_xp(xp)
+    if lvl >= 99:
+        return (99, 0, 0, 0)
+    floor = _XP_TABLE[lvl]
+    nxt = _XP_TABLE[lvl + 1]
+    into = xp - floor
+    span = nxt - floor
+    return (lvl, into, span, nxt - xp)
+
+
 SKILLS = [
     "attack", "strength", "defence", "hitpoints", "ranged", "prayer", "magic",
     "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
@@ -1716,6 +1731,11 @@ class Player:
                     delay=0.11, center=True)
             banner(f"LEVEL UP!  Your {skill} is now level {after}.",
                    color="byellow", line_color="gold")
+            _, _, _, to_next = xp_progress(self.skills[skill])
+            if after >= 99:
+                say(f"  You have mastered {skill} — level 99!", "gold", "bold")
+            else:
+                say(f"  {to_next:,} xp to level {after + 1}.", "grey")
             if skill == "hitpoints":
                 self.hp = self.max_hp
 
@@ -1884,8 +1904,16 @@ def _resolve_player_hit(p, m):
     if random.random() < _accuracy(att_roll, def_roll):
         dmg = random.randint(0, max_hit)
         m["cur"] -= dmg
-        print("  " + paint(f"You {VERB[atype]} the {m['name']} for {dmg}!", "bgreen")
-              + "  " + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred"))
+        bar = bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred")
+        if dmg == 0:
+            print("  " + paint(f"Your {VERB[atype]} glances off the "
+                               f"{m['name']}. (0)", "grey") + "  " + bar)
+        elif max_hit and dmg == max_hit:
+            print("  " + paint(f"★ MAX HIT! You {VERB[atype]} the {m['name']} "
+                               f"for {dmg}!", "byellow", "bold") + "  " + bar)
+        else:
+            print("  " + paint(f"You {VERB[atype]} the {m['name']} for {dmg}!",
+                               "bgreen") + "  " + bar)
     else:
         miss = "splash on" if kind == "magic" else "fail to hit"
         print("  " + paint(f"You {miss} the {m['name']}.", "grey"))
@@ -1992,8 +2020,13 @@ def _resolve_monster_hit(p, m):
         if p.prayer_protects(prot):
             dmg = int(dmg * 0.5)
         p.hp -= dmg
-        print("  " + paint(f"The {m['name']} hits you for {dmg}.", "bred")
-              + "  " + paint("HP ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 18))
+        hpbar = "  " + paint("HP ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 18)
+        if dmg == 0:
+            print("  " + paint(f"The {m['name']}'s blow grazes you. (0)", "grey")
+                  + hpbar)
+        else:
+            print("  " + paint(f"The {m['name']} hits you for {dmg}.", "bred")
+                  + hpbar)
     else:
         print("  " + paint(f"You block the {m['name']}.", "grey"))
     if p.active_prayers:
@@ -2072,6 +2105,10 @@ def _combat_prompt(p):
         print("  " + paint("Status: ", "grey") + ", ".join(status))
     foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
     pots = [i for i in p.inventory if ITEMS.get(i, {}).get("potion")]
+    if p.max_hp and p.hp / p.max_hp <= 0.30 and p.hp > 0:
+        warn = "⚠ Low HP! "
+        warn += "Eat to heal, or flee!" if foods else "No food left — flee!"
+        print("  " + paint(warn, "bred", "bold"))
     food_hint = f" ({foods[0]})" if foods else ""
     drink_hint = f" ({pots[0]})" if pots else ""
     pray_hint = f" [{', '.join(p.active_prayers)}]" if p.active_prayers else ""
@@ -2666,7 +2703,45 @@ SKILL_COLOR = {
 }
 
 
-def cmd_stats(p, _a):
+def _resolve_skill(name):
+    """Match a (possibly abbreviated) skill name; return the skill or None."""
+    name = (name or "").strip().lower()
+    if name in SKILLS:
+        return name
+    matches = [s for s in SKILLS if s.startswith(name)]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _show_skill_detail(p, skill):
+    xp = p.skills[skill]
+    lvl, into, span, to_next = xp_progress(xp)
+    color = SKILL_COLOR.get(skill, "white")
+    banner(f"{skill.title()} — level {p.lvl(skill)}", color=color)
+    print("  " + paint(f"Total XP: {xp:,}", "white")
+          + (paint("   (members skill)", "bmagenta")
+             if skill in MEMBERS_SKILLS else ""))
+    if lvl >= 99:
+        say("  Mastered — level 99!", "gold", "bold")
+    else:
+        print("  " + paint(f"L{lvl} ", "grey")
+              + bar_meter(into, span, 24, fill_color=color)
+              + paint(f" L{lvl + 1}", "grey"))
+        say(f"  {to_next:,} xp to level {lvl + 1}.", "bcyan")
+    boost = getattr(p, "stat_boost", {}).get(skill, 0)
+    drain = getattr(p, "stat_drain", {}).get(skill, 0)
+    if boost:
+        say(f"  Temporarily boosted +{boost}.", "lime")
+    if drain:
+        say(f"  Temporarily drained -{drain}.", "bblue")
+
+
+def cmd_stats(p, arg=""):
+    skill = _resolve_skill(arg)
+    if (arg or "").strip():
+        if skill:
+            return _show_skill_detail(p, skill)
+        return say("No such skill. Type 'stats' for the overview, or "
+                   "'stats <skill>' for detail.", "grey")
     banner(f"{p.name} — Combat level {p.combat_level()}", color="gold")
     print("  " + paint("Hitpoints ", "white")
           + bar_meter(p.hp, p.max_hp, 22)
@@ -2680,14 +2755,19 @@ def cmd_stats(p, _a):
           + (paint("   [member]", "bmagenta") if p.members else ""))
     say()
     total = 0
+    total_xp = 0
     cols = []
     for s in SKILLS:
         total += p.lvl(s)
+        total_xp += p.skills[s]
         label = paint(f"{s:12}", SKILL_COLOR.get(s, "white"))
         cols.append(f"{label}{paint(f'{p.lvl(s):2}', 'bwhite', 'bold')}")
     for i in range(0, len(cols), 3):
         print("  " + "   ".join(cols[i:i + 3]))
-    print("\n  " + paint(f"Total level: {total}", "gold", "bold"))
+    print("\n  " + paint(f"Total level: {total}", "gold", "bold")
+          + paint(f"    Total XP: {total_xp:,}", "white"))
+    print("  " + paint("Tip: 'stats <skill>' shows xp and progress to the "
+                       "next level.", "grey"))
 
 
 def cmd_inventory(p, _a):
@@ -4123,7 +4203,7 @@ def cmd_help(_p, _a):
     banner("Commands")
     groups = {
         "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
-        "Info": "stats, inventory (i), equipment, quests, examine <item>",
+        "Info": "stats [skill], inventory (i), equipment, quests, examine <item>",
         "Combat": "fight [monster], style <melee|ranged|magic|stab|slash|crush>, "
                   "autocast <spell>, eat [food], drink [potion]",
         "Gear": "equip <item>, unequip <slot>",
