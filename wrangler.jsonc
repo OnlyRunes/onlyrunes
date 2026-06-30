@@ -29,7 +29,10 @@
       "name": "onlyrunes-site",
       "assets": {
         "directory": "./landing"
-      }
+      },
+      "routes": [
+        { "pattern": "onlyrunes.net", "custom_domain": true }
+      ]
     }
   }
 }
