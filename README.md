@@ -1,11 +1,11 @@
 # OnlyRunes
 
-A free-to-play text adventure inspired by Old School RuneScape, playable in the
-terminal **or** the browser. Live at **https://onlyrunes.net**.
+A text adventure inspired by Old School RuneScape, playable in the terminal
+**or** the browser. Live at **https://onlyrunes.net**.
 
-Explore the cities of Misthalin, Asgarnia and the Kharidian Desert, train all
-15 F2P skills, fight monsters, bank loot, trade on the Grand Exchange, and
-complete classic quests.
+Explore the cities of Misthalin, Asgarnia and the Kharidian Desert, train your
+skills, fight monsters, bank loot, trade on the Grand Exchange, unlock members
+content, and complete classic quests.
 
 ## Play in the terminal
 
@@ -35,7 +35,7 @@ serve it over http.)
 |------|------------|
 | `adventure.py` | The whole game (source of truth) — CLI + a web API |
 | `site/index.html` | Browser front-end (Pyodide + xterm.js) |
-| `site/adventure.py` | Generated copy for deploy (git-ignored) |
+| `site/adventure.py` | Generated copy for deploy (tracked; rebuilt by `build_site.sh`) |
 | `build_site.sh` | Copies `adventure.py` → `site/` |
 | `deploy.sh` | Build + deploy to Cloudflare |
 | `wrangler.jsonc` | Cloudflare Worker config (static assets) |
@@ -84,7 +84,8 @@ save file and `save import` to restore it on another device.
 ## Contributing
 
 Issues and pull requests are welcome — bug reports, balance feedback, new
-content, and fixes. The whole game lives in `adventure.py`.
+content (areas, monsters, quests, gear), and fixes. The whole game lives in
+`adventure.py`; run `python3 adventure.py` to play it in the terminal.
 
 ## License
 

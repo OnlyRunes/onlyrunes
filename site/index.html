@@ -2,22 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="build" content="2026-06-29-onboarding">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OnlyRunes — a free-to-play text adventure</title>
-<meta name="description" content="OnlyRunes: a browser text adventure inspired by free-to-play Old School RuneScape. Train skills, fight monsters, complete quests.">
+<title>OnlyRunes — a text adventure in Gielinor</title>
+<meta name="description" content="OnlyRunes: a browser text adventure inspired by Old School RuneScape. Train skills, fight monsters, complete quests, unlock members content.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: #0d0f13; color: #c8cdd6;
+    margin: 0; color: #c8cdd6;
+    background: #0d0f13;
+    background: radial-gradient(1100px 520px at 50% -8%, #1a1f2a 0%, #0d0f13 62%);
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     min-height: 100vh; display: flex; flex-direction: column;
   }
   header { text-align: center; padding: 22px 16px 8px; }
   h1 {
     margin: 0; font-size: 30px; font-weight: 600; letter-spacing: 1px;
-    color: #ffce42;
+    color: #ffce42; text-shadow: 0 0 22px rgba(255, 206, 66, .22);
   }
   h1 .of { color: #6ee36e; }
   .tag { margin: 4px 0 0; font-size: 14px; color: #8b93a0; }
@@ -45,9 +51,19 @@
   }
   #statusbar b { color: #e6ebf2; font-weight: 600; }
   #statusbar .lbl { color: #6b7280; margin-right: 2px; }
-  #hpbar { display: inline-block; width: 110px; height: 9px; background: #2a2f3a;
+  .meter { display: inline-block; width: 92px; height: 9px; background: #2a2f3a;
     border-radius: 5px; overflow: hidden; vertical-align: middle; }
-  #hpfill { display: block; height: 100%; width: 100%; background: #3fa34d; }
+  .meter > i { display: block; height: 100%; width: 100%;
+    transition: width .18s ease, background .18s ease; }
+  .m-hp { background: #3fa34d; } .m-pray { background: #4a90d6; }
+  .m-run { background: #caa53a; } .m-foe { background: #d64f4f; }
+  #st-foe b#foe-name { color: #ff8a8a; }
+  #afflict { display: inline-flex; gap: 6px; }
+  .aff { font-size: 11px; padding: 1px 7px; border-radius: 8px;
+    border: 1px solid; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .aff.poison { color: #79e3a0; border-color: #2f6b46; }
+  .aff.frozen { color: #9fe6ff; border-color: #2f5a6b; }
+  .aff.drain  { color: #a3b6ff; border-color: #39477a; }
   #quickbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 2px 0; }
   #actions { margin: 10px 2px 4px; }
   .panel-title { font-size: 12px; color: #6b7280; margin: 0 0 6px; }
@@ -58,6 +74,14 @@
     font-family: inherit;
   }
   .btn:hover { background: #252b35; border-color: #3a4250; }
+  #navbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 2px 0;
+    align-items: center; }
+  #navbar .navlbl { font-size: 12px; color: #6b7280; margin-right: 2px; }
+  .navbtn { background: #181d26; color: #cdd6e4; border: 1px solid #2e3440;
+    border-radius: 8px; padding: 5px 11px; font-size: 12.5px; cursor: pointer;
+    font-family: inherit; }
+  .navbtn:hover { background: #222936; border-color: #3a4250; color: #eaf0f8; }
+  .navbtn .ar { color: #6ee36e; font-weight: 700; margin-right: 4px; }
   .chip {
     display: flex; align-items: center; gap: 4px; background: #161a21;
     border: 1px solid #2a3040; border-radius: 10px; padding: 5px 7px;
@@ -72,26 +96,82 @@
     font-family: inherit;
   }
   .chip .act:hover { background: #2d3543; color: #d7f3db; }
+  #inputbar { display: flex; gap: 8px; margin-top: 8px; }
+  #cmdInput {
+    flex: 1; min-width: 0; background: #14161b; color: #e6ebf2;
+    border: 1px solid #2e3440; border-radius: 8px; padding: 10px 12px;
+    font-size: 16px; /* >=16px prevents iOS zoom-on-focus */
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  #cmdInput:focus { outline: none; border-color: #3a4250; }
+  #sendBtn {
+    background: #1f6f3a; color: #dff5e4; border: 1px solid #2c8a4b;
+    border-radius: 8px; padding: 0 18px; font-size: 15px; cursor: pointer;
+    font-family: inherit;
+  }
+  #sendBtn:hover { background: #247a42; }
+  /* combat-mode action panel: red/gold "your move" styling */
+  #actions.combat { border: 1px solid #4a2a2c; background: #191315;
+    border-radius: 10px; padding: 8px 10px; }
+  #actions.combat .panel-title { color: #ff9a6a; }
+  #actions.combat .chip { background: #221619; border-color: #5a2f33; }
+  #actions.combat .chip .name { color: #ffb38a; }
+  #actions.combat .chip .act { background: #3a2326; border-color: #663a3e;
+    color: #ffd9b6; }
+  #actions.combat .chip .act:hover { background: #4a2c30; color: #ffe7d2; }
+  .kbd { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+    color: #8b93a0; background: #1b1f27; border: 1px solid #2e3440;
+    border-radius: 5px; padding: 1px 5px; }
+  @media (max-width: 640px) {
+    header { padding: 14px 10px 4px; }
+    h1 { font-size: 23px; }
+    .tag { font-size: 12px; }
+    #shell { padding: 8px 10px 0; }
+    #terminal { height: 44vh; min-height: 220px; padding: 8px 4px 4px 8px; }
+    #statusbar { gap: 8px 12px; font-size: 12px; padding: 6px 9px; }
+    .meter { width: 56px; }
+    .hint { font-size: 12px; }
+    /* bigger, finger-friendly tap targets on phones (~44px min) */
+    .btn, .navbtn { padding: 10px 13px; font-size: 13px; min-height: 42px; }
+    .chip { padding: 6px 8px; }
+    .chip .name { font-size: 13px; }
+    .chip .act { padding: 10px 13px; font-size: 13px; min-height: 42px; }
+    #sendBtn { padding: 0 18px; min-height: 44px; }
+    footer { font-size: 11px; padding: 12px 10px 22px; }
+  }
 </style>
 </head>
 <body>
   <header>
     <h1><span class="of">Only</span>Runes<sup id="betaTag" style="display:none;color:#ff9e3d;font-size:14px;font-weight:600;margin-left:6px;letter-spacing:1px;">BETA</sup></h1>
-    <p class="tag">A free-to-play text adventure in a world that's totally not Gielinor</p>
+    <p class="tag">A text adventure in a world that's totally not Gielinor</p>
   </header>
 
   <main id="shell">
     <div id="statusbar">
       <span><span class="lbl">Lvl</span> <b id="st-cb">1</b></span>
-      <span><span class="lbl">HP</span> <span id="hpbar"><span id="hpfill"></span></span> <b id="st-hp">10/10</b></span>
+      <span><span class="lbl">HP</span> <span class="meter"><i id="hpfill" class="m-hp"></i></span> <b id="st-hp">10/10</b></span>
+      <span><span class="lbl">Pray</span> <span class="meter"><i id="prayfill" class="m-pray"></i></span> <b id="st-pray">1/1</b></span>
+      <span><span class="lbl">Energy</span> <span class="meter"><i id="runfill" class="m-run"></i></span> <b id="st-energy">100</b></span>
       <span><span class="lbl">GP</span> <b id="st-gp">0</b></span>
       <span><span class="lbl">at</span> <b id="st-loc">—</b></span>
       <span class="lbl" id="st-style"></span>
+      <span id="st-foe" style="display:none"><span class="lbl">vs</span> <b id="foe-name">—</b> <span class="meter"><i id="foefill" class="m-foe"></i></span> <b id="foe-hp"></b></span>
+      <span id="afflict"></span>
     </div>
     <div id="terminal" aria-label="Game terminal"></div>
-    <p class="hint">Type commands, or use the buttons below. Try <b>help</b>,
-      <b>look</b>, <b>map</b>, <b>fight</b>. Progress auto-saves here;
-      <b>save export</b> / <b>save import</b> moves it between devices.</p>
+    <div id="inputbar">
+      <input id="cmdInput" type="text" placeholder="Type a command, e.g. look"
+             autocomplete="off" autocorrect="off" autocapitalize="off"
+             spellcheck="false" enterkeyhint="send" aria-label="Command input">
+      <button id="sendBtn">Send</button>
+    </div>
+    <p class="hint">Type a command and press <b>Send</b> (or tap a button below).
+      <span class="kbd">↑</span><span class="kbd">↓</span> history ·
+      <span class="kbd">Tab</span> autocomplete. Try <b>help</b>, <b>look</b>,
+      <b>map</b>, <b>fight</b>. Progress auto-saves; <b>save export</b> /
+      <b>save import</b> moves it between devices.</p>
+    <div id="navbar"></div>
     <div id="quickbar"></div>
     <div id="actions"></div>
   </main>
@@ -116,11 +196,15 @@
     const SAVE_KEY = IS_BETA ? "onlyrunes_save_beta" : "onlyrunes_save_v1";
     const PROMPT = "\x1b[92m\x1b[1m> \x1b[0m";
 
+    const isMobile = window.matchMedia("(max-width: 640px)").matches
+      || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     const term = new Terminal({
       fontFamily: "ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace",
-      fontSize: 14, cursorBlink: true, convertEol: false,
+      fontSize: isMobile ? 12 : 14, convertEol: false,
+      disableStdin: true,        // read-only: input comes from the box + buttons
+      cursorBlink: false, cursorStyle: "bar", cursorInactiveStyle: "none",
       theme: {
-        background: "#14161b", foreground: "#c8cdd6", cursor: "#6ee36e",
+        background: "#14161b", foreground: "#c8cdd6", cursor: "#14161b",
         black: "#14161b", red: "#d64f4f", green: "#3fa34d", yellow: "#caa53a",
         blue: "#4a78c0", magenta: "#b15bbf", cyan: "#2b8fb0", white: "#c8cdd6",
         brightBlack: "#8b93a0", brightRed: "#ff6a6a", brightGreen: "#6ee36e",
@@ -132,12 +216,73 @@
     term.loadAddon(fit);
     term.open(document.getElementById("terminal"));
     fit.fit();
-    window.addEventListener("resize", () => { try { fit.fit(); } catch (e) {} });
-    term.focus();
+    const refit = () => { try { fit.fit(); } catch (e) {} };
+    window.addEventListener("resize", refit);
+    window.addEventListener("orientationchange", () => setTimeout(refit, 300));
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", refit);
+    // terminal is output-only; focus the command box instead (desktop)
 
     const w = (s) => term.write(String(s).replace(/\n/g, "\r\n"));
 
-    let mode = "loading", player = null, buffer = "", mod = null;
+    let mode = "loading", player = null, buffer = "", mod = null, animating = false;
+    let cmdList = [], cmdHistory = [], histPos = -1, histDraft = "", inCombat = false;
+    const reduceMotion = !!(window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+    // ---- ASCII animation player (boss fights, level-ups, ...) ----
+    // adventure.py marks an animation as: OPEN + JSON({frames,delay,loops,
+    // hold,height}) + CLOSE. We play the frames in place with xterm cursor
+    // moves, then continue writing the rest of the output.
+    const ANIM_OPEN = "\x00\x00ONLYRUNES_ANIM\x00";
+    const ANIM_CLOSE = "\x00ONLYRUNES_ANIM\x00\x00";
+
+    const playFrames = (anim, done) => {
+      const frames = (anim && anim.frames) || [];
+      if (!frames.length) { done(); return; }
+      if (reduceMotion) {                         // accessibility: show final frame only
+        term.write(frames[frames.length - 1].replace(/\n/g, "\r\n") + "\r\n");
+        done(); return;
+      }
+      const H = anim.height || frames[0].split("\n").length;
+      const delay = anim.delay || 140, hold = anim.hold || 0;
+      const loops = Math.max(1, anim.loops || 1);
+      const up = "\x1b[" + H + "A\x1b[0J";   // cursor up H rows, clear below
+      let li = 0, fi = 0;
+      const step = () => {
+        term.write(frames[fi].replace(/\n/g, "\r\n") + "\r\n");
+        const lastFrame = fi === frames.length - 1, lastLoop = li >= loops - 1;
+        if (lastFrame && lastLoop) {
+          if (hold) setTimeout(done, hold); else done();
+          return;
+        }
+        setTimeout(() => {
+          term.write(up);
+          if (lastFrame) { fi = 0; li++; } else { fi++; }
+          step();
+        }, delay);
+      };
+      step();
+    };
+
+    const writeWithAnim = (text, done) => {
+      done = done || (() => {});
+      if (text.indexOf(ANIM_OPEN) === -1) { w(text); done(); return; }
+      animating = true;
+      const pump = (s) => {
+        const i = s.indexOf(ANIM_OPEN);
+        if (i === -1) { w(s); animating = false; done(); return; }
+        const rest = s.slice(i + ANIM_OPEN.length);
+        const j = rest.indexOf(ANIM_CLOSE);
+        if (j === -1) { w(s.slice(0, i) + rest); animating = false; done(); return; }
+        w(s.slice(0, i));                       // text before the animation
+        const after = rest.slice(j + ANIM_CLOSE.length);
+        let anim = null;
+        try { anim = JSON.parse(rest.slice(0, j)); } catch (e) {}
+        if (!anim) { pump(after); return; }
+        playFrames(anim, () => pump(after));    // play, then continue
+      };
+      pump(text);
+    };
 
     w("\x1b[90mLoading the realm... (downloading Python, ~3-6s)\x1b[0m\r\n");
 
@@ -150,6 +295,10 @@
       pyodide.FS.writeFile("adventure.py", code);
       mod = pyodide.pyimport("adventure");
       mod.enable_web();
+      // dev/test commands (maxme) only on beta + local dev, never on live
+      const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      if (IS_BETA || IS_LOCAL) mod.enable_beta();
+      try { cmdList = JSON.parse(mod.web_commands()); } catch (e) {}
     } catch (e) {
       w("\r\n\x1b[91mFailed to load the game: " + e + "\x1b[0m\r\n");
       w("\x1b[90m(If you opened this as a file, run a local server instead —\r\n");
@@ -173,12 +322,19 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
     const runCommand = (cmd) => {
-      if (mode !== "play") return;
-      buffer = "";
+      if (mode !== "play" || animating) return;
       term.write(cmd + "\r\n");
       handleLine(cmd);
       refreshUI();
-      term.focus();
+      if (!isMobile) { const ci = document.getElementById("cmdInput"); if (ci) ci.focus(); }
+    };
+
+    const setMeter = (id, cur, max, base) => {
+      const el = document.getElementById(id);
+      const r = max ? Math.max(0, Math.min(1, cur / max)) : 0;
+      el.style.width = Math.round(r * 100) + "%";
+      if (base === "hp")
+        el.style.background = r > 0.5 ? "#3fa34d" : r > 0.25 ? "#caa53a" : "#d64f4f";
     };
 
     const renderStatus = (st) => {
@@ -186,25 +342,52 @@
       sb.style.display = "flex";
       document.getElementById("st-cb").textContent = st.combat;
       document.getElementById("st-hp").textContent = st.hp + "/" + st.max_hp;
+      document.getElementById("st-pray").textContent = (st.prayer ?? 0) + "/" + (st.prayer_max ?? 0);
       document.getElementById("st-gp").textContent = (st.coins || 0).toLocaleString();
       document.getElementById("st-loc").textContent = st.location;
-      document.getElementById("st-style").textContent = st.style;
-      const ratio = st.max_hp ? st.hp / st.max_hp : 0;
-      const fill = document.getElementById("hpfill");
-      fill.style.width = Math.round(ratio * 100) + "%";
-      fill.style.background = ratio > 0.5 ? "#3fa34d" : ratio > 0.25 ? "#caa53a" : "#d64f4f";
+      const styleTxt = st.style + (st.style === "melee" && st.stance ? "/" + st.stance : "")
+        + (st.members ? " · member" : "");
+      document.getElementById("st-style").textContent = styleTxt;
+      document.getElementById("st-energy").textContent = (st.energy ?? 100) + "%";
+      setMeter("hpfill", st.hp, st.max_hp, "hp");
+      setMeter("prayfill", st.prayer ?? 0, st.prayer_max ?? 1);
+      setMeter("runfill", st.energy ?? 100, 100);
+      // live enemy HP bar (only while fighting)
+      const foe = document.getElementById("st-foe");
+      if (st.enemy) {
+        foe.style.display = "";
+        document.getElementById("foe-name").textContent =
+          st.enemy.name + (st.enemy.level ? " (lvl " + st.enemy.level + ")" : "");
+        document.getElementById("foe-hp").textContent = st.enemy.hp + "/" + st.enemy.max;
+        setMeter("foefill", st.enemy.hp, st.enemy.max);
+      } else {
+        foe.style.display = "none";
+      }
+      // live combat afflictions (poison / frozen / stat drain)
+      const aff = document.getElementById("afflict");
+      let h = "";
+      if (st.poison > 0) h += '<span class="aff poison">☣ poison ' + st.poison + '</span>';
+      if (st.frozen) h += '<span class="aff frozen">❄ frozen</span>';
+      if (st.drain > 0) h += '<span class="aff drain">▼ -' + st.drain + ' stats</span>';
+      aff.innerHTML = h;
     };
 
     const renderActions = (list) => {
       const box = document.getElementById("actions");
+      const inCombat = list && list.length && /^fighting /.test(list[0].name || "");
+      box.className = inCombat ? "combat" : "";
       if (!list || !list.length) { box.innerHTML = ""; return; }
-      let html = '<p class="panel-title">Things you can do here</p><div class="chips">';
+      const title = inCombat ? "In combat — choose your move" : "Things you can do here";
+      let html = '<p class="panel-title">' + title + '</p><div class="chips">';
       for (const e of list) {
         html += '<span class="chip ' + (e.kind || "") + '"><span class="name">'
               + esc(e.name) + '</span>';
+        let i = 0;
         for (const a of e.actions) {
+          const key = inCombat
+            ? '<b style="opacity:.55;margin-right:3px">' + (++i) + '</b>' : '';
           html += '<button class="act" data-cmd="' + esc(a.cmd).replace(/"/g, "&quot;")
-                + '">' + esc(a.label) + '</button>';
+                + '">' + key + esc(a.label) + '</button>';
         }
         html += '</span>';
       }
@@ -213,19 +396,43 @@
         b.addEventListener("click", () => runCommand(b.getAttribute("data-cmd"))));
     };
 
+    // clickable exit/direction buttons (navigation without typing)
+    const NAV = { north: ["↑", "North"], south: ["↓", "South"], east: ["→", "East"],
+                  west: ["←", "West"], up: ["▲", "Up"], down: ["▼", "Down"] };
+    const renderNav = (st, show) => {
+      const bar = document.getElementById("navbar");
+      const exits = (show && st && st.exits) || [];
+      if (!exits.length || (st && st.in_combat)) { bar.innerHTML = ""; return; }
+      let h = '<span class="navlbl">Go</span>';
+      for (const d of exits) {
+        const m = NAV[d];
+        const ar = m ? m[0] : "•";
+        const label = m ? m[1] : (d.charAt(0).toUpperCase() + d.slice(1));
+        h += '<button class="navbtn" data-dir="' + esc(d) + '"><span class="ar">'
+           + ar + '</span>' + esc(label) + '</button>';
+      }
+      bar.innerHTML = h;
+      bar.querySelectorAll(".navbtn").forEach(b =>
+        b.addEventListener("click", () => runCommand(b.getAttribute("data-dir"))));
+    };
+
     const refreshUI = () => {
       if (!player || !mod) return;
-      try { renderStatus(JSON.parse(mod.web_status(player))); } catch (e) {}
+      let st = null;
+      try { st = JSON.parse(mod.web_status(player)); renderStatus(st); } catch (e) {}
+      try { renderNav(st, mode === "play"); } catch (e) {}
       try {
         renderActions(mode === "play" ? JSON.parse(mod.web_room_actions(player)) : []);
       } catch (e) {}
+      inCombat = !!(st && st.in_combat);
     };
 
     (() => {
       const qb = document.getElementById("quickbar");
       const cmds = [["Look", "look"], ["Stats", "stats"], ["Inventory", "inventory"],
                     ["Equipment", "equipment"], ["Map", "map"], ["Quests", "quests"],
-                    ["Help", "help"]];
+                    ["Bestiary", "bestiary"], ["Tutorial", "tutorial"],
+                    ["Help", "help"], ["Feedback", "feedback"]];
       for (const [label, cmd] of cmds) {
         const b = document.createElement("button");
         b.className = "btn"; b.textContent = label;
@@ -233,6 +440,65 @@
         qb.appendChild(b);
       }
     })();
+
+    // ---- input box (reliable typing, esp. on mobile) ----
+    const submitInput = (text) => {
+      text = (text || "").trim();
+      if (!text || mode === "loading" || mode === "ended" || animating) return;
+      term.write(text + "\r\n");   // echo onto the prompt line
+      buffer = "";
+      handleLine(text);
+      refreshUI();
+    };
+    const cmdInput = document.getElementById("cmdInput");
+    const submitFromBox = () => {
+      const v = cmdInput.value;
+      cmdInput.value = "";
+      const t = v.trim();
+      if (t && cmdHistory[cmdHistory.length - 1] !== t) cmdHistory.push(t);
+      if (cmdHistory.length > 100) cmdHistory.shift();
+      histPos = -1; histDraft = "";
+      submitInput(v);
+      cmdInput.focus();
+    };
+    // Tab-complete the command verb (first word) against the known commands.
+    const tabComplete = () => {
+      const val = cmdInput.value;
+      if (/\s/.test(val.trim()) || !val.trim()) return;   // only complete the verb
+      const pre = val.trim().toLowerCase();
+      const hits = cmdList.filter(c => c.startsWith(pre));
+      if (!hits.length) return;
+      if (hits.length === 1) { cmdInput.value = hits[0] + " "; return; }
+      // longest common prefix; if no progress, show the options
+      let lcp = hits[0];
+      for (const h of hits) { while (!h.startsWith(lcp)) lcp = lcp.slice(0, -1); }
+      if (lcp.length > pre.length) cmdInput.value = lcp;
+      else w("\x1b[90m" + hits.join("  ") + "\x1b[0m\r\n");
+    };
+    cmdInput.addEventListener("keydown", (e) => {
+      // in combat, 1-4 fire attack/eat/pray/flee (only when the box is empty)
+      if (inCombat && cmdInput.value === "" && /^[1-4]$/.test(e.key)) {
+        e.preventDefault(); runCommand(e.key); return;
+      }
+      if (e.key === "Enter") { e.preventDefault(); submitFromBox(); }
+      else if (e.key === "Tab") { e.preventDefault(); tabComplete(); }
+      else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!cmdHistory.length) return;
+        if (histPos === -1) { histDraft = cmdInput.value; histPos = cmdHistory.length; }
+        if (histPos > 0) histPos--;
+        cmdInput.value = cmdHistory[histPos] || "";
+        cmdInput.setSelectionRange(cmdInput.value.length, cmdInput.value.length);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (histPos === -1) return;
+        histPos++;
+        if (histPos >= cmdHistory.length) { histPos = -1; cmdInput.value = histDraft; }
+        else cmdInput.value = cmdHistory[histPos];
+      }
+    });
+    document.getElementById("sendBtn").addEventListener("click", submitFromBox);
+    if (!isMobile) cmdInput.focus();   // type into the box, not the terminal
 
     const saveCode = () => btoa(unescape(encodeURIComponent(mod.player_to_json(player))));
 
@@ -332,13 +598,15 @@
         let res;
         try { res = JSON.parse(mod.web_command(player, cmd)); }
         catch (e) { w("\r\n\x1b[91mError: " + e + "\x1b[0m\r\n"); prompt(); return; }
-        w(res.text);
-        persist();
-        if (res.alive) { prompt(); }
-        else {
-          w("\r\n\x1b[90m(refresh the page to begin a new adventure)\x1b[0m\r\n");
-          mode = "ended";
-        }
+        writeWithAnim(res.text, () => {
+          persist();
+          if (res.alive) { prompt(); }
+          else {
+            w("\r\n\x1b[90m(refresh the page to begin a new adventure)\x1b[0m\r\n");
+            mode = "ended";
+          }
+          refreshUI();
+        });
       }
     };
 
@@ -363,6 +631,7 @@
       window.__onlyrunes = {
         feed: (s) => handleLine(s),
         run: (s) => runCommand(s),
+        submit: (s) => submitInput(s),
         refresh: () => refreshUI(),
         saveCode: () => saveCode(),
         loadFromCode: (c) => loadFromCode(c),

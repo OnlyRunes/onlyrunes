@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OnlyRunes (open beta) — a text adventure inspired by Old School RuneScape</title>
+<meta name="description" content="OnlyRunes is a free, open-source text adventure inspired by Old School RuneScape. It runs in your browser, currently in open beta.">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<meta property="og:title" content="OnlyRunes (open beta)">
+<meta property="og:description" content="A text adventure inspired by Old School RuneScape. Free, open source, runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://onlyrunes.net">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d0f13; --panel: #14161b; --line: #262a33;
+    --text: #c8cdd6; --muted: #8b93a0;
+    --gold: #ffce42; --green: #6ee36e; --cyan: #59e0ff;
+    --red: #ff6a6a; --yellow: #ffe24a; --mag: #b15bbf;
+    --mono: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--mono); font-size: 15px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--cyan); }
+  .wrap { width: 100%; max-width: 720px; margin: 0 auto; padding: 0 18px; }
+
+  .betabar {
+    font-size: 13px; color: #ffce9a; background: #20160a;
+    border-bottom: 1px solid #5a3a1f; padding: 7px 14px; text-align: center;
+  }
+  .betabar b { color: #ffb84d; }
+
+  header { padding: 46px 0 6px; }
+  .logo { font-size: clamp(30px, 7vw, 50px); font-weight: 700; margin: 0; letter-spacing: 1px; }
+  .logo .o { color: var(--green); } .logo .r { color: var(--gold); }
+  .blurb { margin: 16px 0 0; color: var(--text); }
+  .blurb .dim { color: var(--muted); }
+
+  /* terminal window showing a real snippet of play */
+  .term {
+    margin: 26px 0 0; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden;
+  }
+  .term .bar {
+    display: flex; align-items: center; gap: 7px; padding: 9px 12px;
+    border-bottom: 1px solid var(--line); background: #11131a;
+  }
+  .term .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .dot1 { background: #e0564f; } .dot2 { background: #e0b13f; } .dot3 { background: #46b257; }
+  .term .bar span { margin-left: 6px; font-size: 12px; color: var(--muted); }
+  .term pre {
+    margin: 0; padding: 14px 16px; white-space: pre-wrap; word-break: break-word;
+    font-size: 13.5px; line-height: 1.65; overflow-x: auto;
+  }
+  .g { color: var(--green); } .c { color: var(--cyan); } .rd { color: var(--red); }
+  .y { color: var(--yellow); } .gd { color: var(--gold); } .m { color: var(--mag); }
+  .dim { color: var(--muted); }
+  .cur { background: var(--green); color: var(--green); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .actions { margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
+  .cmd {
+    font-family: var(--mono); font-size: 15px; text-decoration: none;
+    padding: 11px 18px; border-radius: 8px; border: 1px solid;
+  }
+  .cmd.play { color: #cdfdd6; border-color: #2c8a4b; background: #18301f; }
+  .cmd.play:hover { background: #1f4029; }
+  .cmd.src { color: var(--text); border-color: #2e3440; background: #181d26; }
+  .cmd.src:hover { background: #222936; }
+
+  .list { margin: 30px 0 0; color: var(--muted); }
+  .list .h { color: var(--text); }
+  .list ul { margin: 8px 0 0; padding: 0; list-style: none; }
+  .list li { padding: 1px 0; }
+  .list li::before { content: "· "; color: var(--green); }
+  .list b { color: var(--text); font-weight: 600; }
+
+  .note {
+    margin: 30px 0 0; padding: 14px 16px; border-radius: 9px;
+    background: #1a140c; border: 1px solid #4a3a22; color: #dcc9a6; font-size: 14px;
+  }
+  .note b { color: var(--gold); }
+
+  footer { margin: 40px 0; color: #5a616e; font-size: 12.5px; line-height: 1.65; }
+  footer a { color: #7f8794; }
+</style>
+</head>
+<body>
+  <div class="betabar"><b>open beta</b> &nbsp;·&nbsp; it's a work in progress, things will break and change</div>
+
+  <div class="wrap">
+    <header>
+      <h1 class="logo"><span class="o">Only</span><span class="r">Runes</span></h1>
+      <p class="blurb">
+        It's basically Old School RuneScape, except it's a text adventure. You
+        type things, fight stuff, train skills, and slowly drag a level-3 nobody
+        up toward something respectable. Runs in your browser, nothing to
+        install, saves as you go. <span class="dim">Free and open source.</span>
+      </p>
+    </header>
+
+    <div class="term" aria-label="a snippet of OnlyRunes gameplay">
+      <div class="bar"><i class="dot1"></i><i class="dot2"></i><i class="dot3"></i><span>onlyrunes — beta.onlyrunes.net</span></div>
+<pre><span class="dim">a fenced field full of cows and sheep, west of Lumbridge.</span>
+<span class="dim">Here:</span> <span class="rd">monsters: cow</span>   <span class="dim">Exits:</span> <span class="c">east, west</span>
+
+<span class="g">&gt;</span> fight cow
+<span class="rd">COW</span> <span class="dim">(lvl 2)</span>    <span class="y">Weakness: stab</span>
+<span class="g">You stab the cow for 4!</span>
+the cow hits you for 1.
+<span class="g">You stab the cow for 3!</span>
+<span class="gd">You have defeated the cow!</span>
+  <span class="c">+21 attack xp   +21 strength xp</span>
+  <span class="y">Loot: cowhide, raw beef</span>
+
+<span class="g">&gt;</span> <span class="cur">.</span>
+</pre>
+    </div>
+
+    <div class="actions">
+      <a class="cmd play" href="https://beta.onlyrunes.net">▶ play the beta</a>
+      <a class="cmd src" href="https://github.com/OnlyRunes/onlyrunes" target="_blank" rel="noopener">view the source</a>
+    </div>
+
+    <div class="list">
+      <span class="h">stuff you can do:</span>
+      <ul>
+        <li>fight with <b>melee, ranged or magic</b> — weaknesses and the right weapon matter</li>
+        <li>train around <b>20 skills</b>: mining, fishing, smithing, fletching, herblore, runecrafting…</li>
+        <li>wander cities, dungeons, guilds and the Wilderness</li>
+        <li>do quests, chase achievements, fill out a bestiary</li>
+        <li>earn gp and gear up from bronze all the way to dragon</li>
+      </ul>
+    </div>
+
+    <div class="note">
+      <b>fair warning:</b> this is an early beta. expect rough edges, the
+      occasional bug, and content that shifts between visits. your save lives in
+      your browser, so type <b>save export</b> if you get attached. if something
+      breaks, <a href="https://github.com/OnlyRunes/onlyrunes/issues" target="_blank" rel="noopener">let me know on GitHub</a> — it genuinely helps.
+    </div>
+
+    <footer>
+      a fan-made tribute, built for fun. not affiliated with or endorsed by
+      Jagex; "RuneScape" is their trademark. all the code and the world here are
+      my own, released under the MIT license.<br>
+      <a href="https://github.com/OnlyRunes/onlyrunes" target="_blank" rel="noopener">github</a> ·
+      <a href="https://github.com/OnlyRunes/onlyrunes/issues" target="_blank" rel="noopener">report a bug</a>
+    </footer>
+  </div>
+</body>
+</html>

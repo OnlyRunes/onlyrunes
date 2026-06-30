@@ -1,0 +1,644 @@
+{
+"adamant arrow": {
+"rstr": 31
+},
+"adamant full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 16,
+"dmagic": -1,
+"drange": 19,
+"dslash": 21,
+"dstab": 19
+},
+"adamant kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 29,
+"dmagic": -1,
+"drange": 29,
+"dslash": 31,
+"dstab": 27
+},
+"adamant pickaxe": {
+"acrush": 15,
+"aslash": -2,
+"astab": 17,
+"dslash": 1,
+"speed": 5,
+"str": 19
+},
+"adamant platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 55,
+"dmagic": -6,
+"drange": 63,
+"dslash": 63,
+"dstab": 65
+},
+"adamant platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 29,
+"dmagic": -4,
+"drange": 31,
+"dslash": 31,
+"dstab": 33
+},
+"adamant scimitar": {
+"acrush": -2,
+"aslash": 29,
+"astab": 6,
+"dslash": 1,
+"speed": 4,
+"str": 28
+},
+"adamant sword": {
+"acrush": -2,
+"aslash": 18,
+"astab": 23,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 24
+},
+"amulet of accuracy": {
+"acrush": 4,
+"amagic": 4,
+"arange": 4,
+"aslash": 4,
+"astab": 4
+},
+"amulet of defence": {
+"dcrush": 7,
+"dmagic": 7,
+"drange": 7,
+"dslash": 7,
+"dstab": 7
+},
+"amulet of magic": {
+"amagic": 10
+},
+"amulet of power": {
+"acrush": 6,
+"amagic": 6,
+"arange": 6,
+"aslash": 6,
+"astab": 6,
+"dcrush": 6,
+"dmagic": 6,
+"drange": 6,
+"dslash": 6,
+"dstab": 6,
+"prayer": 1,
+"str": 6
+},
+"amulet of strength": {
+"str": 10
+},
+"black cape": {
+"dcrush": 1,
+"drange": 2,
+"dslash": 1
+},
+"black full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 10,
+"dmagic": -1,
+"drange": 12,
+"dslash": 13,
+"dstab": 12
+},
+"black kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 18,
+"dmagic": -1,
+"drange": 18,
+"dslash": 19,
+"dstab": 17
+},
+"black platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 30,
+"dmagic": -6,
+"drange": 40,
+"dslash": 40,
+"dstab": 41
+},
+"black platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 19,
+"dmagic": -4,
+"drange": 20,
+"dslash": 20,
+"dstab": 21
+},
+"black scimitar": {
+"acrush": -2,
+"aslash": 19,
+"astab": 4,
+"dslash": 1,
+"speed": 4,
+"str": 14
+},
+"black sword": {
+"acrush": -2,
+"aslash": 10,
+"astab": 14,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 12
+},
+"blue cape": {
+"dcrush": 1,
+"drange": 2,
+"dslash": 1
+},
+"bronze arrow": {
+"rstr": 7
+},
+"bronze full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 3,
+"dmagic": -1,
+"drange": 4,
+"dslash": 5,
+"dstab": 4
+},
+"bronze kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 6,
+"dmagic": -1,
+"drange": 6,
+"dslash": 7,
+"dstab": 5
+},
+"bronze pickaxe": {
+"acrush": 2,
+"aslash": -2,
+"astab": 4,
+"dslash": 1,
+"speed": 5,
+"str": 5
+},
+"bronze platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 9,
+"dmagic": -6,
+"drange": 14,
+"dslash": 14,
+"dstab": 15
+},
+"bronze platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 6,
+"dmagic": -4,
+"drange": 7,
+"dslash": 7,
+"dstab": 8
+},
+"bronze scimitar": {
+"acrush": -2,
+"aslash": 7,
+"astab": 1,
+"dslash": 1,
+"speed": 4,
+"str": 6
+},
+"bronze sword": {
+"acrush": -2,
+"aslash": 3,
+"astab": 4,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 5
+},
+"cape of legends": {
+"dcrush": 7,
+"dmagic": 7,
+"drange": 7,
+"dslash": 7,
+"dstab": 7
+},
+"chef's hat": {},
+"climbing boots": {
+"dcrush": 2,
+"dslash": 2,
+"str": 2
+},
+"dragon dagger": {
+"acrush": -4,
+"amagic": 1,
+"aslash": 25,
+"astab": 40,
+"dmagic": 1,
+"speed": 4,
+"str": 40
+},
+"dragon med helm": {
+"amagic": -3,
+"dcrush": 32,
+"dmagic": -1,
+"drange": 34,
+"dslash": 35,
+"dstab": 33
+},
+"gold ring": {},
+"green cape": {
+"dcrush": 1,
+"drange": 2,
+"dslash": 1
+},
+"hardleather gloves": {
+"acrush": 1,
+"amagic": 1,
+"arange": 1,
+"aslash": 1,
+"astab": 1,
+"dcrush": 1,
+"dmagic": 1,
+"drange": 1,
+"dslash": 1,
+"dstab": 1,
+"str": 1
+},
+"hill giant club": {
+"acrush": 65,
+"amagic": -4,
+"aslash": 50,
+"astab": -4,
+"drange": -1,
+"speed": 7,
+"str": 70
+},
+"holy symbol": {
+"dcrush": 2,
+"dmagic": 2,
+"drange": 2,
+"dslash": 2,
+"dstab": 2,
+"prayer": 8
+},
+"iron arrow": {
+"rstr": 10
+},
+"iron full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 5,
+"dmagic": -1,
+"drange": 6,
+"dslash": 7,
+"dstab": 6
+},
+"iron kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 9,
+"dmagic": -1,
+"drange": 9,
+"dslash": 10,
+"dstab": 8
+},
+"iron pickaxe": {
+"acrush": 3,
+"aslash": -2,
+"astab": 5,
+"dslash": 1,
+"speed": 5,
+"str": 7
+},
+"iron platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 12,
+"dmagic": -6,
+"drange": 20,
+"dslash": 20,
+"dstab": 21
+},
+"iron platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 10,
+"dmagic": -4,
+"drange": 10,
+"dslash": 10,
+"dstab": 11
+},
+"iron scimitar": {
+"acrush": -2,
+"aslash": 10,
+"astab": 2,
+"dslash": 1,
+"speed": 4,
+"str": 9
+},
+"iron sword": {
+"acrush": -2,
+"aslash": 4,
+"astab": 6,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 7
+},
+"leather body": {
+"amagic": -2,
+"arange": 2,
+"dcrush": 10,
+"dmagic": 4,
+"drange": 9,
+"dslash": 9,
+"dstab": 8
+},
+"leather boots": {
+"dcrush": 1,
+"dslash": 1
+},
+"leather gloves": {
+"dcrush": 2,
+"dslash": 1
+},
+"mithril arrow": {
+"rstr": 22
+},
+"mithril full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 11,
+"dmagic": -1,
+"drange": 13,
+"dslash": 14,
+"dstab": 13
+},
+"mithril kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 20,
+"dmagic": -1,
+"drange": 20,
+"dslash": 22,
+"dstab": 18
+},
+"mithril pickaxe": {
+"acrush": 10,
+"aslash": -2,
+"astab": 12,
+"dslash": 1,
+"speed": 5,
+"str": 13
+},
+"mithril platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 38,
+"dmagic": -6,
+"drange": 44,
+"dslash": 44,
+"dstab": 46
+},
+"mithril platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 20,
+"dmagic": -4,
+"drange": 22,
+"dslash": 22,
+"dstab": 24
+},
+"mithril scimitar": {
+"acrush": -2,
+"aslash": 21,
+"astab": 5,
+"dslash": 1,
+"speed": 4,
+"str": 20
+},
+"mithril sword": {
+"acrush": -2,
+"aslash": 11,
+"astab": 16,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 17
+},
+"oak shortbow": {
+"arange": 14,
+"speed": 4
+},
+"purple cape": {
+"dcrush": 1,
+"drange": 2,
+"dslash": 1
+},
+"red cape": {
+"dcrush": 1,
+"drange": 2,
+"dslash": 1
+},
+"ring of recoil": {},
+"rune arrow": {
+"rstr": 49
+},
+"rune full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 27,
+"dmagic": -1,
+"drange": 30,
+"dslash": 32,
+"dstab": 30
+},
+"rune kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 46,
+"dmagic": -1,
+"drange": 46,
+"dslash": 48,
+"dstab": 44
+},
+"rune pickaxe": {
+"acrush": 24,
+"aslash": -2,
+"astab": 26,
+"dslash": 1,
+"speed": 5,
+"str": 29
+},
+"rune platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 72,
+"dmagic": -6,
+"drange": 80,
+"dslash": 80,
+"dstab": 82
+},
+"rune platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 47,
+"dmagic": -4,
+"drange": 49,
+"dslash": 49,
+"dstab": 51
+},
+"rune scimitar": {
+"acrush": -2,
+"aslash": 45,
+"astab": 7,
+"dslash": 1,
+"speed": 4,
+"str": 44
+},
+"rune sword": {
+"acrush": -2,
+"aslash": 26,
+"astab": 38,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 39
+},
+"shortbow": {
+"arange": 8,
+"speed": 4
+},
+"staff of air": {
+"acrush": 7,
+"amagic": 10,
+"aslash": -1,
+"dcrush": 1,
+"dmagic": 10,
+"dslash": 3,
+"dstab": 2,
+"speed": 5,
+"str": 3
+},
+"staff of earth": {
+"acrush": 9,
+"amagic": 10,
+"aslash": -1,
+"astab": 1,
+"dcrush": 1,
+"dmagic": 10,
+"dslash": 3,
+"dstab": 2,
+"speed": 5,
+"str": 5
+},
+"staff of fire": {
+"acrush": 9,
+"amagic": 10,
+"aslash": -1,
+"astab": 3,
+"dcrush": 1,
+"dmagic": 10,
+"dslash": 3,
+"dstab": 2,
+"speed": 5,
+"str": 6
+},
+"staff of water": {
+"acrush": 7,
+"amagic": 10,
+"aslash": -1,
+"dcrush": 1,
+"dmagic": 10,
+"dslash": 3,
+"dstab": 2,
+"speed": 5,
+"str": 3
+},
+"steel arrow": {
+"rstr": 16
+},
+"steel full helm": {
+"amagic": -6,
+"arange": -3,
+"dcrush": 7,
+"dmagic": -1,
+"drange": 9,
+"dslash": 10,
+"dstab": 9
+},
+"steel kiteshield": {
+"amagic": -8,
+"arange": -3,
+"dcrush": 14,
+"dmagic": -1,
+"drange": 14,
+"dslash": 15,
+"dstab": 13
+},
+"steel pickaxe": {
+"acrush": 6,
+"aslash": -2,
+"astab": 8,
+"dslash": 1,
+"speed": 5,
+"str": 9
+},
+"steel platebody": {
+"amagic": -30,
+"arange": -15,
+"dcrush": 24,
+"dmagic": -6,
+"drange": 31,
+"dslash": 31,
+"dstab": 32
+},
+"steel platelegs": {
+"amagic": -21,
+"arange": -11,
+"dcrush": 15,
+"dmagic": -4,
+"drange": 16,
+"dslash": 16,
+"dstab": 17
+},
+"steel scimitar": {
+"acrush": -2,
+"aslash": 15,
+"astab": 3,
+"dslash": 1,
+"speed": 4,
+"str": 14
+},
+"steel sword": {
+"acrush": -2,
+"aslash": 8,
+"astab": 11,
+"dcrush": 1,
+"dslash": 2,
+"speed": 4,
+"str": 12
+},
+"willow shortbow": {
+"arange": 20,
+"speed": 4
+},
+"wizard hat": {
+"amagic": 2,
+"dmagic": 2
+},
+"yellow cape": {
+"dcrush": 1,
+"drange": 2,
+"dslash": 1
+}
+}
