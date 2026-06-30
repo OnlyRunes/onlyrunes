@@ -4,6 +4,24 @@ The game runs **entirely in the browser** (Python compiled to WebAssembly via
 Pyodide + an xterm.js terminal). There is **no server to run** — you just host
 the static `site/` folder. Free hosting + free HTTPS.
 
+## Sites & domains (current setup)
+
+Hosted on **Cloudflare Workers** (static assets), configured in `wrangler.jsonc`:
+
+| Worker | Serves | Domain | Deploy |
+|---|---|---|---|
+| `onlyrunes-site` | `landing/` | `onlyrunes.net` | `npx wrangler deploy --env landing` |
+| `onlyrunes-beta` | `site/` (game) | `beta.onlyrunes.net` | `npx wrangler deploy --env beta` |
+| `onlyrunes` | `site/` (game) | `play.onlyrunes.net` *(later)* | `npx wrangler deploy` |
+
+Only the **landing page** and the **beta** are advertised right now. The live
+game worker (`onlyrunes`) stays on its `*.workers.dev` URL until
+`play.onlyrunes.net` is wired up later.
+
+Attach each domain to its worker in the Cloudflare dashboard: Workers &amp; Pages
+→ the worker → Settings → Domains &amp; Routes → Add → Custom domain. A given
+domain can only be attached to one worker at a time.
+
 ## 1. Build
 
 ```bash
