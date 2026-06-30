@@ -544,6 +544,101 @@ def _obor_death(name):
             _tint(OBOR_DIE, "grey", "dim")]
 
 
+# --- Obor's extra attack art (ground slam + boulder throw) -----------------
+OBOR_SLAM = r'''
+           .-=======-.
+          /  O     O  \
+          |   \VVV/   |
+           \____|____/
+         __|         |__
+        /  | *STOMP* |  \
+     ~~~~~~~~~~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'''
+OBOR_ROCK = r'''
+           .-=======-.        _____
+          /  O     O  \      /     \
+          |   \___/   |     | (())  |
+           \_________/       \_____/  ->
+         __|         |__
+        /  |         |  \
+'''
+
+
+def _obor_smash(_=None):
+    return [_tint(OBOR_RAGE, "orange", "bold"), _tint(OBOR_RAGE, "bred", "bold")]
+
+
+def _obor_slam_fx(_=None):
+    return [_tint(OBOR_SLAM, "orange", "bold"), _tint(OBOR_SLAM, "byellow", "bold")]
+
+
+def _obor_rock_fx(_=None):
+    return [_tint(OBOR_ROCK, "byellow", "bold"), _tint(OBOR_ROCK, "orange", "bold")]
+
+
+def _count_claw(_=None):
+    return [_tint(BAT_CALM, "bmagenta"), _tint(BAT_FANG, "bred", "bold")]
+
+
+def _count_bite(_=None):
+    return [_tint(BAT_FANG, "bmagenta", "bold"), _tint(BAT_FANG, "bred", "bold")]
+
+
+def _count_swarm(_=None):
+    return [_tint(BAT_DIE2, "bmagenta", "bold"), _tint(BAT_DIE2, "bred", "bold")]
+
+
+# Boss-attack effects (called with the player, monster, and damage dealt).
+def _obor_stagger(p, m, dmg):
+    sd = getattr(p, "stat_drain", None)
+    if sd is None:
+        sd = p.stat_drain = {}
+    sd["defence"] = sd.get("defence", 0) + 3
+    print("  " + paint("The impact rattles your guard! (-3 defence)", "orange"))
+
+
+def _count_lifesteal(p, m, dmg):
+    heal = max(1, dmg // 2)
+    m["cur"] = min(m["hp"], m["cur"] + heal)
+    print("  " + paint(f"The Count drinks your blood and heals {heal}!", "bmagenta")
+          + "  " + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred"))
+
+
+def _count_disorient(p, m, dmg):
+    sd = getattr(p, "stat_drain", None)
+    if sd is None:
+        sd = p.stat_drain = {}
+    sd["attack"] = sd.get("attack", 0) + 2
+    print("  " + paint("The swarm claws and screeches — you're disoriented! "
+                       "(-2 attack)", "bmagenta"))
+
+
+# Movesets: each turn picks one (weighted). mult scales the boss's max hit;
+# atype is the damage type (vs your defence + prayer); effect fires on a hit.
+OBOR_ATTACKS = [
+    {"label": "his giant club", "verb": "smashes down with",
+     "color": ("brown", "bold"), "builder": _obor_smash, "mult": 1.4, "w": 3,
+     "atype": "crush"},
+    {"label": "the ground in a thunderous stomp", "verb": "slams",
+     "color": ("orange", "bold"), "builder": _obor_slam_fx, "mult": 1.0, "w": 2,
+     "atype": "crush", "effect": _obor_stagger},
+    {"label": "a massive boulder", "verb": "hurls", "color": ("byellow", "bold"),
+     "builder": _obor_rock_fx, "mult": 1.1, "w": 2, "atype": "ranged"},
+]
+COUNT_ATTACKS = [
+    {"label": "his raking claws", "verb": "slashes with",
+     "color": ("bred", "bold"), "builder": _count_claw, "mult": 1.0, "w": 3,
+     "atype": "slash"},
+    {"label": "his fangs, drinking deep", "verb": "bites with",
+     "color": ("bmagenta", "bold"), "builder": _count_bite, "mult": 0.9, "w": 2,
+     "atype": "stab", "effect": _count_lifesteal},
+    {"label": "a shrieking swarm of bats", "verb": "summons",
+     "color": ("bmagenta", "bold"), "builder": _count_swarm, "mult": 0.8, "w": 2,
+     "atype": "crush", "effect": _count_disorient},
+]
+
+
 BOSS_INTRO = {"king black dragon": _kbd_intro, "count draynor": _count_intro,
               "obor": _obor_intro}
 BOSS_DEATH = {"king black dragon": _kbd_death, "count draynor": _count_death,
@@ -2014,8 +2109,53 @@ def _kbd_take_turn(p, m):
     return "died" if p.hp <= 0 else None
 
 
+def _boss_take_turn(p, m, attacks):
+    """Generic varied-moveset turn: pick a weighted attack, animate, hit, apply
+    its effect. Used by bosses other than the KBD (which has bespoke logic)."""
+    atk = random.choices(attacks, weights=[a["w"] for a in attacks])[0]
+    animate(atk["builder"](), delay=0.12, center=True)
+    say(f"{m['name'].title()} {atk['verb']} {atk['label']}!", *atk["color"])
+    atype = atk.get("atype", "crush")
+    m_att_roll = (m["attack"] + 9) * (m.get("abonus", 0) + 64)
+    p_def_roll = _player_def_roll(p, atype)
+    if random.random() < _accuracy(m_att_roll, p_def_roll):
+        dmg = random.randint(0, max(1, int(m["max_hit"] * atk["mult"])))
+        prot = "magic" if atype == "magic" else \
+            ("ranged" if atype == "ranged" else "melee")
+        if p.prayer_protects(prot):
+            dmg = int(dmg * 0.5)
+        p.hp -= dmg
+        hpbar = "  " + paint("HP ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 18)
+        if dmg == 0:
+            print("  " + paint("Its blow grazes you. (0)", "grey") + hpbar)
+        else:
+            print("  " + paint(f"It hits you for {dmg}.", "bred") + hpbar)
+            if p.hp > 0 and atk.get("effect"):
+                atk["effect"](p, m, dmg)
+    else:
+        print("  " + paint("You weather the blow.", "grey"))
+    if p.active_prayers:
+        p.prayer_points -= p.prayer_drain()
+        if p.prayer_points <= 0:
+            p.prayer_points = 0
+            p.active_prayers = []
+            print("  " + paint("Your prayers flicker out (no prayer points).",
+                               "bmagenta"))
+    return "died" if p.hp <= 0 else None
+
+
+def _obor_take_turn(p, m):
+    return _boss_take_turn(p, m, OBOR_ATTACKS)
+
+
+def _count_take_turn(p, m):
+    return _boss_take_turn(p, m, COUNT_ATTACKS)
+
+
 # Bosses with bespoke, varied turns (else the generic swing below is used).
-BOSS_TURN = {"king black dragon": _kbd_take_turn}
+BOSS_TURN = {"king black dragon": _kbd_take_turn,
+             "obor": _obor_take_turn,
+             "count draynor": _count_take_turn}
 
 
 def _monster_atk_type(m):
@@ -4437,6 +4577,7 @@ def cmd_devmax(p, arg):
     for r in runes:
         if r in ITEMS:
             p.add(r, 100000)
+    p.add("giant key")     # so you can reach Obor's lair to test bosses
     # wipe loadout, then equip best-in-slot for the active style
     for slot in list(p.equipment):
         p.equipment[slot] = None
