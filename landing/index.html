@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OnlyRunes — a text adventure inspired by Old School RuneScape</title>
+<meta name="description" content="OnlyRunes is a free, browser-based text adventure inspired by Old School RuneScape. Fight monsters, train skills, complete quests — no install, your progress saves automatically.">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<meta property="og:title" content="OnlyRunes — a text adventure inspired by Old School RuneScape">
+<meta property="og:description" content="Free, browser-based, no install. Fight monsters, train skills, complete quests.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://onlyrunes.net">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d0f13; --panel: #14161b; --line: #262a33;
+    --text: #c8cdd6; --muted: #8b93a0;
+    --gold: #ffce42; --green: #6ee36e; --green-deep: #1f6f3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--text);
+    background: var(--bg);
+    background: radial-gradient(1100px 560px at 50% -10%, #1a1f2a 0%, #0d0f13 60%);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    min-height: 100vh; line-height: 1.6;
+  }
+  .wrap { width: 100%; max-width: 880px; margin: 0 auto; padding: 0 20px; }
+  /* hero */
+  header { text-align: center; padding: 72px 0 40px; }
+  .logo {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: clamp(40px, 9vw, 76px); font-weight: 700; letter-spacing: 1px;
+    margin: 0; line-height: 1.05;
+    text-shadow: 0 0 34px rgba(255, 206, 66, .18);
+  }
+  .logo .only { color: var(--green); }
+  .logo .runes { color: var(--gold); }
+  .tagline { margin: 14px auto 0; max-width: 600px; font-size: clamp(16px, 2.4vw, 20px); color: var(--text); }
+  .sub { margin: 8px auto 0; font-size: 14px; color: var(--muted); }
+  .badge {
+    display: inline-block; margin-top: 18px; padding: 3px 12px; border-radius: 999px;
+    font-size: 12.5px; letter-spacing: .5px; color: #ff9e3d;
+    border: 1px solid #5a3a1f; background: #1c150d;
+  }
+  /* CTAs */
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 30px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 24px; border-radius: 10px; font-size: 16px; font-weight: 600;
+    text-decoration: none; cursor: pointer; border: 1px solid transparent;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--green-deep); color: #dff5e4; border-color: #2c8a4b; }
+  .btn-primary:hover { background: #247a42; }
+  .btn-ghost { background: #1b1f27; color: var(--text); border-color: #2e3440; }
+  .btn-ghost:hover { background: #252b35; border-color: #3a4250; }
+  .playnote { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .playnote a { color: #9aa3b2; }
+  /* features */
+  section { padding: 30px 0; }
+  h2 { text-align: center; font-size: 22px; color: #e6ebf2; margin: 0 0 22px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 18px 16px;
+  }
+  .card .ic { font-size: 22px; }
+  .card h3 { margin: 8px 0 6px; font-size: 16px; color: #e6ebf2; font-weight: 600; }
+  .card p { margin: 0; font-size: 14px; color: var(--muted); }
+  /* how it works strip */
+  .how {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px; text-align: center; color: var(--text); font-size: 15px;
+  }
+  .how b { color: var(--gold); font-weight: 600; }
+  /* footer */
+  footer { text-align: center; padding: 36px 0 50px; color: #5a616e; font-size: 12.5px; }
+  footer a { color: #7f8794; }
+  footer .links { margin-bottom: 14px; }
+  footer .links a { margin: 0 9px; color: #9aa3b2; text-decoration: none; }
+  footer .links a:hover { color: #cdd6e4; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1 class="logo"><span class="only">Only</span><span class="runes">Runes</span></h1>
+      <p class="tagline">A text-adventure tribute to Old School RuneScape — free to play in your browser.</p>
+      <p class="sub">Start with nothing and build your adventure. No install, no account — your progress saves automatically.</p>
+      <div><span class="badge">OPEN BETA</span></div>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://beta.onlyrunes.net">▶ Play now</a>
+        <a class="btn btn-ghost" href="https://github.com/OnlyRunes/onlyrunes" target="_blank" rel="noopener">★ Open source on GitHub</a>
+      </div>
+      <p class="playnote">Currently in open beta at <a href="https://beta.onlyrunes.net">beta.onlyrunes.net</a>. A stable release will live at <a href="https://play.onlyrunes.net">play.onlyrunes.net</a>.</p>
+    </div>
+  </header>
+
+  <section class="wrap">
+    <h2>What you can do</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="ic">⚔️</div>
+        <h3>Fight</h3>
+        <p>Real OSRS-style combat — melee, ranged and magic, with stab/slash/crush styles, monster weaknesses, prayer and food. Take on bosses like the King Black Dragon.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🪓</div>
+        <h3>Train your skills</h3>
+        <p>Chop, mine, fish, cook, smith, craft, fletch, herblore, runecraft, thieve, agility, prayer and more — every level earned.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🗺️</div>
+        <h3>Explore</h3>
+        <p>Roam Misthalin, Asgarnia and the Kharidian Desert, plus guilds, dungeons, members areas and the Wilderness.</p>
+      </div>
+      <div class="card">
+        <div class="ic">💰</div>
+        <h3>Get rich &amp; gear up</h3>
+        <p>Bank your loot, trade on the Grand Exchange, and upgrade your equipment from bronze all the way to dragon.</p>
+      </div>
+      <div class="card">
+        <div class="ic">📜</div>
+        <h3>Quests &amp; goals</h3>
+        <p>Complete classic quests, chase achievements, and fill out your bestiary as you slay.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🖥️</div>
+        <h3>Play anywhere</h3>
+        <p>Runs in any modern browser on desktop or mobile — or straight in your terminal with one Python file.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="how">
+      OnlyRunes is <b>free</b> and <b>open source</b>. It runs entirely in your browser —
+      nothing to download, no sign-up — and your save lives on your device.
+      Still actively in development: <a href="https://github.com/OnlyRunes/onlyrunes" style="color:var(--green)">feedback and ideas are welcome</a>.
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="links">
+        <a href="https://beta.onlyrunes.net">Play (beta)</a>·
+        <a href="https://github.com/OnlyRunes/onlyrunes" target="_blank" rel="noopener">GitHub</a>·
+        <a href="https://github.com/OnlyRunes/onlyrunes/issues" target="_blank" rel="noopener">Report a bug</a>
+      </div>
+      OnlyRunes is a fan-made tribute and parody. It is <b>not</b> affiliated with,
+      endorsed by, or connected to Jagex Ltd. or RuneScape.<br>
+      "RuneScape" is a trademark of Jagex. All original code &amp; world here are our own. Released under the MIT license.
+    </div>
+  </footer>
+</body>
+</html>

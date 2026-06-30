@@ -1,10 +1,14 @@
 {
-  // Cloudflare Worker config for OnlyRunes (static-assets site).
+  // Cloudflare Worker config for OnlyRunes (static-assets sites).
   //
-  // PRODUCTION (live):  npx wrangler deploy            -> worker "onlyrunes"      -> onlyrunes.net
-  // BETA (staging):     npx wrangler deploy --env beta -> worker "onlyrunes-beta" -> beta.onlyrunes.net
+  // LANDING PAGE:        npx wrangler deploy --env landing -> worker "onlyrunes-site" -> onlyrunes.net
+  // PRODUCTION (game):   npx wrangler deploy               -> worker "onlyrunes"      -> play.onlyrunes.net
+  // BETA (game):         npx wrangler deploy --env beta    -> worker "onlyrunes-beta" -> beta.onlyrunes.net
   //
   // Deploying updates the same-named worker, so custom domains + HTTPS persist.
+  // Domains are attached per-worker in the Cloudflare dashboard (Settings ->
+  // Domains & Routes): onlyrunes.net -> onlyrunes-site, play.onlyrunes.net ->
+  // onlyrunes, beta.onlyrunes.net -> onlyrunes-beta.
   "name": "onlyrunes",
   "compatibility_date": "2026-06-27",
   "assets": {
@@ -15,6 +19,12 @@
       "name": "onlyrunes-beta",
       "assets": {
         "directory": "./site"
+      }
+    },
+    "landing": {
+      "name": "onlyrunes-site",
+      "assets": {
+        "directory": "./landing"
       }
     }
   }
