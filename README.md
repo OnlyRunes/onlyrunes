@@ -81,6 +81,15 @@ Manual deploys: `./deploy.sh` (live) or `./deploy.sh beta`.
 Browser progress auto-saves to `localStorage`. Use `save export` to download a
 save file and `save import` to restore it on another device.
 
+## Contributing
+
+Issues and pull requests are welcome — bug reports, balance feedback, new
+content, and fixes. The whole game lives in `adventure.py`.
+
+## License
+
+Released under the [MIT License](LICENSE) — free to use, modify, and share.
+
 ---
 
 OnlyRunes is a fan-made tribute and parody. It is **not** affiliated with,
