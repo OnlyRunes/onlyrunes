@@ -35,7 +35,7 @@ serve it over http.)
 |------|------------|
 | `adventure.py` | The whole game (source of truth) — CLI + a web API |
 | `site/index.html` | Browser front-end (Pyodide + xterm.js) |
-| `site/adventure.py` | Generated copy for deploy (git-ignored) |
+| `site/adventure.py` | Generated copy for deploy (tracked; rebuilt by `build_site.sh`) |
 | `build_site.sh` | Copies `adventure.py` → `site/` |
 | `deploy.sh` | Build + deploy to Cloudflare |
 | `wrangler.jsonc` | Cloudflare Worker config (static assets) |
@@ -80,6 +80,16 @@ Manual deploys: `./deploy.sh` (live) or `./deploy.sh beta`.
 
 Browser progress auto-saves to `localStorage`. Use `save export` to download a
 save file and `save import` to restore it on another device.
+
+## Contributing
+
+Issues and pull requests are welcome — bug reports, balance feedback, new
+content (areas, monsters, quests, gear), and fixes. The whole game lives in
+`adventure.py`; run `python3 adventure.py` to play it in the terminal.
+
+## License
+
+Released under the [MIT License](LICENSE) — free to use, modify, and share.
 
 ---
 
