@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OnlyRunes — a text adventure inspired by Old School RuneScape</title>
-<meta name="description" content="OnlyRunes is a free, browser-based text adventure inspired by Old School RuneScape. Fight monsters, train skills, complete quests — no install, your progress saves automatically.">
+<title>OnlyRunes (Open Beta) — a text adventure inspired by Old School RuneScape</title>
+<meta name="description" content="OnlyRunes is a free, browser-based text adventure inspired by Old School RuneScape — currently in open beta. Fight monsters, train skills, complete quests. No install, your progress saves automatically.">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
-<meta property="og:title" content="OnlyRunes — a text adventure inspired by Old School RuneScape">
-<meta property="og:description" content="Free, browser-based, no install. Fight monsters, train skills, complete quests.">
+<meta property="og:title" content="OnlyRunes (Open Beta) — a text adventure inspired by Old School RuneScape">
+<meta property="og:description" content="Free, browser-based, no install — currently in open beta. Fight monsters, train skills, complete quests.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://onlyrunes.net">
 <style>
@@ -41,10 +41,24 @@
   .tagline { margin: 14px auto 0; max-width: 600px; font-size: clamp(16px, 2.4vw, 20px); color: var(--text); }
   .sub { margin: 8px auto 0; font-size: 14px; color: var(--muted); }
   .badge {
-    display: inline-block; margin-top: 18px; padding: 3px 12px; border-radius: 999px;
-    font-size: 12.5px; letter-spacing: .5px; color: #ff9e3d;
-    border: 1px solid #5a3a1f; background: #1c150d;
+    display: inline-block; margin-top: 18px; padding: 5px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #ffb84d;
+    border: 1px solid #6b4516; background: #211609;
   }
+  /* top-of-page beta banner */
+  .topbeta {
+    text-align: center; font-size: 13.5px; padding: 9px 16px;
+    color: #ffce9a; background: #2a1c0c; border-bottom: 1px solid #6b4516;
+  }
+  .topbeta b { color: #ffb84d; }
+  /* prominent beta callout under the CTAs */
+  .betanote {
+    max-width: 640px; margin: 26px auto 0; padding: 15px 20px; border-radius: 12px;
+    background: #1c150d; border: 1px solid #5a3a1f; color: #e9c98c;
+    font-size: 14.5px; text-align: left;
+  }
+  .betanote b { color: #ffb84d; }
+  .betanote a { color: #ffce9a; }
   /* CTAs */
   .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 30px; }
   .btn {
@@ -86,17 +100,25 @@
 </style>
 </head>
 <body>
+  <div class="topbeta">🚧 <b>OnlyRunes is in open beta</b> — a work in progress. Expect bugs and frequent changes.</div>
   <header>
     <div class="wrap">
       <h1 class="logo"><span class="only">Only</span><span class="runes">Runes</span></h1>
       <p class="tagline">A text-adventure tribute to Old School RuneScape — free to play in your browser.</p>
       <p class="sub">Start with nothing and build your adventure. No install, no account — your progress saves automatically.</p>
-      <div><span class="badge">OPEN BETA</span></div>
+      <div><span class="badge">🚧 OPEN BETA</span></div>
       <div class="cta">
-        <a class="btn btn-primary" href="https://beta.onlyrunes.net">▶ Play now</a>
+        <a class="btn btn-primary" href="https://beta.onlyrunes.net">▶ Play the open beta</a>
         <a class="btn btn-ghost" href="https://github.com/OnlyRunes/onlyrunes" target="_blank" rel="noopener">★ Open source on GitHub</a>
       </div>
-      <p class="playnote">Currently in open beta at <a href="https://beta.onlyrunes.net">beta.onlyrunes.net</a>. A stable release will live at <a href="https://play.onlyrunes.net">play.onlyrunes.net</a>.</p>
+      <div class="betanote">
+        🚧 <b>Heads up — this is an early open beta.</b> It's being actively built,
+        so expect rough edges, occasional bugs, and content that changes between
+        visits. Saves live in your browser, so back them up with
+        <b>save&nbsp;export</b>. Hit a bug or have an idea?
+        <a href="https://github.com/OnlyRunes/onlyrunes/issues" target="_blank" rel="noopener">Tell me here</a>
+        — your feedback genuinely shapes the game.
+      </div>
     </div>
   </header>
 
