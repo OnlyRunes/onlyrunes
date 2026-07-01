@@ -416,16 +416,43 @@ GEN_ROAR = r"""
 """
 
 
+# King Black Dragon: a three-headed braille dragon (fine dots via JuliaMono).
+KBD_ART = '''
+                                  ⣠⠴⠋⠁⢀⡼ ⢀⡴⠞⠉⠁  ⢀⡤⠊
+                                ⣰⢿⠁  ⢠⢾⣤⠞⠉   ⢀⣠⠞⠋
+                              ⣠⡾⠵⠎⠉⣉⡷⠿⣏⠁ ⢸⠃⢀⡴⠛⠳⢤⡀
+                          ⣰⣶⠖⠋⣠⢶⠏⣀⣼⡥  ⠈⠳⢤⣟⣠⡟⠁  ⢀⣩⡷⠔
+                         ⡼⠁⠁⣠⠞⠁⠘⠋⢁⡟  ⣠   ⣠⡴⣷⠖⠒⠋⠉
+                 ⣀⡀ ⢀   ⣴⣟⣠⠞⠁ ⢀⣀⣴⠏  ⢰⡷⡀⠳⡏⠁⢠⣇⣀⡀   ⣠⠔⢀⣀
+              ⣀⡴⠚⠁ ⢠⠞⢀⣠⢞⡏ ⣾ ⢀⣾⣟⣿⡽    ⣷⠈⠲⣽⡀ ⢣⡀⣙⡷⣖⡋⠳⡄ ⠈⠓⢦⣀
+            ⢀⡼⢻⣀⣀⡀⣰⣻⡶⣋⢠⡞⠁ ⣩⡴⠟⢛⡿⠋⢀⡤⢶⣶⡞⠁  ⡿⠽⣦⣄⣿⠁⢙⣆⠙⢶⣟⣆⢀⣀⣀⡟⢧⡀
+          ⣀⠴⠟⣚⠃⢀⡤⠟⠛⢧⣼⢹⣿⠁⣠⡞⠉⣙⠲⣞⡀⢀⡼⣟⣆⡟   ⢠⣧⡶⠛⠛⢷⣄⠈⣏⢧⣀⡼⠛⠻⢤⡀⠘⣓⠻⠦⣀
+      ⢀⡼⡿⠋⢁⡴⢻⣃⡤⣾⠖  ⡏⠙⠻⣯⡴⡏⣠⣞⣭⣤⠴⠿⠾⢿⣆⣷⠃  ⠑⢻⢧⣇⣀  ⢹⡦⠽⠖⢻⡂  ⠲⣷⢤⣘⡟⢦⡈⠙⢿⢧⡀
+      ⣞ ⢀⡴⠋ ⠈⠁⣠⠏  ⡴⣧⡀⣀⡷⢞⣿⣿⣿⡻⣳⠖⠚⠉⠉⠈⡏    ⣨⠟⠚⠋⠉⠙⢿⠳⢦⣀⢀⢣⢦  ⠹⣄⠈⠁ ⠙⢦⡀ ⣳
+     ⡾⠋⢰⠋ ⢀⣠⣤⣾⠃  ⠸⡟ ⠙⣿⣿⣿⣿⢮⣧⣾⠁⣀⣴⠮⠭⠭⡇  ⢠⠟⢷⣦⡀   ⢸⠆ ⣸⠋⠈⢻⠇  ⠘⣷⣤⣄⡀ ⠙⡆⠙⢷
+    ⢠⡇ ⣿ ⣠⣿⣯⣿⠞   ⢀⡿  ⣸  ⠱⣄⡬⣿⡏⢁⣿⡆ ⣾⡇ ⣴⠋  ⠈⠙⣶⣤⣠⠎  ⣇  ⢿⡀   ⠳⣿⣽⣿⣄ ⣿ ⢸⡄
+ ⢀⣤⣰⠋   ⠐⠋⢩⠟⠁⢠⣖⠻⣿⠏   ⡟⠚⣦⣠⣿⣖⣺⢷⡋⣹⡇⢠⣯⡇⢰⠃   ⢀⡼⢹⣷⣿⣀⣴⠓⢻   ⠹⣿⠟⣲⡄⠈⠻⡍⠙⠂   ⠙⣆⣤⡀
+⣠⢾⣸⡗   ⢀⣤ ⠏ ⠠⣞⠯⡧⡏   ⠰⣧⣾⠟⠋⣻⣵⠃ ⣿⣿⣿⣺⡿⢀⡏   ⡠⠞ ⢸⣧⢿⡉⠉⢳⢼⠆   ⢹⢼⠽⣳⠄ ⠹ ⣤⡀   ⢺⣇⡷⣄
+⡇⠈⠁⡴⠎ ⢴⣯⢶⡶⠒⢒⣛⣻⢧⣿⠁   ⢰⣹⢻⣭⣽⣿⡛⡇ ⠸⢿⣟⣋⣁⡼   ⢨⠇  ⣼⢃⣀⣷⣀⡈⣎⡆   ⠈⣿⡼⣟⣛⡒⠒⢶⡶⣽⡦ ⠱⢦⠈⠁⢸
+⠷⣄⣀⣁⣠⣴⢿⡿⢝⡽⠋⠉ ⣀⣀⡇   ⢀⡴⠋⠉⠁  ⠉⠉   ⢱      ⡎  ⠚⠉⠉ ⠘⠈⠉⠙⢦⡀   ⢸⣀⣀ ⠉⠙⢯⡫⢿⡿⣦⣄⣈⣀⣠⠾
+ ⠈⠿⠿⠿⠿⠳⢷⣿  ⣴⠒⠒⢒⡇  ⣰⠋⠈⠳⣄                        ⣠⠞⠁⠙⣆  ⢸⡒⠒⠒⣦  ⣿⡾⠞⠿⠿⠿⠿⠁
+        ⢘⡆⣠⣿⡇ ⣿⡇ ⡾⠁   ⠈⢷⡄                    ⢠⡾⠁   ⠈⢷ ⢸⣿ ⢸⣿⣄⢰⡃
+   ⢀⣤⣴⣺⡯⡽⠚⣁⣼⣇⢰⣷⠇⣸⠁     ⢸⡿⡄                  ⢠⢿⡇     ⠈⣇⠸⣾⡆⣸⣧⣈⠓⢯⢽⣗⣦⣤⡀
+  ⢰⣿⣋⣁⣴⣾⡁ ⢿⣿⣿⣽⡟⢠⠇      ⢸⠇⠹⡄                ⢠⠏⠸⡇      ⠸⡄⢻⣯⣿⣿⡿ ⢈⣷⣦⣈⣙⣿⡆
+  ⠈⠙⠒⠚⠛⠉  ⠘⠻⠭⠥⠤⠞      ⢀⡞  ⢻                ⡟  ⢳⡀      ⠳⠤⠬⠭⠟⠃  ⠉⠛⠓⠒⠋⠁
+                      ⠉   ⠈                ⠁   ⠉
+'''
+
+
 def _kbd_intro(name):
-    return [_tint(KBD_CALM, "grey"), _tint(KBD_CALM, "bred", "bold"),
-            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
-            _tint(KBD_FIRE1, "orange", "bold"), _tint(KBD_FIRE2, "byellow", "bold"),
-            _tint(KBD_CALM, "bred", "bold")]
+    return [_tint(KBD_ART, "grey"), _tint(KBD_ART, "bred"),
+            _tint(KBD_ART, "bred", "bold"), _tint(KBD_ART, "grey"),
+            _tint(KBD_ART, "bred", "bold")]
 
 
 def _kbd_death(name):
-    return [_tint(KBD_DIE1, "bred"), _tint(KBD_DIE1, "grey"),
-            _tint(KBD_DIE2, "grey"), _tint(KBD_DIE3, "grey", "dim")]
+    return [_tint(KBD_ART, "bred"), _tint(KBD_ART, "grey"),
+            _tint(KBD_ART, "grey", "dim")]
 
 
 def _kbd_br_fire(_=None):
