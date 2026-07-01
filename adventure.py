@@ -3289,36 +3289,62 @@ def cmd_spin(p, arg):
     p.gain_xp("crafting", 2.5)
 
 
+# hide -> (leather product, coin fee per hide). Extended by later content.
+TAN_HIDES = {"cowhide": ("leather", 1)}
+
+
 def cmd_tan(p, arg):
     r = ROOMS[p.location]
     if not r.get("tanner"):
-        say("You need a tanner (Al Kharid).")
+        say("You need a tanner (Al Kharid, Crafting Guild).")
         return
-    if not p.has("cowhide"):
-        say("You have no cowhide.")
+    want = arg.strip().lower()
+    hide = want if want in TAN_HIDES else next((h for h in TAN_HIDES if p.has(h)), None)
+    if not hide or not p.has(hide):
+        say("You have no hide to tan. Tannable: " + ", ".join(TAN_HIDES))
         return
-    if not p.has("coins", 1):
-        say("The tanner charges 1 coin per hide.")
+    leather, fee = TAN_HIDES[hide]
+    if not p.has("coins", fee):
+        say(f"The tanner charges {fee} coin(s) per {hide}.")
         return
-    p.take("cowhide")
-    p.take("coins", 1)
-    p.add("leather")
-    say("The tanner turns your cowhide into leather.")
+    p.take(hide)
+    p.take("coins", fee)
+    p.add(leather)
+    say(f"The tanner turns your {hide} into {leather}.")
+
+
+# product -> (material, qty, crafting level, xp).  Needs a needle + thread.
+CRAFT_RECIPES = {
+    "leather body": ("leather", 1, 1, 25),
+}
 
 
 def cmd_craft(p, arg):
-    arg = arg.strip().lower()
-    if arg in ("leather body", "body", "leather"):
-        if not (p.find_tool("needle") and p.has("thread") and p.has("leather")):
-            say("You need a needle, thread and leather.")
-            return
-        p.take("leather")
-        p.take("thread")
-        p.add("leather body")
-        say("You stitch together a leather body.")
-        p.gain_xp("crafting", 25)
-    else:
-        say("You can 'craft leather body'. (Also 'spin' wool, 'tan' hides.)")
+    name = arg.strip().lower()
+    name = {"body": "leather body", "leather": "leather body"}.get(name, name)
+    rec = CRAFT_RECIPES.get(name)
+    if not rec:
+        say("You can craft: " + ", ".join(CRAFT_RECIPES)
+            + ". (Also 'spin' wool/flax, 'tan' hides.)")
+        return
+    mat, qty, lvl, xp = rec
+    if p.lvl("crafting") < lvl:
+        say(f"You need crafting level {lvl} to make {name}.")
+        return
+    if not p.find_tool("needle"):
+        say("You need a needle.")
+        return
+    if not p.has("thread"):
+        say("You need thread.")
+        return
+    if not p.has(mat, qty):
+        say(f"You need {qty}x {mat}.")
+        return
+    p.take(mat, qty)
+    p.take("thread")
+    p.add(name)
+    say(f"You stitch together {name}.")
+    p.gain_xp("crafting", xp)
 
 
 def cmd_craftrune(p, _a):
@@ -5259,6 +5285,131 @@ SHOPS["general"]["knife"] = 6
 SHOPS["crafting"]["knife"] = 6
 SHOPS["crafting"]["flax"] = 4
 SHOPS["crafting"]["bow string"] = 12
+
+
+# ===========================================================================
+#  CRANDOR & ELVARG  (dragons — a Dragon-Slayer-flavoured expansion)
+# ===========================================================================
+# New loot loop: green dragons & Elvarg drop dragon bones (bury -> big prayer
+# xp) and green dragonhide (tan -> craft the green d'hide armour that already
+# exists in the gear tables).
+
+add_item("dragon bones", 90, bury=("prayer", 72))
+add_item("green dragonhide", 1500)
+add_item("green dragon leather", 1700)
+
+TAN_HIDES["green dragonhide"] = ("green dragon leather", 20)
+CRAFT_RECIPES.update({
+    "green d'hide vambraces": ("green dragon leather", 1, 57, 62),
+    "green d'hide chaps": ("green dragon leather", 2, 60, 124),
+    "green d'hide body": ("green dragon leather", 3, 63, 186),
+})
+
+# --- Elvarg the dragon: art + a dragonfire moveset -------------------------
+ELVARG_CALM = r'''
+         ___                    ___
+        /   \__   _______   __/   \
+        \      \_/       \_/      /
+         \   (o)   >===<   (o)   /
+          \__   \  \_v_/  /   __/
+             \   \_____/   /
+              \___|   |___/
+                 (_)   (_)
+'''
+ELVARG_FIRE = r'''
+         ___                    ___
+        /   \__   _______   __/   \
+        \      \_/       \_/      /
+         \   (@)   >===<   (@)   /        ((~))
+          \__   \  \_v_/  /   __/      (~~FIRE~~)>
+             \   \_____/   /              ((~))
+              \___|   |___/
+                 (_)   (_)
+'''
+ELVARG_DIE = r'''
+
+
+          x                      x
+           \__   _______   __/
+              \_/  .....  \_/
+               \  charred  /
+                \_ bones _/
+                  ~~~~~~~
+'''
+
+
+def _elvarg_intro(name):
+    return [_tint(ELVARG_CALM, "green"), _tint(ELVARG_CALM, "bgreen", "bold"),
+            _tint(ELVARG_FIRE, "orange", "bold"), _tint(ELVARG_FIRE, "byellow", "bold"),
+            _tint(ELVARG_CALM, "bgreen", "bold")]
+
+
+def _elvarg_death(name):
+    return [_tint(ELVARG_CALM, "bred"), _tint(ELVARG_CALM, "grey"),
+            _tint(ELVARG_DIE, "grey", "dim")]
+
+
+def _elvarg_fire(_=None):
+    return [_tint(ELVARG_FIRE, "orange", "bold"), _tint(ELVARG_FIRE, "byellow", "bold"),
+            _tint(ELVARG_FIRE, "bred", "bold")]
+
+
+def _elvarg_bite(_=None):
+    return [_tint(ELVARG_CALM, "bgreen", "bold"), _tint(ELVARG_FIRE, "bred", "bold")]
+
+
+ELVARG_ATTACKS = [
+    {"label": "a searing blast of dragonfire", "verb": "breathes",
+     "color": ("orange", "bold"), "builder": _elvarg_fire, "mult": 1.5, "w": 3,
+     "atype": "magic"},
+    {"label": "her great fangs", "verb": "snaps with", "color": ("bgreen", "bold"),
+     "builder": _elvarg_bite, "mult": 1.0, "w": 3, "atype": "stab"},
+    {"label": "a lashing tail swipe", "verb": "strikes with",
+     "color": ("green", "bold"), "builder": _elvarg_bite, "mult": 1.1, "w": 2,
+     "atype": "crush"},
+]
+
+BOSS_INTRO["elvarg"] = _elvarg_intro
+BOSS_DEATH["elvarg"] = _elvarg_death
+BOSS_TURN["elvarg"] = lambda p, m: _boss_take_turn(p, m, ELVARG_ATTACKS)
+MONSTER_ART["elvarg"] = ELVARG_CALM
+
+# --- Dragons (green dragon is farmable; Elvarg is the boss) ----------------
+_add_mob("green dragon",
+    {"abonus": 0, "atktype": ["slash", "dragonfire"], "att": 68, "cb": 79,
+     "dstab": 20, "dslash": 20, "dcrush": 20, "dmagic": -20, "drange": 10,
+     "def": 68, "hp": 75, "maxhit": 8, "str": 68, "weak": "ranged"},
+    [("dragon bones", 1, 1, 1.0), ("green dragonhide", 1, 1, 1.0),
+     ("coins", 30, 120, 0.8)], members=True, rank="hard")
+
+_add_mob("elvarg",
+    {"abonus": 0, "atktype": ["slash", "dragonfire"], "att": 120, "cb": 83,
+     "dstab": 50, "dslash": 50, "dcrush": 50, "dmagic": -15, "drange": 30,
+     "def": 100, "hp": 140, "maxhit": 10, "str": 120, "weak": "stab"},
+    [("dragon bones", 1, 1, 1.0), ("green dragonhide", 2, 3, 1.0),
+     ("coins", 1000, 3000, 1.0), ("dragon med helm", 1, 1, 0.04)], members=True)
+MONSTERS["elvarg"]["boss"] = True
+MONSTERS["elvarg"]["rank"] = "boss"
+_BOSSES.add("elvarg")
+
+# --- Crandor: a volcanic dragon isle reached by sailing from Karamja -------
+ROOMS.update({
+    "crandor": dict(name="Crandor",
+        desc="A volcanic island long shunned by sailors. Black sand, the bones "
+             "of failed adventurers, and green dragons basking in the heat. A "
+             "dragon's roar rolls down from the caldera. (members)",
+        exits={"sail": "karamja_port", "caldera": "elvarg_lair"},
+        monsters=["skeleton", "green dragon"], members=True),
+    "elvarg_lair": dict(name="Elvarg's Lair",
+        desc="The molten heart of Crandor. Elvarg, the dread green dragon, "
+             "coils atop a hoard of charred bones and gold. (members)",
+        exits={"out": "crandor"},
+        monsters=["elvarg"], members=True),
+})
+ROOMS["karamja_port"]["exits"]["sail"] = "crandor"
+
+TRAVEL_HUBS["crandor"] = "crandor"
+TRAVEL_NAMES.append("Crandor")
 
 
 if __name__ == "__main__":
