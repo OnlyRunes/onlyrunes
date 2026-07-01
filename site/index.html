@@ -9,9 +9,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OnlyRunes — a text adventure in Gielinor</title>
 <meta name="description" content="OnlyRunes: a browser text adventure inspired by Old School RuneScape. Train skills, fight monsters, complete quests, unlock members content.">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="https://cdn.jsdelivr.net/gh/cormullion/juliamono@master/webfonts/JuliaMono-Regular.woff2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
 <style>
   :root { color-scheme: dark; }
+  /* JuliaMono: a monospace font with fine braille-dot glyphs, so ASCII/braille
+     boss art renders as crisp dots instead of blocky pips. */
+  @font-face {
+    font-family: 'JuliaMono';
+    src: url('https://cdn.jsdelivr.net/gh/cormullion/juliamono@master/webfonts/JuliaMono-Regular.woff2') format('woff2');
+    font-display: swap;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0; color: #c8cdd6;
@@ -198,8 +206,13 @@
 
     const isMobile = window.matchMedia("(max-width: 640px)").matches
       || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    // load JuliaMono first so xterm measures it correctly (fine braille dots)
+    try {
+      await Promise.all([document.fonts.load('14px JuliaMono'),
+                         document.fonts.load('12px JuliaMono')]);
+    } catch (e) {}
     const term = new Terminal({
-      fontFamily: "ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace",
+      fontFamily: "'JuliaMono', ui-monospace, Menlo, Consolas, monospace",
       fontSize: isMobile ? 12 : 14, convertEol: false,
       disableStdin: true,        // read-only: input comes from the box + buttons
       cursorBlink: false, cursorStyle: "bar", cursorInactiveStyle: "none",
