@@ -567,15 +567,52 @@ OBOR_DIE = r'''
 '''
 
 
+# Obor reskinned as a braille hill giant (image->braille via JuliaMono).
+OBOR_ART = '''
+             ⢀⡶⠲⢦⡀
+            ⠠⡟   ⢻⡄
+             ⡇ ⠶ ⠘⡆
+          ⢀⡴⠞⢱ ⠃  ⠷⣄
+     ⢀⣠⡤⠶⠚⠉ ⠣⣈⣀⡀⠔⠁ ⠈⠙⢦⡀
+     ⣿⠁               ⠙⠳⣄
+     ⣿                  ⠈⠙⢦⡀
+     ⢹⡀                    ⣹
+     ⠘⣇                    ⣿
+      ⠹⢦⡀⠁       ⡀         ⢸⡄
+        ⠙⣲⠘⡆      ⠉ ⠈ ⣆    ⠈⣧
+        ⡼⠃⠰⡇        ⢀⡾⢸⡄    ⣹
+        ⣇⡟⠘⠁        ⡼⠁ ⢻⡄  ⠐⡟
+        ⢿⡇⢨        ⠸⡇   ⢳⡄ ⢰⡇
+        ⠸⡖⠂⠧⠴⠖⠒⠒⠒⠒⠒⠓⢳⡀  ⢰⠃ ⠘⣇
+ ⡴⠶⠦⠤⢤⡀ ⢸⢛⠃⠁       ⢠⡤⣹⡆ ⣼   ⢸⠆
+⠘⣧    ⠹⠤⠏⠆         ⠘⡇⢹⡇ ⢹⡀ ⢀⡞
+ ⠈⠙⠲⠦⣴⠦⣄⠠⠃        ⢠ ⡇⢸⡇ ⠘⡗ ⣼⠁
+       ⠈⡇     ⢀⣠⠖⡰⢤⣀⠇⠈⡇ ⣠⠇⠂⡇
+        ⡇⣸    ⡾ ⡼⠁    ⣧⠞⠁  ⣇
+        ⢿⠇⡇⢠⠔⣹⠃ ⢻⡀    ⠣⣰⠏⣽⠄⠹⡄
+        ⢸  ⠁⢰⡋  ⠈⣧   ⢰⡎⠃⣰⠃⢀⣠⠧
+       ⢠⡟   ⠘⡇   ⣿   ⠈⢳⡌⠙⠒⠋⠁
+       ⢸⡠⢌⡉⠂⠁⢻⡄  ⠘⣧⠤  ⠂⠹⣄
+       ⠈⣇⡾⠊⠉⠉⣸⠃  ⠠⡏⣔⣉⢻⠋⠁⡿
+        ⢹⣠  ⣰⠃    ⢻⡌⠓⣿⡀⢺⠃
+        ⠘⣧⣧⢰⠇      ⢳⡸⠃⠋⡟
+         ⡾⢬⣼       ⠈⢷ ⠸⡇
+      ⢀⣠⠞⢱⠈⠹⡄       ⠘⡇⠁⠙⣆
+   ⢠⡶⠚⠉ ⢀⣬⠤⠶⠋       ⣴⠃⠒⠤⡜⣧
+    ⠓⠶⠶⠖⠋          ⣸⠃  ⢀⡞⠋
+                  ⠚⠳⠿⠿⠿⠾⠁
+'''
+
+
 def _obor_intro(name):
-    return [_tint(OBOR_CALM, "grey"), _tint(OBOR_CALM, "brown", "bold"),
-            _tint(OBOR_RAGE, "orange", "bold"), _tint(OBOR_CALM, "brown", "bold"),
-            _tint(OBOR_RAGE, "bred", "bold")]
+    return [_tint(OBOR_ART, "grey"), _tint(OBOR_ART, "brown", "bold"),
+            _tint(OBOR_ART, "orange", "bold"), _tint(OBOR_ART, "brown", "bold"),
+            _tint(OBOR_ART, "bred", "bold")]
 
 
 def _obor_death(name):
-    return [_tint(OBOR_RAGE, "bred"), _tint(OBOR_CALM, "grey"),
-            _tint(OBOR_DIE, "grey", "dim")]
+    return [_tint(OBOR_ART, "bred"), _tint(OBOR_ART, "grey"),
+            _tint(OBOR_ART, "grey", "dim")]
 
 
 # --- Obor's extra attack art (ground slam + boulder throw) -----------------
@@ -600,15 +637,15 @@ OBOR_ROCK = r'''
 
 
 def _obor_smash(_=None):
-    return [_tint(OBOR_RAGE, "orange", "bold"), _tint(OBOR_RAGE, "bred", "bold")]
+    return [_tint(OBOR_ART, "orange", "bold"), _tint(OBOR_ART, "bred", "bold")]
 
 
 def _obor_slam_fx(_=None):
-    return [_tint(OBOR_SLAM, "orange", "bold"), _tint(OBOR_SLAM, "byellow", "bold")]
+    return [_tint(OBOR_ART, "orange", "bold"), _tint(OBOR_ART, "byellow", "bold")]
 
 
 def _obor_rock_fx(_=None):
-    return [_tint(OBOR_ROCK, "byellow", "bold"), _tint(OBOR_ROCK, "orange", "bold")]
+    return [_tint(OBOR_ART, "byellow", "bold"), _tint(OBOR_ART, "orange", "bold")]
 
 
 def _count_claw(_=None):
