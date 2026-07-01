@@ -569,47 +569,47 @@ OBOR_DIE = r'''
 
 # Obor reskinned as a braille hill giant (image->braille via JuliaMono).
 OBOR_ART = '''
-            ⢀⡶⠲⣦⡀
-            ⣾⠂⠄⠈⢳
-            ⡿⠁⣓⡀⢸⡆
-         ⣠⡴⡏⢹⠄⠃ ⡄⠳⣤⡀
-     ⣤⡶⠚⠋⠁ ⡝⠦⠤⠔⠊   ⠙⠶⣄
-     ⡇               ⠈⠳⣤⡀
-     ⡏        ⠠         ⠙⣦
-     ⢻                   ⢹
-     ⠸⣇ ⠲⠄  ⠰            ⣼⡀
-      ⠈⠳⢤⠌⣆    ⠉⠒⠒⠒⠖⢠    ⢨⣇
-       ⢀⣾ ⡇      ⠄ ⣀⡞⣇    ⢹
-       ⢹⢲⠆⡇       ⢐⡞ ⠹⡄  ⢰⣾
-       ⢸⣾ ⡇       ⢻⠁  ⠹⡄ ⢘⡇
-        ⢿⠆⢳⠤⠴⠶⠖⠒⠒⠒⠛⣇   ⡟ ⢠⣇
- ⣴⣤⡤⢤⣄ ⢀⣿⡗⠐      ⠆⢠⢼⣧ ⢸⡏  ⣿⡆
-⠘⣷⢀  ⠉⠧⠼⠿         ⢸⠈⣿ ⠘⡿ ⢠⡿
- ⠈⠙⠚⠷⠴⠧⡅⠞   ⡔⠁   ⡄⢸ ⣿  ⢷⡆⣾⠃
-       ⢹⠆⡀   ⢠⡴⢛⡷⠤⡼ ⢹ ⣠⡞⢙⡇
-       ⢸⣰⣇⠰ ⣠⡟ ⣞    ⢸⡜⣁⣁⠘⢿
-       ⢸⡟⠸⠠⠞⣿⠁ ⢹⡄   ⢘⣧⠏⣸⡐⠺⣇
-       ⢨⡗  ⠺⡇   ⣏   ⣿⡀⢴⣏⣠⠿⠛
-       ⡾⠤⠤⣄⠼⢧   ⢿⡀  ⣘⣳⡀⠈⠁
-       ⢷⣉⣶⠦⠴⢾⡇  ⢈⣏⣩⠥⣤⠤⢿⡄
-       ⠸⣟⠡⠂⢐⡞   ⠘⣏⠻⣦⡏⢰⡾
-        ⢯⣧⢀⡾     ⠸⣇⣸⠹⣶⠇
-        ⢸⣏⣿⠁      ⠹⡇⠰⣾
-       ⣠⠾⡏⠻⡄       ⢻⡒⠚⣦
-   ⣠⡴⠞⠛⠑⢰⣧⡴⠟       ⡼⠳⠤⣿⢧
-   ⠘⠿⠶⠴⠞⠉        ⢀⡼⠁  ⣸⠚⠁
-                ⠐⠚⠿⠿⠿⠿⠇
+            ⢀⡶⠲⢦⡀
+            ⣾⣀⣀⣀⣳
+            ⡿⠘⠰⠘⣸⡆
+         ⣠⡴⠋⠁ ⢀⡾⠁⠳⣤⡀
+     ⣤⠶⠚⠋⠁    ⠈    ⠙⠶⣄
+     ⡇               ⠈⠳⢤⡀
+     ⡇                  ⠙⢦
+     ⢻                   ⢸
+     ⠸⣇                  ⢻⡀
+      ⠈⠳⢤⣀       ⢀⣀⣀⡀    ⢸⣇
+       ⢀⣾⣿        ⢹⣿⡗⣆   ⢸⣿
+       ⢹⠉⠉        ⣾⡟ ⠹⡄   ⣿
+       ⢸⡆        ⢠⣿⠁  ⠹⡄ ⢀⡇
+        ⢧⣠⡄⢀⣀⣀⣀⣠⣤⣤⣼⣇   ⡟  ⣇
+ ⣴⣤⣤⣤⣄ ⢀⡟⠈⠍⡿⣿⣿⣿⣿⣿⣿⡟⠛⣧ ⢸⡇  ⢸⡆
+⠘⣿⣿⣿⣿⣿⣧⣼⣁⢌⣾⣿⣿⡿⣿⣿⣿⣿⡇ ⣿ ⠘⡇  ⡾
+ ⠈⠙⠛⠿⠿⠿⡿⣳⣿⣿⠿⢃⣼⣿⣿⣿⣿⡇ ⣿  ⢷ ⣸⠃
+       ⢹⣿⢿⣉⢠⣾⣿⡿⢋⡍⠙⠃ ⢹ ⣠⠞ ⡇
+       ⢸⡇⠈⣶⣿⢿⡟ ⣞    ⠘⠘⢁⣀ ⢿
+       ⢸⡇ ⠛⠁⣼⠁ ⢹⡄   ⢀⣠⠏⣸ ⠘⣇
+       ⢨⡇  ⠸⡇   ⣇   ⢸⡀⢴⣃⣠⠶⠛
+       ⡾    ⣧   ⢿⡀  ⠈⢳⡀⠈⠁
+       ⢷⠄ ⣀⣠⣿⡇  ⢈⡇   ⣸⣿⡄
+       ⠸⡦⣾⣿⣿⡟   ⠘⣷⣄⠙⢸⣿⡿
+        ⢷⡙⣿⡿     ⠸⣿⣇⣮⣿⠇
+        ⢸⠷⣸⠁      ⠹⣼⣿⣿
+       ⣠⡞⢰⣾⡄       ⢻⡉⠙⣦
+   ⣠⣴⣾⣿⣿⣟⣼⡿⠟       ⣼⣅⣀⢸⣧
+   ⠘⠶⠽⠿⠟⠉        ⢀⣼⣿⣿⣿⣿⠛⠁
+                ⠐⠚⠶⠤⠶⠶⠇
 '''
 
 
 def _obor_intro(name):
-    return [_tint(OBOR_ART, "grey"), _tint(OBOR_ART, "brown", "bold"),
-            _tint(OBOR_ART, "orange", "bold"), _tint(OBOR_ART, "brown", "bold"),
-            _tint(OBOR_ART, "bred", "bold")]
+    return [_tint(OBOR_ART, "byellow"), _tint(OBOR_ART, "gold", "bold"),
+            _tint(OBOR_ART, "byellow", "bold"), _tint(OBOR_ART, "gold", "bold"),
+            _tint(OBOR_ART, "byellow", "bold")]
 
 
 def _obor_death(name):
-    return [_tint(OBOR_ART, "bred"), _tint(OBOR_ART, "grey"),
+    return [_tint(OBOR_ART, "gold"), _tint(OBOR_ART, "brown"),
             _tint(OBOR_ART, "grey", "dim")]
 
 
@@ -635,15 +635,15 @@ OBOR_ROCK = r'''
 
 
 def _obor_smash(_=None):
-    return [_tint(OBOR_ART, "orange", "bold"), _tint(OBOR_ART, "bred", "bold")]
+    return [_tint(OBOR_ART, "gold", "bold"), _tint(OBOR_ART, "byellow", "bold")]
 
 
 def _obor_slam_fx(_=None):
-    return [_tint(OBOR_ART, "orange", "bold"), _tint(OBOR_ART, "byellow", "bold")]
+    return [_tint(OBOR_ART, "byellow", "bold"), _tint(OBOR_ART, "gold", "bold")]
 
 
 def _obor_rock_fx(_=None):
-    return [_tint(OBOR_ART, "byellow", "bold"), _tint(OBOR_ART, "orange", "bold")]
+    return [_tint(OBOR_ART, "gold", "bold"), _tint(OBOR_ART, "orange", "bold")]
 
 
 def _count_claw(_=None):
