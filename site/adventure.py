@@ -260,69 +260,9 @@ ART_QUEST = r"""
 """
 
 # ---- Boss animation frames -----------------------------------------------
-# The three-headed King Black Dragon. The body is identical across the intro
-# frames (only the eyes, the left fire-plume and colour change) so it animates
-# rock-steady in place. The KBD_BR_* sets are its varied per-turn attacks
-# (melee bite + four dragonfire breaths), played when it attacks you in combat.
-KBD_CALM = r"""
-                /\   /\   /\
-               (oo) (oo) (oo)
-                \    |    /
-           ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
-                 \_____,~>
-"""
-KBD_FIRE1 = r"""
-                /\   /\   /\
-      ~=*>     (^^) (oo) (^^)
-     ~==*>      \    |    /
-           ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
-                 \_____,~>
-"""
-KBD_FIRE2 = r"""
-                /\   /\   /\
-   ~~==**>     (XX) (^^) (XX)
-  ~~===***>     \    |    /
-   ~~==**> ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
-                 \_____,~>
-"""
-KBD_DIE1 = r"""
-                \/   \/   \/
-               (xx) (xx) (xx)
-                \    |    /
-           ______\___|___/______
-          /      \   |   /      \
-         /  /\    \__|__/    /\   \
-         \_/  \____________/  \_/
-                /_|     |_\
-                 \_____,~>
-"""
-KBD_DIE2 = r"""
-               (xx)(xx)(xx)
-              ___\__|__/___
-             /     \|/      \
-            /  __   |   __   \
-            \_/  \_____/  \_/
-"""
-KBD_DIE3 = r"""
-              .  .  .   .
-           __  .  __  .   __
-          (xx)__(xx)__(xx)
-         ~~~ rubble & ash ~~~
-"""
 # The KBD's varied attacks (faithful to OSRS): melee + four dragonfire breaths,
-# each with its own short animation played on the dragon's turn.
+# each with its own short animation played on the dragon's turn. (The dragon
+# itself is the braille KBD_ART further down.)
 KBD_BR_FIRE1 = r"""
                (vv) (vv) (vv)
                 }    |    {
@@ -525,49 +465,7 @@ def _generic_boss_death(name):
     return [_tint(GEN_ROAR, "bred"), _tint(GEN_ROAR, "grey", "dim")]
 
 
-# Obor, the Hill Giant boss — a club-wielding brute (the club swings between
-# frames). Uses ''' delimiters because the art contains double-quotes.
-OBOR_CALM = r'''
-           .-=======-.
-          /  o     o  \
-          |     <     |
-          |   \___/   |
-           \_________/
-          __|       |__
-         /  |       |  \===[#]
-         |  |       |  |
-          \ |       | /
-            |       |
-           _|       |_
-          (__|     |__)
-'''
-OBOR_RAGE = r'''
-           .-=======-.
-          /  O     O  \
-          |     <     |
-          |   \VVV/   |
-           \_________/
-          __|       |__
-      [#]==\  |       |  /
-         |  |       |  |
-          \ |       | /
-            |       |
-           _|       |_
-          (__|     |__)
-'''
-OBOR_DIE = r'''
-
-
-           x       x
-          __|       |__
-         /  |       |  \
-        .-""  rubble  ""-.
-       (  bones & dust... )
-        '-..._______...-'
-'''
-
-
-# Obor reskinned as a braille hill giant (image->braille via JuliaMono).
+# Obor, the Hill Giant boss — a braille hill giant (image->braille via JuliaMono).
 OBOR_ART = '''
             ⢀⡶⠲⢦⡀
             ⣾⣀⣀⣀⣳
@@ -611,27 +509,6 @@ def _obor_intro(name):
 def _obor_death(name):
     return [_tint(OBOR_ART, "gold"), _tint(OBOR_ART, "brown"),
             _tint(OBOR_ART, "grey", "dim")]
-
-
-# --- Obor's extra attack art (ground slam + boulder throw) -----------------
-OBOR_SLAM = r'''
-           .-=======-.
-          /  O     O  \
-          |   \VVV/   |
-           \____|____/
-         __|         |__
-        /  | *STOMP* |  \
-     ~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-'''
-OBOR_ROCK = r'''
-           .-=======-.        _____
-          /  O     O  \      /     \
-          |   \___/   |     | (())  |
-           \_________/       \_____/  ->
-         __|         |__
-        /  |         |  \
-'''
 
 
 def _obor_smash(_=None):
@@ -1124,14 +1001,6 @@ add_item("dragon dagger", 30000, members=True,
          equip={"slot": "weapon", "att": 40, "str": 40, "req": {"attack": 60}})
 RAW_TO_COOKED["raw rat meat"] = ("cooked rat meat", "burnt meat", 1)
 COOK_XP["raw rat meat"] = 30
-
-
-def low_alch(name):
-    return int(ITEMS[name]["value"] * 0.4)
-
-
-def high_alch(name):
-    return int(ITEMS[name]["value"] * 0.6)
 
 
 # ===========================================================================
@@ -1828,6 +1697,7 @@ class Player:
         self.active_prayers = []  # names of currently-active prayers
         self.combat = None        # interactive-combat state (None = not fighting)
         self.run_energy = 100     # 0-100; spent travelling, regained by acting
+        self.spec_energy = 100    # 0-100; spent on special attacks
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
         self.poison = 0           # remaining poison ticks (transient combat fx)
@@ -2094,12 +1964,17 @@ VERB = {"stab": "stab", "slash": "slash", "crush": "crush",
         "ranged": "shoot", "magic": "blast"}
 
 
-def _resolve_player_hit(p, m):
-    """One player swing at m. Prints. Returns 'won', 'noattack', or None."""
+def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
+    """One player swing at m. Prints. Returns 'won', 'noattack', or None.
+    acc_mult/dmg_mult let special attacks boost the roll (default: normal)."""
     atk = _player_attack(p, m)
     if atk is None:
         return "noattack"
     kind, atype, att_roll, max_hit = atk
+    if acc_mult != 1.0:
+        att_roll = int(att_roll * acc_mult)
+    if dmg_mult != 1.0:
+        max_hit = max(1, int(max_hit * dmg_mult))
     def_bonus = m.get("dbonus", {}).get(atype, 0)     # monster's defence vs this type
     def_roll = (m["defence"] + 9) * (def_bonus + 64)
     if random.random() < _accuracy(att_roll, def_roll):
@@ -2119,6 +1994,88 @@ def _resolve_player_hit(p, m):
         miss = "splash on" if kind == "magic" else "fail to hit"
         print("  " + paint(f"You {miss} the {m['name']}.", "grey"))
     return "won" if m["cur"] <= 0 else None
+
+
+# --- Weapon special attacks (OSRS-style) -----------------------------------
+# weapon -> its special: energy cost (%), number of hits, accuracy/damage
+# multipliers, and an optional extra effect.
+SPECIAL_ATTACKS = {
+    "dragon dagger": {"name": "Puncture", "cost": 25, "hits": 2,
+                      "acc": 1.15, "dmg": 1.15,
+                      "desc": "two lightning-fast stabs, +15% accuracy & damage"},
+    "dragon mace": {"name": "Shatter", "cost": 25, "hits": 1,
+                    "acc": 1.25, "dmg": 1.5,
+                    "desc": "a colossal blow, +25% accuracy, +50% max hit"},
+    "dragon longsword": {"name": "Cleave", "cost": 25, "hits": 1,
+                         "acc": 1.0, "dmg": 1.25,
+                         "desc": "a mighty cleave, +25% max hit"},
+    "dragon scimitar": {"name": "Sever", "cost": 55, "hits": 1,
+                        "acc": 1.25, "dmg": 1.1,
+                        "desc": "a vicious slice, +25% accuracy, +10% max hit"},
+    "granite maul": {"name": "Quick Smash", "cost": 50, "hits": 2,
+                     "acc": 1.0, "dmg": 1.0,
+                     "desc": "an instant second smash — two full hits"},
+    "abyssal whip": {"name": "Energy Drain", "cost": 50, "hits": 1,
+                     "acc": 1.25, "dmg": 1.0, "energy": 25,
+                     "desc": "an accurate lash that restores 25 run energy"},
+    "magic shortbow": {"name": "Snapshot", "cost": 55, "hits": 2,
+                       "acc": 0.9, "dmg": 1.0,
+                       "desc": "two arrows loosed at once, -10% accuracy"},
+    "hill giant club": {"name": "Bone Crunch", "cost": 50, "hits": 1,
+                        "acc": 1.1, "dmg": 1.4,
+                        "desc": "a skull-rattling crunch, +10% accuracy, "
+                                "+40% max hit"},
+}
+
+
+def cmd_spec(p, _a):
+    """Show your weapon's special attack + energy (use 'spec' in combat)."""
+    w = p.equipment.get("weapon")
+    sp = SPECIAL_ATTACKS.get(w)
+    e = int(getattr(p, "spec_energy", 100))
+    print("  " + paint("Special energy: ", "white")
+          + bar_meter(e, 100, 20, fill_color="teal") + paint(f" {e}%", "teal"))
+    if sp:
+        say(f"  {w} — {sp['name']} ({sp['cost']}%): {sp['desc']}", "bcyan")
+        say("  Use 'spec' during combat to unleash it.", "grey")
+    elif w:
+        say(f"  Your {w} has no special attack.", "grey")
+    else:
+        say("  You have no weapon equipped.", "grey")
+        say("  Weapons with specials: " + ", ".join(sorted(SPECIAL_ATTACKS)),
+            "grey")
+
+
+def _do_special(p, m):
+    """Unleash the equipped weapon's special attack. Returns like an attack:
+    'won', 'noattack' (turn not spent), or None."""
+    w = p.equipment.get("weapon")
+    sp = SPECIAL_ATTACKS.get(w)
+    if not sp:
+        say("Your weapon has no special attack. ('spec' lists them.)", "grey")
+        return "noattack"
+    if getattr(p, "spec_energy", 100) < sp["cost"]:
+        say(f"Not enough special energy ({int(p.spec_energy)}%, need "
+            f"{sp['cost']}%). It recharges out of combat.", "byellow")
+        return "noattack"
+    p.spec_energy -= sp["cost"]
+    say(f"⚡ SPECIAL — {sp['name'].upper()}! "
+        + paint(f"(-{sp['cost']}% energy)", "grey"), "teal", "bold")
+    result = None
+    for _ in range(sp["hits"]):
+        r = _resolve_player_hit(p, m, sp.get("acc", 1.0), sp.get("dmg", 1.0))
+        if r == "noattack":               # e.g. out of ammo: refund, no turn
+            p.spec_energy += sp["cost"]
+            return "noattack"
+        if r == "won":
+            result = "won"
+            break
+    if sp.get("energy") and getattr(p, "run_energy", 100) < 100:
+        gain = min(100 - p.run_energy, sp["energy"])
+        p.run_energy += gain
+        print("  " + paint(f"You feel invigorated! (+{int(gain)} run energy)",
+                           "lime"))
+    return result
 
 
 def _clear_status(p):
@@ -2381,9 +2338,14 @@ def _combat_prompt(p):
     food_hint = f" ({foods[0]})" if foods else ""
     drink_hint = f" ({pots[0]})" if pots else ""
     pray_hint = f" [{', '.join(p.active_prayers)}]" if p.active_prayers else ""
+    sp = SPECIAL_ATTACKS.get(p.equipment.get("weapon"))
+    spec_hint = ""
+    if sp:
+        e = int(getattr(p, "spec_energy", 100))
+        spec_hint = f" · spec {sp['name']} ({e}%/{sp['cost']}%)"
     print("  " + paint("Your move: ", "bcyan")
-          + paint(f"attack · eat{food_hint} · drink{drink_hint} · pray{pray_hint}"
-                  " · flee", "grey"))
+          + paint(f"attack{spec_hint} · eat{food_hint} · drink{drink_hint}"
+                  f" · pray{pray_hint} · flee", "grey"))
 
 
 def _start_combat(p, mname):
@@ -2430,7 +2392,7 @@ def combat_action(p, raw):
     arg = parts[1] if len(parts) > 1 else ""
     verb = {"1": "attack", "2": "eat", "3": "pray", "4": "flee",
             "a": "attack", "hit": "attack", "run": "flee", "escape": "flee",
-            "": "attack"}.get(verb, verb)
+            "special": "spec", "": "attack"}.get(verb, verb)
 
     # free, no-cost actions while fighting
     if verb in ("stats", "skills"):
@@ -2444,13 +2406,13 @@ def combat_action(p, raw):
     if verb in ("look", "l"):
         return _combat_prompt(p)
     if verb in ("help", "?", "commands"):
-        return say("In combat: attack · eat [food] · pray [name] · flee. "
-                   "(stats/inventory are free to check.)", "grey")
+        return say("In combat: attack · spec · eat [food] · pray [name] · "
+                   "flee. (stats/inventory are free to check.)", "grey")
     if verb == "pray" and not arg:
         return cmd_pray(p, "")          # checking prayers is free
 
     # status effects tick at the start of a turn-consuming action
-    if verb in ("attack", "eat", "pray", "flee") and getattr(p, "poison", 0) > 0:
+    if verb in ("attack", "spec", "eat", "pray", "flee") and getattr(p, "poison", 0) > 0:
         _tick_poison(p)
         if p.hp <= 0:
             p.combat = None
@@ -2467,6 +2429,17 @@ def combat_action(p, raw):
             r = _resolve_player_hit(p, m)
             if r == "noattack":
                 return                  # couldn't attack (no ammo/runes)
+            if r == "won":
+                return _end_combat_victory(p)
+    elif verb == "spec":
+        if getattr(p, "frozen", False):
+            p.frozen = False            # one wasted attack, then you thaw
+            say("You are frozen solid — your special fails! You shatter the "
+                "ice.", "bcyan")
+        else:
+            r = _do_special(p, m)
+            if r == "noattack":
+                return                  # no spec / no energy: turn not spent
             if r == "won":
                 return _end_combat_victory(p)
     elif verb == "eat":
@@ -2495,8 +2468,8 @@ def combat_action(p, raw):
         else:
             say("You fail to escape!", "grey")
     else:
-        return say("You're locked in combat! Use: attack, eat, pray, or flee.",
-                   "bred")
+        return say("You're locked in combat! Use: attack, spec, eat, pray, "
+                   "or flee.", "bred")
 
     # monster's turn
     if _resolve_monster_hit(p, m) == "died":
@@ -2853,6 +2826,9 @@ def _teleport_for(dest_room):
 def _regen_energy(p):
     if getattr(p, "run_energy", 100) < 100:
         p.run_energy = min(100, p.run_energy + ENERGY_REGEN)
+    # special attack energy recharges out of combat only
+    if getattr(p, "combat", None) is None and getattr(p, "spec_energy", 100) < 100:
+        p.spec_energy = min(100, p.spec_energy + 10)
 
 
 def cmd_travel(p, arg):
@@ -2906,11 +2882,14 @@ def cmd_rest(p, _a):
     if p.location not in set(TRAVEL_HUBS.values()):
         say("You can only rest in a major city.", "grey")
         return
-    if getattr(p, "run_energy", 100) >= 100:
+    if getattr(p, "run_energy", 100) >= 100 and \
+            getattr(p, "spec_energy", 100) >= 100:
         say("You're already fully rested.", "grey")
         return
     p.run_energy = 100
-    say("You rest a while in the city and recover all your run energy.", "bgreen")
+    p.spec_energy = 100
+    say("You rest a while in the city and recover all your run and special "
+        "energy.", "bgreen")
 
 
 def cmd_look(p, _a):
@@ -4549,7 +4528,8 @@ def serialize(p):
             "attack_type": getattr(p, "attack_type", "slash"), "autocast": p.autocast,
             "quests": p.quests, "members": p.members,
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
-            "run_energy": p.run_energy, "slayer_task": p.slayer_task,
+            "run_energy": p.run_energy, "spec_energy": getattr(p, "spec_energy", 100),
+            "slayer_task": p.slayer_task,
             "slayer_points": p.slayer_points,
             "achievements": list(getattr(p, "achievements", [])),
             "kills": getattr(p, "kills", 0),
@@ -4578,6 +4558,7 @@ def deserialize(data):
     p.prayer_points = data.get("prayer_points", 1)
     p.active_prayers = data.get("equipped_prayers", [])
     p.run_energy = data.get("run_energy", 100)
+    p.spec_energy = data.get("spec_energy", 100)
     p.slayer_task = data.get("slayer_task", None)
     p.slayer_points = data.get("slayer_points", 0)
     p.achievements = data.get("achievements", [])
@@ -4619,7 +4600,8 @@ def cmd_help(_p, _a):
         "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
         "Info": "stats [skill], inventory (i), equipment, quests, "
                 "examine <item|creature>, bestiary",
-        "Combat": "fight [monster], style <melee|ranged|magic|stab|slash|crush>, "
+        "Combat": "fight [monster], spec (special attack), "
+                  "style <melee|ranged|magic|stab|slash|crush>, "
                   "autocast <spell>, eat [food], drink [potion]",
         "Gear": "equip <item>, unequip <slot>",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
@@ -4836,6 +4818,7 @@ HANDLERS = {
     "equip": cmd_equip, "wield": cmd_equip, "wear": cmd_equip,
     "unequip": cmd_unequip, "remove": cmd_unequip,
     "style": cmd_style, "autocast": cmd_autocast,
+    "spec": cmd_spec, "special": cmd_spec,
     "chop": cmd_chop, "cut": cmd_chop,
     "mine": cmd_mine,
     "fish": cmd_fish,
@@ -5106,6 +5089,10 @@ def web_room_actions(player):
         foods = [i for i in player.inventory if "heal" in ITEMS.get(i, {})]
         pots = [i for i in player.inventory if ITEMS.get(i, {}).get("potion")]
         acts = [{"label": "Attack", "cmd": "attack"}]
+        sp = SPECIAL_ATTACKS.get(player.equipment.get("weapon"))
+        if sp:
+            e = int(getattr(player, "spec_energy", 100))
+            acts.append({"label": f"⚡ {sp['name']} ({e}%)", "cmd": "spec"})
         if foods:
             acts.append({"label": f"Eat {foods[0]}", "cmd": f"eat {foods[0]}"})
         if pots:
