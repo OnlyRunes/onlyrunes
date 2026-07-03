@@ -14,6 +14,7 @@ Run with:  python3 adventure.py
 """
 
 import contextlib
+import difflib
 import io
 import json
 import math
@@ -83,8 +84,13 @@ def visible_len(text):
 #  OUTPUT HELPERS
 # ===========================================================================
 
+_QUIET = False    # batch actions silence per-swing chatter (not level-ups)
+
+
 def say(text="", *styles):
     """Print word-wrapped narration, optionally tinted with ANSI styles."""
+    if _QUIET:
+        return
     if text == "":
         print()
         return
@@ -1775,7 +1781,8 @@ class Player:
         amount = int(amount * XP_RATE)        # global XP rate (2x)
         before = self.lvl(skill)
         self.skills[skill] += amount
-        print(paint(f"  +{amount} {skill} xp", "bcyan"))
+        if not _QUIET:                        # batches summarise xp at the end
+            print(paint(f"  +{amount} {skill} xp", "bcyan"))
         after = self.lvl(skill)
         if after > before:
             animate([_tint(ART_LEVELUP, "byellow"), _tint(ART_LEVELUP, "bwhite"),
@@ -2842,9 +2849,12 @@ def _teleport_for(dest_room):
 def _regen_energy(p):
     if getattr(p, "run_energy", 100) < 100:
         p.run_energy = min(100, p.run_energy + ENERGY_REGEN)
-    # special attack energy recharges out of combat only
-    if getattr(p, "combat", None) is None and getattr(p, "spec_energy", 100) < 100:
-        p.spec_energy = min(100, p.spec_energy + 10)
+    # special energy and hitpoints recover slowly, out of combat only
+    if getattr(p, "combat", None) is None:
+        if getattr(p, "spec_energy", 100) < 100:
+            p.spec_energy = min(100, p.spec_energy + 10)
+        if 0 < p.hp < p.max_hp:
+            p.hp += 1
 
 
 def cmd_travel(p, arg):
@@ -2901,14 +2911,15 @@ def cmd_rest(p, _a):
     if p.location not in set(TRAVEL_HUBS.values()):
         say("You can only rest in a major city.", "grey")
         return
-    if getattr(p, "run_energy", 100) >= 100 and \
+    if getattr(p, "run_energy", 100) >= 100 and p.hp >= p.max_hp and \
             getattr(p, "spec_energy", 100) >= 100:
         say("You're already fully rested.", "grey")
         return
     p.run_energy = 100
     p.spec_energy = 100
-    say("You rest a while in the city and recover all your run and special "
-        "energy.", "bgreen")
+    p.hp = p.max_hp
+    say("You rest a while in the city — hitpoints, run and special energy "
+        "fully restored.", "bgreen")
 
 
 def cmd_look(p, _a):
@@ -3180,8 +3191,9 @@ def cmd_chop(p, arg):
         p.add(product)
         say(f"You get some {product}.")
         p.gain_xp("woodcutting", xp)
-    else:
-        say("You fail to get any logs this time.")
+        return True
+    say("You fail to get any logs this time.")
+    return False
 
 
 def cmd_mine(p, arg):
@@ -3206,8 +3218,9 @@ def cmd_mine(p, arg):
         p.add(product)
         say(f"You manage to mine some {product}.")
         p.gain_xp("mining", xp)
-    else:
-        say("You only chip the rock.")
+        return True
+    say("You only chip the rock.")
+    return False
 
 
 def cmd_fish(p, arg):
@@ -3237,8 +3250,9 @@ def cmd_fish(p, arg):
         p.add(product)
         say(f"You catch some {product}.")
         p.gain_xp("fishing", xp)
-    else:
-        say("You fail to catch anything.")
+        return True
+    say("You fail to catch anything.")
+    return False
 
 
 # --- processing -----------------------------------------------------------
@@ -3271,9 +3285,10 @@ def cmd_cook(p, arg):
         p.add(cooked)
         say(f"You cook the {raw} into {cooked}.")
         p.gain_xp("cooking", COOK_XP[raw])
-    else:
-        p.add(burnt)
-        say(f"Oops! You burn the {raw}.")
+        return True
+    p.add(burnt)
+    say(f"Oops! You burn the {raw}.")
+    return False
 
 
 def cmd_light(p, arg):
@@ -3304,6 +3319,7 @@ def cmd_bury(p, arg):
     skill, xp = ITEMS[bone]["bury"]
     say(f"You dig a hole and bury the {bone}.")
     p.gain_xp(skill, xp)
+    return True
 
 
 def cmd_smelt(p, arg):
@@ -3331,10 +3347,11 @@ def cmd_smelt(p, arg):
     if bar == "iron bar" and random.random() < 0.5:
         say("The iron ore is too impure — the bar is ruined.")
         p.gain_xp("smithing", xp // 4)
-        return
+        return False
     p.add(bar)
     say(f"You smelt a {bar}.")
     p.gain_xp("smithing", xp)
+    return True
 
 
 def cmd_smith(p, arg):
@@ -3392,7 +3409,7 @@ def cmd_spin(p, arg):
         p.add("bow string")
         say("You spin the flax into a bow string.", "bcyan")
         p.gain_xp("crafting", 15)
-        return
+        return True
     if not p.has("wool"):
         say("You have no wool (or flax) to spin.")
         return
@@ -3400,6 +3417,7 @@ def cmd_spin(p, arg):
     p.add("ball of wool")
     say("You spin the wool into a ball of wool.")
     p.gain_xp("crafting", 2.5)
+    return True
 
 
 # hide -> (leather product, coin fee per hide). Extended by later content.
@@ -3424,6 +3442,7 @@ def cmd_tan(p, arg):
     p.take("coins", fee)
     p.add(leather)
     say(f"The tanner turns your {hide} into {leather}.")
+    return True
 
 
 # product -> (material, qty, crafting level, xp).  Needs a needle + thread.
@@ -3541,6 +3560,7 @@ def cmd_clean(p, arg):
     p.add(clean)
     say(f"You clean the {name} into a {clean}.", "lime")
     p.gain_xp("herblore", xp)
+    return True
 
 
 def cmd_brew(p, arg):
@@ -4638,7 +4658,8 @@ def cmd_help(_p, _a):
         "Gear": "equip <item>, unequip <slot>",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
-                    "craft <item>, craftrune",
+                    "craft <item>, craftrune — add a count or 'all' to repeat: "
+                    "'mine iron 10', 'cook all'",
         "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>",
         "Town": "bank, deposit/withdraw <item> [n], shop, buy/sell <item> [n], "
                 "ge buy/sell <item> [n]",
@@ -4910,6 +4931,56 @@ def _backup_nudge(p):
               + paint(" to back it up so you never lose your character.", "grey"))
 
 
+# skilling verbs that accept a count: 'mine iron 10', 'cook all', 'bury 5'
+BATCHABLE = {"chop", "cut", "mine", "fish", "cook", "smelt", "bury",
+             "clean", "tan", "spin"}
+BATCH_CAP = 28      # one inventory's worth, like a proper JalYt
+
+
+def _split_count(arg):
+    """Split a trailing/leading count (or 'all') off a command argument."""
+    parts = (arg or "").strip().lower().split()
+    if parts and (parts[-1].isdigit() or parts[-1] == "all"):
+        n = BATCH_CAP if parts[-1] == "all" else \
+            max(1, min(BATCH_CAP, int(parts[-1])))
+        return " ".join(parts[:-1]), n
+    if parts and parts[0].isdigit():
+        return " ".join(parts[1:]), max(1, min(BATCH_CAP, int(parts[0])))
+    return (arg or "").strip(), 1
+
+
+def _run_batch(p, handler, arg, n):
+    """Repeat a skilling action up to n times, then print a compact summary.
+    Handlers return True/False (action happened) or None (blocked — stop)."""
+    global _QUIET
+    inv0 = dict(p.inventory)
+    sk0 = dict(p.skills)
+    done = 0
+    for _ in range(n):
+        _QUIET = True
+        try:
+            r = handler(p, arg)
+        finally:
+            _QUIET = False
+        if r is None:               # blocked (no materials/tool/level)
+            handler(p, arg)         # replay once, loudly, to say why
+            break
+        done += 1
+    if not done:
+        return
+    parts = []
+    for item in sorted(set(p.inventory) | set(inv0)):
+        d = p.inventory.get(item, 0) - inv0.get(item, 0)
+        if d:
+            parts.append(f"{'+' if d > 0 else ''}{d} {item}")
+    for s in SKILLS:
+        d = p.skills[s] - sk0.get(s, 0)
+        if d:
+            parts.append(f"+{int(d):,} {s} xp")
+    say(f"({done} action{'s' if done != 1 else ''})  "
+        + ("  ".join(parts) if parts else "nothing to show for it"), "bcyan")
+
+
 def dispatch(player, raw):
     """Execute a single command line. Returns False if the player quit."""
     raw = raw.strip()
@@ -4938,9 +5009,20 @@ def dispatch(player, raw):
     else:
         handler = HANDLERS.get(verb)
         if handler:
-            handler(player, arg)
+            if verb in BATCHABLE:
+                barg, n = _split_count(arg)
+                if n > 1:
+                    _run_batch(player, handler, barg, n)
+                else:
+                    handler(player, barg)
+            else:
+                handler(player, arg)
         else:
-            say("You don't know how to do that. Type 'help'.")
+            close = difflib.get_close_matches(
+                verb, list(HANDLERS) + list(ROOMS[player.location]["exits"]),
+                n=1, cutoff=0.65)
+            hint = f" Did you mean '{close[0]}'?" if close else ""
+            say(f"You don't know how to do that.{hint} Type 'help'.")
     # acting (anything but travelling) slowly restores run energy
     if verb not in ("travel", "rest"):
         _regen_energy(player)
