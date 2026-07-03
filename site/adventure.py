@@ -1439,7 +1439,8 @@ ROOMS = {
     # ---- Varrock ---------------------------------------------------------
     "varrock_gate": dict(
         name="Varrock South Gate",
-        desc="The southern entrance to Varrock, capital of Misthalin.",
+        desc="The southern entrance to Varrock, capital of Misthalin. The "
+             "Champions' Guild stands to the south-west ('guild').",
         exits={"south": "lumbridge_forest", "north": "varrock_square"}),
     "varrock_square": dict(
         name="Varrock Square",
@@ -1485,7 +1486,8 @@ ROOMS = {
     "edgeville": dict(
         name="Edgeville",
         desc="A frontier town with a bank and furnace. Vannaka the Slayer "
-             "Master is here. A dungeon lies below, and the Wilderness ditch "
+             "Master is here, and Oziach the armourer keeps a hut by the "
+             "river ('hut'). A dungeon lies below, and the Wilderness ditch "
              "is to the north.",
         exits={"south": "barbarian_village", "north": "wilderness_edge",
                "down": "edgeville_dungeon"},
@@ -1537,13 +1539,15 @@ ROOMS = {
     "rimmington": dict(
         name="Rimmington",
         desc="A small mining village with Doric's anvil. Copper, tin, iron and "
-             "clay rocks are here.",
+             "clay rocks are here. To the north loom the ruins of Melzar's "
+             "Maze ('maze').",
         exits={"north": "falador_west", "east": "port_sarim"},
         rocks=["copper", "tin", "iron", "clay"], anvil=True),
     "port_sarim": dict(
         name="Port Sarim",
         desc="A busy port with a fishing shop and a food shop. Boats sail south "
-             "to Karamja.",
+             "to Karamja, and Klarense tends his ship, the Lady Lumbridge, at "
+             "the dock.",
         exits={"west": "rimmington", "south": "karamja_port"},
         shop="fishing"),
     "karamja_port": dict(
@@ -1972,6 +1976,11 @@ class Player:
             if self.lvl(skill) < req:
                 say(f"You need {skill} level {req} to wield {item}.")
                 return False
+        qreq = eq.get("quest")
+        if qreq and self.quests.get(qreq) != "complete":
+            say(f"Only those who complete '{ALL_QUESTS.get(qreq, qreq)}' may "
+                f"wear the {item}.", "byellow")
+            return False
         if not self.has(item):
             say(f"You don't have {item}.")
             return False
@@ -2148,6 +2157,17 @@ def _apply_kbd_effect(p, key):
                            "bblue"))
 
 
+def _dragonfire_adjust(p, dmg):
+    """Dragonfire burns through armour — unless an anti-dragon shield soaks it."""
+    if p.equipment.get("shield") == "anti-dragon shield":
+        print("  " + paint("Your anti-dragon shield deflects the worst of the "
+                           "flames!", "bcyan"))
+        return dmg // 3
+    print("  " + paint("The dragonfire sears you — an anti-dragon shield "
+                       "would protect you!", "orange"))
+    return int(dmg * 1.5)
+
+
 def _kbd_take_turn(p, m):
     """The King Black Dragon's turn: pick one of its varied attacks."""
     atk = random.choices(KBD_ATTACKS, weights=[a["w"] for a in KBD_ATTACKS])[0]
@@ -2158,6 +2178,8 @@ def _kbd_take_turn(p, m):
     p_def_roll = _player_def_roll(p, dtype)
     if random.random() < _accuracy(m_att_roll, p_def_roll):
         dmg = random.randint(0, max(1, int(m["max_hit"] * atk["mult"])))
+        if atk["key"] != "melee":                     # every breath is dragonfire
+            dmg = _dragonfire_adjust(p, dmg)
         prot = "melee" if atk["key"] == "melee" else "magic"  # prayer mitigates
         if p.prayer_protects(prot):
             dmg = int(dmg * 0.5)
@@ -2189,6 +2211,8 @@ def _boss_take_turn(p, m, attacks):
     p_def_roll = _player_def_roll(p, atype)
     if random.random() < _accuracy(m_att_roll, p_def_roll):
         dmg = random.randint(0, max(1, int(m["max_hit"] * atk["mult"])))
+        if atk.get("dragonfire"):
+            dmg = _dragonfire_adjust(p, dmg)
         prot = "magic" if atype == "magic" else \
             ("ranged" if atype == "ranged" else "melee")
         if p.prayer_protects(prot):
@@ -2847,6 +2871,10 @@ def cmd_travel(p, arg):
         say(f"{ROOMS[room]['name']} is in members' lands — you can't travel "
             "there yet. Type 'membership' to unlock it.", "bmagenta")
         return
+    ql = ROOMS[room].get("qlock")
+    if ql and _q(p, ql[0]) not in ql[1]:
+        say(ql[2], "byellow")
+        return
     if p.location == room:
         say(f"You're already in {ROOMS[room]['name']}.")
         return
@@ -2927,6 +2955,10 @@ def cmd_go(p, arg):
             "bmagenta")
         say("(Type 'membership' to unlock members content in this tribute game.)",
             "grey")
+        return
+    ql = ROOMS[dest].get("qlock")   # some places are locked behind a quest
+    if ql and _q(p, ql[0]) not in ql[1]:
+        say(ql[2], "byellow")
         return
     key = ROOMS[dest].get("key")        # some doors need (and consume) a key
     if key and p.location != dest:
@@ -4253,6 +4285,21 @@ def _quest_on_kill(p, target):
         p.gain_xp("attack", 4825)
         p.quests["vampyre_slayer"] = "complete"
         ROOMS["draynor_manor"]["monsters"].remove("count draynor")
+    if target == "goblin" and _q(p, "dragon_slayer") == "maps" \
+            and not p.has("wormbrain's map piece"):
+        p.add("wormbrain's map piece")
+        say("This goblin was Wormbrain — the wretch had swallowed a scrap of "
+            "parchment. WORMBRAIN'S MAP PIECE is yours!", "bgreen")
+    if target == "elvarg" and _q(p, "dragon_slayer") == "sail":
+        show_art(ART_QUEST, "gold", center=True)
+        banner("QUEST COMPLETE: Dragon Slayer", color="byellow", line_color="gold")
+        say("Elvarg is slain and Crandor is avenged! Word of your deed spreads "
+            "across Gielinor. 18,650 strength and defence xp awarded — and you "
+            "have earned the right to wear the RUNE PLATEBODY and GREEN D'HIDE "
+            "BODY. (Oziach sells both.)")
+        p.gain_xp("strength", 18650)
+        p.gain_xp("defence", 18650)
+        p.quests["dragon_slayer"] = "complete"
     # slayer task progress
     task = getattr(p, "slayer_task", None)
     if task and target == task["monster"] and task["remaining"] > 0:
@@ -4283,10 +4330,16 @@ ALL_QUESTS = {
 def cmd_quests(p, _a):
     done = sum(1 for k in ALL_QUESTS if _q(p, k) == "complete")
     banner(f"Quest Journal  ({done}/{len(ALL_QUESTS)})", color="gold")
+    print("  " + paint(f"Quest points: {quest_points(p)}", "byellow")
+          + paint(f"   ({GUILD_QP} needed for the Champions' Guild)", "grey"))
     for key, title in ALL_QUESTS.items():
-        st = _q(p, key).replace("_", " ")
+        st = _q(p, key)
+        if st not in ("not_started", "started", "complete"):
+            st = "started"                    # mid-quest stages read as started
+        st = st.replace("_", " ")
         color = {"complete": "bgreen", "started": "byellow"}.get(st, "grey")
-        print(f"  {title:20} " + paint(st, color))
+        print(f"  {title:20} " + paint(st, color)
+              + paint(f"  ({QUEST_POINTS.get(key, 1)} qp)", "grey"))
 
 
 # ===========================================================================
@@ -4303,6 +4356,7 @@ ACHIEVEMENTS = {
     "herbalist":    ("Herbalist", "Brew your first potion."),
     "dragonslayer": ("Dragonslayer", "Defeat the King Black Dragon."),
     "giant_slayer": ("Giant Slayer", "Defeat Obor, the Hill Giant boss."),
+    "crandor_saved": ("Crandor's Saviour", "Complete the Dragon Slayer quest."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4332,6 +4386,8 @@ def _earned_achievements(p):
         got.add("dragonslayer")
     if "obor" in bosses:
         got.add("giant_slayer")
+    if _q(p, "dragon_slayer") == "complete":
+        got.add("crandor_saved")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -4403,6 +4459,18 @@ def cmd_search(p, _a):
                 p.add(part)
                 say(f"You rummage through the manor and find a {part}.")
                 return
+    if _q(p, "dragon_slayer") == "maps":
+        if loc == "melzars_maze" and not p.has("melzar's map piece"):
+            p.add("melzar's map piece")
+            say("Behind a crumbling wall you find Melzar's old strongbox — "
+                "inside lies MELZAR'S MAP PIECE, one third of the route to "
+                "Crandor!", "bgreen")
+            return
+        if loc == "draynor_manor" and not p.has("lozar's map piece"):
+            p.add("lozar's map piece")
+            say("In the manor's cellar a magic chest clicks open at your "
+                "touch — LOZAR'S MAP PIECE is yours!", "bgreen")
+            return
     say("You find nothing of interest.")
 
 
@@ -4662,6 +4730,7 @@ def cmd_devmax(p, arg):
     for s in SKILLS:
         p.skills[s] = _XP_TABLE[99]
     p.members = True
+    p.quests = {k: "complete" for k in ALL_QUESTS}   # unlocks quest-gated gear
     p.hp = p.max_hp
     p.prayer_points = p.prayer_max()
     p.run_energy = 100
@@ -4686,8 +4755,8 @@ def cmd_devmax(p, arg):
         if combat:
             p.autocast = max(combat, key=lambda s: SPELLS[s]["max"])
     banner("DEV MODE", color="bmagenta", line_color="purple")
-    say(f"All skills set to 99, members unlocked, best {p.style} gear equipped.",
-        "bmagenta", "bold")
+    say(f"All skills set to 99, members unlocked, all quests complete, best "
+        f"{p.style} gear equipped.", "bmagenta", "bold")
     if p.style == "magic":
         say(f"Autocasting {p.autocast}; runes stocked.", "grey")
     elif p.style == "ranged":
@@ -5425,7 +5494,7 @@ def _elvarg_bite(_=None):
 ELVARG_ATTACKS = [
     {"label": "a searing blast of dragonfire", "verb": "breathes",
      "color": ("orange", "bold"), "builder": _elvarg_fire, "mult": 1.5, "w": 3,
-     "atype": "magic"},
+     "atype": "magic", "dragonfire": True},
     {"label": "her great fangs", "verb": "snaps with", "color": ("bgreen", "bold"),
      "builder": _elvarg_bite, "mult": 1.0, "w": 3, "atype": "stab"},
     {"label": "a lashing tail swipe", "verb": "strikes with",
@@ -5444,14 +5513,14 @@ _add_mob("green dragon",
      "dstab": 20, "dslash": 20, "dcrush": 20, "dmagic": -20, "drange": 10,
      "def": 68, "hp": 75, "maxhit": 8, "str": 68, "weak": "ranged"},
     [("dragon bones", 1, 1, 1.0), ("green dragonhide", 1, 1, 1.0),
-     ("coins", 30, 120, 0.8)], members=True, rank="hard")
+     ("coins", 30, 120, 0.8)], rank="hard")
 
 _add_mob("elvarg",
     {"abonus": 0, "atktype": ["slash", "dragonfire"], "att": 120, "cb": 83,
      "dstab": 50, "dslash": 50, "dcrush": 50, "dmagic": -15, "drange": 30,
      "def": 100, "hp": 140, "maxhit": 10, "str": 120, "weak": "stab"},
     [("dragon bones", 1, 1, 1.0), ("green dragonhide", 2, 3, 1.0),
-     ("coins", 1000, 3000, 1.0), ("dragon med helm", 1, 1, 0.04)], members=True)
+     ("coins", 1000, 3000, 1.0), ("dragon med helm", 1, 1, 0.04)])
 MONSTERS["elvarg"]["boss"] = True
 MONSTERS["elvarg"]["rank"] = "boss"
 _BOSSES.add("elvarg")
@@ -5461,19 +5530,188 @@ ROOMS.update({
     "crandor": dict(name="Crandor",
         desc="A volcanic island long shunned by sailors. Black sand, the bones "
              "of failed adventurers, and green dragons basking in the heat. A "
-             "dragon's roar rolls down from the caldera. (members)",
+             "dragon's roar rolls down from the caldera.",
         exits={"sail": "karamja_port", "caldera": "elvarg_lair"},
-        monsters=["skeleton", "green dragon"], members=True),
+        monsters=["skeleton", "green dragon"]),
     "elvarg_lair": dict(name="Elvarg's Lair",
         desc="The molten heart of Crandor. Elvarg, the dread green dragon, "
-             "coils atop a hoard of charred bones and gold. (members)",
+             "coils atop a hoard of charred bones and gold.",
         exits={"out": "crandor"},
-        monsters=["elvarg"], members=True),
+        monsters=["elvarg"]),
 })
 ROOMS["karamja_port"]["exits"]["sail"] = "crandor"
 
 TRAVEL_HUBS["crandor"] = "crandor"
 TRAVEL_NAMES.append("Crandor")
+
+
+# ===========================================================================
+#  DRAGON SLAYER  (the capstone quest)
+# ===========================================================================
+# Earn 12 quest points, talk to the Guildmaster at the Champions' Guild, then
+# Oziach west of Edgeville. Gather the three map pieces, buy and repair the
+# Lady Lumbridge at Port Sarim, and slay Elvarg. Rewards: 18,650 strength and
+# defence xp and the right to wear the rune platebody / green d'hide body.
+
+QUEST_POINTS = {
+    "cooks_assistant": 1, "sheep_shearer": 1, "dorics_quest": 1,
+    "romeo_juliet": 5, "vampyre_slayer": 3, "restless_ghost": 1,
+    "rune_mysteries": 1, "imp_catcher": 1, "witch_potion": 1,
+    "ernest_chicken": 4, "dragon_slayer": 2,
+}
+GUILD_QP = 12      # quest points needed to enter the Champions' Guild
+
+
+def quest_points(p):
+    return sum(QUEST_POINTS.get(k, 1) for k in ALL_QUESTS
+               if _q(p, k) == "complete")
+
+
+ALL_QUESTS["dragon_slayer"] = "Dragon Slayer"
+
+MAP_PIECES = ["melzar's map piece", "wormbrain's map piece", "lozar's map piece"]
+for _piece in MAP_PIECES:
+    add_item(_piece, 1)
+add_item("anti-dragon shield", 40, equip={
+    "amagic": -8, "arange": -2, "dstab": 7, "dslash": 9, "dcrush": 8,
+    "dmagic": 1, "drange": 9, "slot": "shield"})
+
+# the classic rewards are locked behind the quest
+ITEMS["rune platebody"]["equip"]["quest"] = "dragon_slayer"
+ITEMS["green d'hide body"]["equip"]["quest"] = "dragon_slayer"
+
+SHOPS["oziach"] = {"anti-dragon shield": 40, "rune platebody": 65000,
+                   "green d'hide body": 7800}
+
+ROOMS.update({
+    "champions_guild": dict(name="Champions' Guild",
+        desc="A proud hall south-west of Varrock where only proven "
+             "adventurers may enter. The Guildmaster sizes you up from his "
+             "chair by the fire.",
+        exits={"east": "varrock_gate"}, npc="dragon_slayer"),
+    "oziach_hut": dict(name="Oziach's Hut",
+        desc="A shabby hut by the river west of Edgeville. Oziach, a "
+             "wild-eyed armourer, mutters about dragons as he works.",
+        exits={"east": "edgeville"}, npc="oziach", shop="oziach"),
+    "melzars_maze": dict(name="Melzar's Maze",
+        desc="A decaying stronghold north of Rimmington, sealed since Crandor "
+             "fell. The shambling dead wander halls that still reek of ash.",
+        exits={"out": "rimmington"},
+        monsters=["zombie", "skeleton", "giant rat"]),
+})
+ROOMS["varrock_gate"]["exits"]["guild"] = "champions_guild"
+ROOMS["edgeville"]["exits"]["hut"] = "oziach_hut"
+ROOMS["rimmington"]["exits"]["maze"] = "melzars_maze"
+ROOMS["port_sarim"]["exits"]["crandor"] = "crandor"
+ROOMS["port_sarim"]["npc"] = "klarense"
+
+REGIONS.update({"champions_guild": "Varrock", "oziach_hut": "Edgeville",
+                "melzars_maze": "Rimmington"})
+
+# Crandor is unreachable until the Lady Lumbridge is seaworthy
+ROOMS["crandor"]["qlock"] = (
+    "dragon_slayer", ("sail", "complete"),
+    "The reefs around Crandor have sunk every ship that dared approach. You "
+    "need a seaworthy ship and a route through the reef. (Quest: Dragon Slayer)")
+
+
+def talk_guildmaster(p):
+    stage = _q(p, "dragon_slayer")
+    if stage == "not_started":
+        qp = quest_points(p)
+        if qp < GUILD_QP:
+            say("Guildmaster: \"Champions only! Prove yourself on Gielinor's "
+                f"quests and return with {GUILD_QP} quest points. You have "
+                f"{qp}.\"", "byellow")
+            say("  (Check your progress with 'quests'.)", "grey")
+            return
+        banner("Quest Start: Dragon Slayer", color="purple", line_color="bmagenta")
+        say("Guildmaster: \"So you seek the right to wear rune armour? Then "
+            "hear this: ELVARG, the dragon of Crandor, burned that isle to "
+            "cinders and has never been slain. Speak to OZIACH, the armourer "
+            "in a hut west of Edgeville — only he can grant you the honour.\"")
+        p.quests["dragon_slayer"] = "started"
+    elif stage == "complete":
+        say("Guildmaster: \"The slayer of Elvarg! Drinks are on the guild, "
+            "champion.\"")
+    else:
+        say("Guildmaster: \"Oziach's hut is west of Edgeville ('hut'). Elvarg "
+            "awaits.\"")
+
+
+def talk_oziach(p):
+    stage = _q(p, "dragon_slayer")
+    if stage == "started":
+        banner("Dragon Slayer", color="purple", line_color="bmagenta")
+        say("Oziach: \"Rune armour, is it? Slay ELVARG of Crandor and you've "
+            "earned it. But no ship's route to Crandor survives whole — the "
+            "map was torn in three:\"")
+        say("  • MELZAR'S piece — search Melzar's Maze, north of Rimmington", "bcyan")
+        say("  • WORMBRAIN'S piece — a goblin of Lumbridge Forest swallowed it", "bcyan")
+        say("  • LOZAR'S piece — locked in a magic chest in Draynor Manor", "bcyan")
+        say("Oziach: \"Take this as well — no shield, no dragon-slaying.\"")
+        p.add("anti-dragon shield")
+        say("(He hands you an ANTI-DRAGON SHIELD — equip it before facing "
+            "dragonfire!)", "bgreen")
+        say("\"With all three pieces, buy a ship from KLARENSE at Port Sarim.\"")
+        p.quests["dragon_slayer"] = "maps"
+    elif stage == "maps":
+        missing = [i for i in MAP_PIECES if not p.has(i)]
+        if missing:
+            _need_msg("Oziach", missing)
+        else:
+            say("Oziach: \"The whole map! Now buy that ship off KLARENSE at "
+                "Port Sarim and sail.\"")
+    elif stage == "sail":
+        say("Oziach: \"The Lady Lumbridge is ready — sail from Port Sarim "
+            "('go crandor') and end Elvarg!\"")
+    elif stage == "complete":
+        say("Oziach: \"Dragon Slayer! My rune platebodies are yours to buy — "
+            "and at last to wear. ('shop')\"")
+    else:
+        say("Oziach: \"I only deal with champions. See the Guildmaster at the "
+            "Champions' Guild, south-west of Varrock.\"")
+
+
+def talk_klarense(p):
+    stage = _q(p, "dragon_slayer")
+    if stage in ("sail", "complete"):
+        say("Klarense: \"She's your ship now. Fair winds to Crandor! "
+            "('go crandor')\"")
+        return
+    if stage != "maps":
+        say("Klarense: \"Fine ship, the Lady Lumbridge. Not for sale, mind... "
+            "unless a dragon-slaying came into it.\"")
+        return
+    missing = [i for i in MAP_PIECES if not p.has(i)]
+    if missing:
+        _need_msg("Klarense", missing)
+        return
+    needs = []
+    if not p.has("coins", 2000):
+        needs.append("2,000 coins")
+    if not p.has("steel bar", 2):
+        needs.append("2 steel bars (to patch the hull)")
+    if not p.has("hammer"):
+        needs.append("a hammer")
+    if needs:
+        say("Klarense: \"The Lady Lumbridge is yours for 2,000 coins — but "
+            "her hull needs work. Bring " + ", ".join(needs) + ".\"", "byellow")
+        return
+    p.take("coins", 2000)
+    p.take("steel bar", 2)
+    for i in MAP_PIECES:
+        p.take(i)
+    banner("The Lady Lumbridge is seaworthy!", color="bcyan", line_color="bcyan")
+    say("You hammer steel plate over her hull and chart the reef from the "
+        "three map pieces. Klarense signs her over. Crandor lies dead ahead — "
+        "'go crandor'. Bring your anti-dragon shield!", "bgreen")
+    p.quests["dragon_slayer"] = "sail"
+
+
+QUEST_TALK["dragon_slayer"] = talk_guildmaster
+QUEST_TALK["oziach"] = talk_oziach
+QUEST_TALK["klarense"] = talk_klarense
 
 
 if __name__ == "__main__":
