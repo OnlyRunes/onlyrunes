@@ -1698,6 +1698,7 @@ class Player:
         self.combat = None        # interactive-combat state (None = not fighting)
         self.run_energy = 100     # 0-100; spent travelling, regained by acting
         self.spec_energy = 100    # 0-100; spent on special attacks
+        self.cave_wave = 0        # Fight Caves progress (0 = no active run)
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
         self.poison = 0           # remaining poison ticks (transient combat fx)
@@ -2854,6 +2855,9 @@ def cmd_travel(p, arg):
     if p.location == room:
         say(f"You're already in {ROOMS[room]['name']}.")
         return
+    if p.location == "fight_caves" and getattr(p, "cave_wave", 0):
+        p.cave_wave = 0
+        say("You leave the Fight Caves — your run is abandoned.", "byellow")
     # use a teleport spell if you can (runes + magic level) — no energy cost
     tp = _teleport_for(room)
     if tp:
@@ -2953,6 +2957,9 @@ def cmd_go(p, arg):
             return
         p.take(key)
         say(f"You unlock the door with the {key}.", "bgreen")
+    if p.location == "fight_caves" and getattr(p, "cave_wave", 0):
+        p.cave_wave = 0             # walking out abandons the run
+        say("You leave the Fight Caves — your run is abandoned.", "byellow")
     if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
         if _q(p, "prince_ali") == "complete":       # Prince Ali Rescue reward
             say("The gate guards recognise the prince's rescuer and wave you "
@@ -3789,6 +3796,9 @@ def _handle_death(p):
     show_art(ART_DEATH, "bred")
     banner("YOU HAVE DIED", color="bred", line_color="red")
     say("You wake in Lumbridge, your wounds bound. Your items are safe.", "grey")
+    if getattr(p, "cave_wave", 0):
+        p.cave_wave = 0
+        say("Your Fight Caves run is over.", "byellow")
     p.hp = p.max_hp
     p.location = "lumbridge_castle"
 
@@ -4316,6 +4326,7 @@ def _quest_on_kill(p, target):
         p.gain_xp("strength", 18650)
         p.gain_xp("defence", 18650)
         p.quests["dragon_slayer"] = "complete"
+    _cave_on_kill(p, target)            # Fight Caves wave progression
     # slayer task progress
     task = getattr(p, "slayer_task", None)
     if task and target == task["monster"] and task["remaining"] > 0:
@@ -4376,6 +4387,8 @@ ACHIEVEMENTS = {
     "dragonslayer": ("Dragonslayer", "Defeat the King Black Dragon."),
     "giant_slayer": ("Giant Slayer", "Defeat Obor, the Hill Giant boss."),
     "crandor_saved": ("Crandor's Saviour", "Complete the Dragon Slayer quest."),
+    "fire_cape": ("JalYt Champion", "Conquer the Fight Caves and earn the "
+                  "fire cape."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4407,6 +4420,8 @@ def _earned_achievements(p):
         got.add("giant_slayer")
     if _q(p, "dragon_slayer") == "complete":
         got.add("crandor_saved")
+    if "tztok-jad" in bosses:
+        got.add("fire_cape")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -4529,6 +4544,7 @@ def serialize(p):
             "quests": p.quests, "members": p.members,
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
             "run_energy": p.run_energy, "spec_energy": getattr(p, "spec_energy", 100),
+            "cave_wave": getattr(p, "cave_wave", 0),
             "slayer_task": p.slayer_task,
             "slayer_points": p.slayer_points,
             "achievements": list(getattr(p, "achievements", [])),
@@ -4559,6 +4575,7 @@ def deserialize(data):
     p.active_prayers = data.get("equipped_prayers", [])
     p.run_energy = data.get("run_energy", 100)
     p.spec_energy = data.get("spec_energy", 100)
+    p.cave_wave = data.get("cave_wave", 0)
     p.slayer_task = data.get("slayer_task", None)
     p.slayer_points = data.get("slayer_points", 0)
     p.achievements = data.get("achievements", [])
@@ -5135,6 +5152,13 @@ def web_room_actions(player):
     if r.get("agility_course"):
         out.append({"name": "obstacle course", "kind": "gather",
                     "actions": [{"label": "Run a lap", "cmd": "agility"}]})
+    if r.get("fight_caves"):
+        if getattr(player, "cave_wave", 0):
+            out.append({"name": f"wave {player.cave_wave}", "kind": "monster",
+                        "actions": [{"label": "Next wave", "cmd": "next"}]})
+        else:
+            out.append({"name": "the Fight Caves", "kind": "monster",
+                        "actions": [{"label": "Challenge", "cmd": "challenge"}]})
     # location-specific gathering
     specials = {
         "lumbridge_farm": [
@@ -6085,6 +6109,194 @@ QUEST_HINTS["black_knights"] = {
                   "('fortress' from the monastery)",
     "sabotaged": "report back to Sir Amik Varze at the White Knights' Castle",
 }
+
+
+# ===========================================================================
+#  THE FIGHT CAVES  (wave minigame -> TzTok-Jad -> fire cape)
+# ===========================================================================
+# 'challenge' in the Fight Caves starts a run: seven waves of escalating
+# monsters, 'next' between waves (heal up first!), leaving or dying abandons
+# the run. The final wave is TzTok-Jad, who telegraphs every attack — switch
+# to the right protection prayer or be flattened. Reward: the fire cape.
+
+CAVE_WAVES = ["hobgoblin", "hill giant", "moss giant", "ice giant",
+              "lesser demon", "greater demon", "tztok-jad"]
+
+add_item("fire cape", 50000, members=True, equip={
+    "astab": 1, "aslash": 1, "acrush": 1, "amagic": 1, "arange": 1,
+    "dstab": 11, "dslash": 11, "dcrush": 11, "dmagic": 11, "drange": 11,
+    "str": 4, "prayer": 2, "slot": "cape"})
+
+JAD_ART = r'''
+        \ /             \ /
+      ---#---------------#---
+        /_\ ___________ /_\
+       /   (  (o)  (o)  )   \
+      |     \____ _____/     |
+       \     /VVVVVVVVV\    /
+        \___|           |__/
+        /   \___________/   \
+       /_/|  |    |    |  |\_\
+          |__|    |____|__|
+'''
+
+
+def _jad_intro(name):
+    return [_tint(JAD_ART, "brown"), _tint(JAD_ART, "orange", "bold"),
+            _tint(JAD_ART, "bred", "bold"), _tint(JAD_ART, "orange", "bold")]
+
+
+def _jad_death(name):
+    return [_tint(JAD_ART, "orange"), _tint(JAD_ART, "grey"),
+            _tint(JAD_ART, "grey", "dim")]
+
+
+_add_mob("tztok-jad",
+    {"abonus": 0, "atktype": ["crush", "magic", "ranged"], "att": 160,
+     "cb": 702, "dstab": 0, "dslash": 0, "dcrush": 0, "dmagic": 0,
+     "drange": 0, "def": 100, "hp": 250, "maxhit": 25, "str": 160,
+     "weak": "ranged"},
+    [("coins", 5000, 20000, 1.0)], members=True)
+MONSTERS["tztok-jad"]["boss"] = True
+MONSTERS["tztok-jad"]["rank"] = "boss"
+_BOSSES.add("tztok-jad")
+BOSS_INTRO["tztok-jad"] = _jad_intro
+BOSS_DEATH["tztok-jad"] = _jad_death
+MONSTER_ART["tztok-jad"] = JAD_ART
+
+JAD_CUES = {
+    "magic": "TzTok-Jad rears back, flame gathering between his horns — "
+             "MAGIC is coming! (pray 'protect from magic')",
+    "ranged": "TzTok-Jad slams his forelegs into the rock — a boulder "
+              "barrage is coming! (pray 'protect from missiles')",
+    "melee": "TzTok-Jad crouches low, jaws gaping wide — a MELEE bite is "
+             "coming! (pray 'protect from melee')",
+}
+
+
+def _jad_take_turn(p, m):
+    """Jad telegraphs each attack a turn ahead: pray right or be flattened."""
+    style = m.get("jad_next")
+    if style:
+        animate([_tint(JAD_ART, "orange", "bold"), _tint(JAD_ART, "bred", "bold")],
+                delay=0.12, center=True)
+        say(f"TzTok-Jad unleashes his {style} attack!", "orange", "bold")
+        if p.prayer_protects(style):
+            print("  " + paint("Your prayer holds — the attack breaks "
+                               "harmlessly over you!", "bcyan"))
+        else:
+            dmg = random.randint(8, m["max_hit"])
+            p.hp -= dmg
+            print("  " + paint(f"It smashes into you for a devastating {dmg}!",
+                               "bred") + "  " + paint("HP ", "white")
+                  + bar_meter(max(p.hp, 0), p.max_hp, 18))
+    else:
+        say("TzTok-Jad sizes you up, embers dripping from his jaws...",
+            "orange")
+    nxt = random.choice(["magic", "ranged", "melee"])
+    m["jad_next"] = nxt
+    print("  " + paint(JAD_CUES[nxt], "byellow"))
+    if p.active_prayers:
+        p.prayer_points -= p.prayer_drain()
+        if p.prayer_points <= 0:
+            p.prayer_points = 0
+            p.active_prayers = []
+            print("  " + paint("Your prayers flicker out (no prayer points).",
+                               "bmagenta"))
+    return "died" if p.hp <= 0 else None
+
+
+BOSS_TURN["tztok-jad"] = _jad_take_turn
+
+ROOMS.update({
+    "fight_caves": dict(name="The Fight Caves",
+        desc="A scorched arena deep in the volcano. TzHaar-Mej-Jal guards "
+             "the entrance, sizing up challengers. Seven waves await the "
+             "brave — and TzTok-Jad awaits the foolish. (members)",
+        exits={"out": "karamja_volcano"},
+        npc="tzhaar", fight_caves=True, members=True),
+})
+ROOMS["karamja_volcano"]["exits"]["caves"] = "fight_caves"
+ROOMS["karamja_volcano"]["desc"] += " A heat-shimmering tunnel leads to the Fight Caves ('caves')."
+REGIONS["fight_caves"] = "Karamja"
+NPC_NAMES["tzhaar"] = "TzHaar-Mej-Jal"
+
+
+def talk_tzhaar(p):
+    wave = getattr(p, "cave_wave", 0)
+    if wave:
+        say(f"TzHaar-Mej-Jal: \"You fight good so far, JalYt — wave {wave} of "
+            f"{len(CAVE_WAVES)}. Type 'next' when ready. Leave, and you start "
+            "over.\"", "orange")
+        return
+    if p.has("fire cape") or "tztok-jad" in getattr(p, "bosses", []):
+        say("TzHaar-Mej-Jal: \"The JalYt who slew TzTok-Jad! You fight again "
+            "any time — 'challenge'.\"", "orange")
+        return
+    say("TzHaar-Mej-Jal: \"You want good fight, JalYt? Seven waves, no "
+        "mercy, no leaving. Survive them all and face TZTOK-JAD — watch his "
+        "moves and pray right, or die fast. Beat him and the FIRE CAPE is "
+        "yours. Bring food, prayer potions, your best gear. Type 'challenge' "
+        "to begin.\"", "orange")
+
+
+QUEST_TALK["tzhaar"] = talk_tzhaar
+
+
+def _cave_start_wave(p):
+    mon = CAVE_WAVES[p.cave_wave - 1]
+    say(f"— Wave {p.cave_wave} of {len(CAVE_WAVES)} —", "byellow", "bold")
+    _start_combat(p, mon)
+
+
+def cmd_challenge(p, _a):
+    if p.location != "fight_caves":
+        say("There's nothing to challenge here.", "grey")
+        return
+    if getattr(p, "cave_wave", 0):
+        say(f"You're mid-run — wave {p.cave_wave}/{len(CAVE_WAVES)}. "
+            "Type 'next' to continue.", "byellow")
+        return
+    banner("THE FIGHT CAVES", color="orange", line_color="red")
+    say("TzHaar-Mej-Jal: \"Seven waves. No mercy. Fight good, JalYt!\"",
+        "orange", "bold")
+    p.cave_wave = 1
+    _cave_start_wave(p)
+
+
+def cmd_next(p, _a):
+    if p.location != "fight_caves" or not getattr(p, "cave_wave", 0):
+        say("Nothing to continue. (In the Fight Caves, 'challenge' starts "
+            "a run.)", "grey")
+        return
+    _cave_start_wave(p)
+
+
+HANDLERS["challenge"] = cmd_challenge
+HANDLERS["next"] = cmd_next
+HANDLERS["wave"] = cmd_next
+
+
+def _cave_on_kill(p, target):
+    """Advance the Fight Caves after each wave kill; crown the champion."""
+    wave = getattr(p, "cave_wave", 0)
+    if not wave or p.location != "fight_caves" \
+            or target != CAVE_WAVES[wave - 1]:
+        return
+    if wave < len(CAVE_WAVES):
+        p.cave_wave += 1
+        nxt = CAVE_WAVES[p.cave_wave - 1]
+        say(f"Wave {wave} cleared! Catch your breath, eat up — then 'next' "
+            f"(wave {p.cave_wave}/{len(CAVE_WAVES)}: {nxt}).",
+            "byellow", "bold")
+    else:
+        p.cave_wave = 0
+        show_art(ART_QUEST, "gold", center=True)
+        banner("THE FIGHT CAVES — CONQUERED", color="orange", line_color="red")
+        p.add("fire cape")
+        say("TzHaar-Mej-Jal: \"You defeated TzTok-Jad?! Unbelievable, JalYt! "
+            "Take this — you have earned it.\"", "orange", "bold")
+        say("You receive a FIRE CAPE! ('equip fire cape')", "bgreen", "bold")
 
 
 if __name__ == "__main__":
