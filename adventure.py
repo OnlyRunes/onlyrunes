@@ -2968,12 +2968,16 @@ def cmd_go(p, arg):
         p.take(key)
         say(f"You unlock the door with the {key}.", "bgreen")
     if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
-        toll = ROOMS[p.location]["toll"]
-        if not p.has("coins", toll):
-            say(f"The gate guard demands {toll} coins. You can't afford it.")
-            return
-        p.take("coins", toll)
-        say(f"You pay the {toll} coin toll.")
+        if _q(p, "prince_ali") == "complete":       # Prince Ali Rescue reward
+            say("The gate guards recognise the prince's rescuer and wave you "
+                "through for free.", "bgreen")
+        else:
+            toll = ROOMS[p.location]["toll"]
+            if not p.has("coins", toll):
+                say(f"The gate guard demands {toll} coins. You can't afford it.")
+                return
+            p.take("coins", toll)
+            say(f"You pay the {toll} coin toll.")
     p.location = dest
     cmd_look(p, "")
 
@@ -4333,13 +4337,16 @@ def cmd_quests(p, _a):
     print("  " + paint(f"Quest points: {quest_points(p)}", "byellow")
           + paint(f"   ({GUILD_QP} needed for the Champions' Guild)", "grey"))
     for key, title in ALL_QUESTS.items():
-        st = _q(p, key)
-        if st not in ("not_started", "started", "complete"):
-            st = "started"                    # mid-quest stages read as started
+        raw = _q(p, key)
+        st = raw if raw in ("not_started", "started", "complete") else "started"
         st = st.replace("_", " ")
         color = {"complete": "bgreen", "started": "byellow"}.get(st, "grey")
         print(f"  {title:20} " + paint(st, color)
               + paint(f"  ({QUEST_POINTS.get(key, 1)} qp)", "grey"))
+        if raw not in ("not_started", "complete"):     # current objective
+            hint = QUEST_HINTS.get(key, {}).get(raw)
+            if hint:
+                print("    " + paint("→ " + hint, "bcyan"))
 
 
 # ===========================================================================
@@ -4471,6 +4478,14 @@ def cmd_search(p, _a):
             say("In the manor's cellar a magic chest clicks open at your "
                 "touch — LOZAR'S MAP PIECE is yours!", "bgreen")
             return
+    if loc == "draynor_jail" and _q(p, "prince_ali") == "rescue":
+        p.take("blonde wig")
+        p.take("bronze key")
+        p.quests["prince_ali"] = "freed"
+        say("You slip the bronze key into the lock while Lady Keli's back is "
+            "turned. Prince Ali dons the wig and strolls out disguised — free! "
+            "Return to Osman at the Al Kharid palace.", "bgreen")
+        return
     say("You find nothing of interest.")
 
 
@@ -5712,6 +5727,224 @@ def talk_klarense(p):
 QUEST_TALK["dragon_slayer"] = talk_guildmaster
 QUEST_TALK["oziach"] = talk_oziach
 QUEST_TALK["klarense"] = talk_klarense
+
+
+# ===========================================================================
+#  THE KNIGHT'S SWORD  &  PRINCE ALI RESCUE
+# ===========================================================================
+# Two more classics. The Knight's Sword: help a Falador squire replace Sir
+# Vyvin's lost blade — find Thurgo the Imcando dwarf (he loves redberry pie),
+# mine blurite, and reforge it for a huge slug of smithing xp. Prince Ali
+# Rescue: spring the prince from Draynor jail with a disguise; the grateful
+# emirate makes the Al Kharid toll gate free forever.
+
+add_item("redberry pie", 12, heal=5)
+SHOPS["general"]["redberry pie"] = 12
+add_item("blurite ore", 60)
+ROCKS["blurite"] = ("blurite ore", 10, 18)
+add_item("knight's sword", 100, equip={
+    "astab": 6, "aslash": 9, "acrush": -2, "str": 8, "slot": "weapon",
+    "req": {"attack": 5}})
+add_item("blonde wig", 2)
+add_item("bronze key", 1)
+
+ROOMS.update({
+    "white_knights_castle": dict(name="White Knights' Castle",
+        desc="The great white keep of Falador. Knights drill in the courtyard "
+             "while a young squire paces, looking close to tears.",
+        exits={"south": "falador_square"}, npc="knights_sword"),
+    "mudskipper_point": dict(name="Mudskipper Point",
+        desc="A windswept spit south of Port Sarim. Thurgo, last of the "
+             "Imcando dwarves, tends a forge by his hut. An icy cave mouth "
+             "yawns nearby ('cave').",
+        exits={"north": "port_sarim", "cave": "icy_cavern"},
+        npc="thurgo", anvil=True),
+    "icy_cavern": dict(name="Icy Cavern",
+        desc="A frozen cavern beneath Asgarnia. Rare blurite veins glitter "
+             "blue in the walls, guarded by hulking ice giants.",
+        exits={"out": "mudskipper_point"},
+        rocks=["blurite"], monsters=["ice giant"]),
+    "draynor_jail": dict(name="Draynor Jail",
+        desc="A squat stone jail on the village edge. Lady Keli holds court "
+             "over her toughs while a hooded prisoner waits in the cell.",
+        exits={"out": "draynor_village"}),
+})
+ROOMS["falador_square"]["exits"]["castle"] = "white_knights_castle"
+ROOMS["port_sarim"]["exits"]["point"] = "mudskipper_point"
+ROOMS["draynor_village"]["exits"]["jail"] = "draynor_jail"
+ROOMS["al_kharid_palace"]["npc"] = "prince_ali"
+ROOMS["falador_square"]["desc"] += " The White Knights' Castle rises north ('castle')."
+ROOMS["port_sarim"]["desc"] += " Mudskipper Point lies south ('point')."
+ROOMS["draynor_village"]["desc"] += " A squat jail stands at the edge of town ('jail')."
+ROOMS["al_kharid_palace"]["desc"] += " Osman, the Emir's chancellor, beckons you over."
+
+REGIONS.update({"white_knights_castle": "Falador",
+                "mudskipper_point": "PortSarim", "icy_cavern": "PortSarim",
+                "draynor_jail": "Draynor"})
+
+ALL_QUESTS.update({"knights_sword": "The Knight's Sword",
+                   "prince_ali": "Prince Ali Rescue"})
+ALL_QUESTS["dragon_slayer"] = ALL_QUESTS.pop("dragon_slayer")  # capstone last
+QUEST_POINTS.update({"knights_sword": 1, "prince_ali": 3})
+
+
+def talk_squire(p):
+    stage = _q(p, "knights_sword")
+    if stage == "not_started":
+        banner("Quest Start: The Knight's Sword", color="purple",
+               line_color="bmagenta")
+        say("Squire: \"I've lost Sir Vyvin's family sword — I'm ruined! Only "
+            "an IMCANDO DWARF could reforge such a blade. THURGO, the last of "
+            "them, lives at Mudskipper Point south of Port Sarim ('point'). "
+            "One thing: Imcando dwarves are mad for REDBERRY PIE...\"")
+        p.quests["knights_sword"] = "started"
+    elif stage == "sword":
+        has = p.has("knight's sword")
+        if not has and p.equipment.get("weapon") == "knight's sword":
+            p.equipment["weapon"] = None            # hand it over off your back
+            has = True
+        elif has:
+            p.take("knight's sword")
+        if has:
+            _complete_banner("The Knight's Sword")
+            say("The squire nearly faints with relief. \"Sir Vyvin will never "
+                "know!\" Watching Thurgo work has taught you much: 12,725 "
+                "smithing xp awarded!")
+            p.gain_xp("smithing", 12725)
+            p.quests["knights_sword"] = "complete"
+        else:
+            say("Squire: \"Where is the sword?! Thurgo was our only hope!\"")
+    elif stage == "complete":
+        say("Squire: \"Sir Vyvin suspects nothing. Thank you, friend.\"")
+    else:
+        say("Squire: \"Thurgo's at Mudskipper Point, south of Port Sarim. "
+            "Take him a redberry pie!\"")
+
+
+def talk_thurgo(p):
+    stage = _q(p, "knights_sword")
+    if stage == "started":
+        if p.has("redberry pie"):
+            p.take("redberry pie")
+            say("Thurgo devours the pie in two bites. \"Ahh! Fine, I'll forge "
+                "your sword. Bring me 2 IRON BARS and 1 BLURITE ORE — there's "
+                "a vein in the icy cavern ('cave'), if you can mine it (level "
+                "10) and slip past the ice giants.\"", "bcyan")
+            p.quests["knights_sword"] = "forge"
+        else:
+            say("Thurgo: \"Can't help you. ...Unless you happened to have a "
+                "REDBERRY PIE? The general store in Lumbridge bakes them.\"")
+    elif stage == "forge":
+        needs = []
+        if not p.has("iron bar", 2):
+            needs.append("2 iron bars")
+        if not p.has("blurite ore"):
+            needs.append("1 blurite ore")
+        if needs:
+            _need_msg("Thurgo", needs)
+        else:
+            p.take("iron bar", 2)
+            p.take("blurite ore")
+            p.add("knight's sword")
+            banner("Thurgo forges the blade!", color="bcyan", line_color="bcyan")
+            say("Sparks fly from the Imcando forge. Thurgo hands you a perfect "
+                "KNIGHT'S SWORD — take it to the squire in Falador!", "bgreen")
+            p.quests["knights_sword"] = "sword"
+    elif stage == "sword":
+        say("Thurgo: \"Get that sword to your squire before I eat it too.\"")
+    elif stage == "complete":
+        say("Thurgo: \"Come by any time... especially with pie.\"")
+    else:
+        say("Thurgo: \"Mmm. I do love a good redberry pie.\"")
+
+
+def talk_osman(p):
+    stage = _q(p, "prince_ali")
+    if stage == "not_started":
+        banner("Quest Start: Prince Ali Rescue", color="purple",
+               line_color="bmagenta")
+        say("Osman: \"Prince Ali is held in DRAYNOR's jail by the bandit Lady "
+            "Keli! We must smuggle him out in disguise. Bring me 3 BALLS OF "
+            "WOOL for a wig, 2 CLAY for a key mould, and a BRONZE BAR to "
+            "forge the key.\"")
+        p.quests["prince_ali"] = "started"
+    elif stage == "started":
+        needs = []
+        if not p.has("ball of wool", 3):
+            needs.append("3 balls of wool")
+        if not p.has("clay", 2):
+            needs.append("2 clay")
+        if not p.has("bronze bar"):
+            needs.append("a bronze bar")
+        if needs:
+            _need_msg("Osman", needs)
+        else:
+            p.take("ball of wool", 3)
+            p.take("clay", 2)
+            p.take("bronze bar")
+            p.add("blonde wig")
+            p.add("bronze key")
+            say("Osman works quickly: a BLONDE WIG and a forged BRONZE KEY. "
+                "\"Go to the jail in Draynor ('jail') and 'search' for a way "
+                "to free the prince!\"", "bgreen")
+            p.quests["prince_ali"] = "rescue"
+    elif stage == "rescue":
+        say("Osman: \"The prince still rots in Draynor's jail — go, 'search' "
+            "for his cell!\"")
+    elif stage == "freed":
+        _complete_banner("Prince Ali Rescue")
+        say("Prince Ali embraces his family. Osman presses 700 coins into "
+            "your hand — and the Al Kharid gate is forever free to you.")
+        p.add("coins", 700)
+        p.quests["prince_ali"] = "complete"
+    else:
+        say("Osman: \"Al Kharid remembers its friends. The gate is always "
+            "open to you.\"")
+
+
+QUEST_TALK["knights_sword"] = talk_squire
+QUEST_TALK["thurgo"] = talk_thurgo
+QUEST_TALK["prince_ali"] = talk_osman
+
+# journal objective hints (quest -> stage -> what to do next)
+QUEST_HINTS = {
+    "cooks_assistant": {"started":
+        "bring the Cook an egg, a bucket of milk and a pot of flour"},
+    "sheep_shearer": {"started":
+        "bring Fred 6 balls of wool ('shear' sheep, then 'spin' at Lumbridge)"},
+    "dorics_quest": {"started":
+        "bring Doric 6 clay, 4 copper ore and 2 iron ore"},
+    "romeo_juliet": {"started":
+        "'search' Draynor Village for Juliet, take her message to Romeo"},
+    "vampyre_slayer": {"started":
+        "slay Count Draynor in Draynor Manor (keep Morgan's stake!)"},
+    "restless_ghost": {"started":
+        "'search' the Varrock sewers for the skull, return to Father Aereck"},
+    "rune_mysteries": {"started":
+        "study the air talisman, then return it to Sedridor"},
+    "imp_catcher": {"started":
+        "slay imps at the Wizard's Tower for red, yellow, black & white beads"},
+    "witch_potion": {"started":
+        "bring Aggie raw rat meat, a bucket of milk and an egg"},
+    "ernest_chicken": {"started":
+        "'search' Draynor Manor for the oil can, pressure gauge & rubber tube"},
+    "knights_sword": {
+        "started": "find Thurgo at Mudskipper Point ('point' from Port Sarim) "
+                   "— bring a redberry pie (Lumbridge general store)",
+        "forge": "bring Thurgo 2 iron bars + 1 blurite ore (mine it in the "
+                 "icy cavern)",
+        "sword": "return the knight's sword to the squire in Falador"},
+    "prince_ali": {
+        "started": "bring Osman 3 balls of wool, 2 clay and a bronze bar",
+        "rescue": "'search' the Draynor jail ('jail' from Draynor Village)",
+        "freed": "return to Osman at the Al Kharid palace"},
+    "dragon_slayer": {
+        "started": "speak to Oziach in his hut west of Edgeville ('hut')",
+        "maps": "search Melzar's Maze, slay goblins in Lumbridge Forest, and "
+                "search Draynor Manor for the three map pieces",
+        "sail": "see Klarense at Port Sarim, then 'go crandor' — bring your "
+                "anti-dragon shield!"},
+}
 
 
 if __name__ == "__main__":
