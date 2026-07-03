@@ -65,6 +65,7 @@
     transition: width .18s ease, background .18s ease; }
   .m-hp { background: #3fa34d; } .m-pray { background: #4a90d6; }
   .m-run { background: #caa53a; } .m-foe { background: #d64f4f; }
+  .m-spec { background: #3aa8a0; }
   #st-foe b#foe-name { color: #ff8a8a; }
   #afflict { display: inline-flex; gap: 6px; }
   .aff { font-size: 11px; padding: 1px 7px; border-radius: 8px;
@@ -161,6 +162,7 @@
       <span><span class="lbl">HP</span> <span class="meter"><i id="hpfill" class="m-hp"></i></span> <b id="st-hp">10/10</b></span>
       <span><span class="lbl">Pray</span> <span class="meter"><i id="prayfill" class="m-pray"></i></span> <b id="st-pray">1/1</b></span>
       <span><span class="lbl">Energy</span> <span class="meter"><i id="runfill" class="m-run"></i></span> <b id="st-energy">100</b></span>
+      <span><span class="lbl">Spec</span> <span class="meter"><i id="specfill" class="m-spec"></i></span> <b id="st-spec">100%</b></span>
       <span><span class="lbl">GP</span> <b id="st-gp">0</b></span>
       <span><span class="lbl">at</span> <b id="st-loc">—</b></span>
       <span class="lbl" id="st-style"></span>
@@ -362,9 +364,11 @@
         + (st.members ? " · member" : "");
       document.getElementById("st-style").textContent = styleTxt;
       document.getElementById("st-energy").textContent = (st.energy ?? 100) + "%";
+      document.getElementById("st-spec").textContent = (st.spec ?? 100) + "%";
       setMeter("hpfill", st.hp, st.max_hp, "hp");
       setMeter("prayfill", st.prayer ?? 0, st.prayer_max ?? 1);
       setMeter("runfill", st.energy ?? 100, 100);
+      setMeter("specfill", st.spec ?? 100, 100);
       // live enemy HP bar (only while fighting)
       const foe = document.getElementById("st-foe");
       if (st.enemy) {

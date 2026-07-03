@@ -2866,7 +2866,9 @@ def cmd_travel(p, arg):
         return
     room = TRAVEL_HUBS.get(dest)
     if not room:
-        say(f"You don't know the way to '{arg}'. Cities: "
+        close = difflib.get_close_matches(dest, list(TRAVEL_HUBS), 1, 0.6)
+        hint = f" Did you mean '{close[0]}'?" if close else ""
+        say(f"You don't know the way to '{arg}'.{hint} Cities: "
             + ", ".join(TRAVEL_NAMES))
         return
     if ROOMS[room].get("members") and not getattr(p, "members", False):
@@ -3755,6 +3757,25 @@ def _parse_item_qty(arg):
     if len(parts) == 2 and parts[1].isdigit():
         return parts[0], int(parts[1])
     return arg.strip().lower(), 1
+
+
+def cmd_drop(p, arg):
+    a = arg.strip().lower()
+    if not a:
+        say("Drop what? ('drop <item> [n|all]')")
+        return
+    parts = a.rsplit(" ", 1)
+    if len(parts) == 2 and (parts[1].isdigit() or parts[1] == "all"):
+        item, qarg = parts
+    else:
+        item, qarg = a, "1"
+    if not p.has(item):
+        say(f"You have no {item}.")
+        return
+    q = p.count(item) if qarg == "all" else min(int(qarg), p.count(item))
+    p.take(item, q)
+    say(f"You drop {item} x{q}." + (" A seagull swoops in to inspect it."
+        if "karamja" in p.location or "sarim" in p.location else ""))
 
 
 def cmd_buy(p, arg):
@@ -4655,7 +4676,7 @@ def cmd_help(_p, _a):
         "Combat": "fight [monster], spec (special attack), "
                   "style <melee|ranged|magic|stab|slash|crush>, "
                   "autocast <spell>, eat [food], drink [potion]",
-        "Gear": "equip <item>, unequip <slot>",
+        "Gear": "equip <item>, unequip <slot>, drop <item> [n|all]",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
                     "craft <item>, craftrune — add a count or 'all' to repeat: "
@@ -4750,6 +4771,18 @@ def _examine_monster(p, name):
 
 def cmd_examine(p, arg):
     name = arg.strip().lower()
+    if not name:
+        say("Examine what? (an item or a creature)")
+        return
+    if name not in MONSTERS and name not in ITEMS:
+        # forgiving lookup: unique substring match (creatures first)
+        hits = [m for m in MONSTERS if name in m] or \
+               [i for i in ITEMS if name in i]
+        if len(hits) == 1:
+            name = hits[0]
+        elif len(hits) > 1:
+            say("Which one? " + ", ".join(sorted(hits)[:8]))
+            return
     if name in MONSTERS:
         return _examine_monster(p, name)
     if name not in ITEMS:
@@ -4771,7 +4804,16 @@ def cmd_examine(p, arg):
         for f, lbl in labels:
             if eq.get(f):
                 bits.append(f"{lbl} {eq[f]:+d}")
+        for skill, req in eq.get("req", {}).items():
+            bits.append(f"needs {skill} {req}")
+        if eq.get("quest"):
+            bits.append(f"quest-locked: {ALL_QUESTS.get(eq['quest'], eq['quest'])}")
+    if info.get("members"):
+        bits.append("members")
     say(f"{name}: " + ", ".join(bits))
+    sp = SPECIAL_ATTACKS.get(name)
+    if sp:
+        say(f"  special: {sp['name']} ({sp['cost']}%) — {sp['desc']}", "teal")
 
 
 def cmd_bestiary(p, _a):
@@ -4872,6 +4914,7 @@ HANDLERS = {
     "unequip": cmd_unequip, "remove": cmd_unequip,
     "style": cmd_style, "autocast": cmd_autocast,
     "spec": cmd_spec, "special": cmd_spec,
+    "drop": cmd_drop, "discard": cmd_drop,
     "chop": cmd_chop, "cut": cmd_chop,
     "mine": cmd_mine,
     "fish": cmd_fish,
@@ -5167,6 +5210,7 @@ def web_status(player):
         "style": player.style,
         "stance": getattr(player, "attack_type", "slash"),
         "energy": int(getattr(player, "run_energy", 100)),
+        "spec": int(getattr(player, "spec_energy", 100)),
         "members": bool(getattr(player, "members", False)),
         "prayer": int(getattr(player, "prayer_points", 0)),
         "prayer_max": player.prayer_max(),
