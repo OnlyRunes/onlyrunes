@@ -2960,6 +2960,13 @@ def cmd_go(p, arg):
     if ql and _q(p, ql[0]) not in ql[1]:
         say(ql[2], "byellow")
         return
+    gl = ROOMS[dest].get("gear_lock")   # some doors demand a disguise
+    if gl:
+        worn = set(filter(None, p.equipment.values()))
+        if any(i not in worn for i in gl[0]):
+            say(gl[1], "byellow")
+            say("  (You must be wearing: " + ", ".join(gl[0]) + ".)", "grey")
+            return
     key = ROOMS[dest].get("key")        # some doors need (and consume) a key
     if key and p.location != dest:
         if not p.has(key):
@@ -3987,14 +3994,40 @@ def cmd_shear(p, _a):
 # ===========================================================================
 #  QUESTS
 # ===========================================================================
-def cmd_talk(p, _a):
+# npc key -> the name players see (and can 'talk <name>' to)
+NPC_NAMES = {
+    "cooks_assistant": "the Cook", "sheep_shearer": "Farmer Fred",
+    "dorics_quest": "Doric", "romeo_juliet": "Romeo",
+    "vampyre_slayer": "Morgan", "restless_ghost": "Father Aereck",
+    "rune_mysteries": "Sedridor", "imp_catcher": "Wizard Mizgog",
+    "witch_potion": "Aggie", "ernest_chicken": "Professor Oddenstein",
+    "slayer_master": "Vannaka", "dragon_slayer": "the Guildmaster",
+    "oziach": "Oziach", "klarense": "Klarense",
+    "knights_sword": "the squire", "thurgo": "Thurgo",
+    "prince_ali": "Osman", "black_knights": "Sir Amik Varze",
+}
+
+
+def cmd_talk(p, arg=""):
     npc = ROOMS[p.location].get("npc")
     if not npc:
         say("There's no one here to talk to.")
         return
     npcs = npc if isinstance(npc, list) else [npc]
-    # talk to whoever still has an unfinished quest; else the last NPC
-    target = next((k for k in npcs if _q(p, k) != "complete"), npcs[-1])
+    want = (arg or "").strip().lower()
+    if want:                       # 'talk <name>' picks a specific person
+        picks = [k for k in npcs if want in NPC_NAMES.get(k, k).lower()]
+        if not picks:
+            say("No one by that name here. You can talk to: "
+                + ", ".join(NPC_NAMES.get(k, k) for k in npcs) + ".")
+            return
+        target = picks[0]
+    else:
+        # talk to whoever still has an unfinished quest; else the last NPC
+        target = next((k for k in npcs if _q(p, k) != "complete"), npcs[-1])
+        if len(npcs) > 1:
+            say("(Here: " + ", ".join(NPC_NAMES.get(k, k) for k in npcs)
+                + " — 'talk <name>' to pick.)", "grey")
     QUEST_TALK[target](p)
 
 
@@ -4478,6 +4511,19 @@ def cmd_search(p, _a):
             say("In the manor's cellar a magic chest clicks open at your "
                 "touch — LOZAR'S MAP PIECE is yours!", "bgreen")
             return
+    if loc == "black_knights_fortress" and _q(p, "black_knights") == "infiltrate":
+        if p.has("cabbage"):
+            p.take("cabbage")
+            p.quests["black_knights"] = "sabotaged"
+            say("You creep to a listening-hole. Below, a witch stirs a vast "
+                "cauldron — the invincibility potion! You drop your CABBAGE "
+                "down the chimney. The brew hisses, turns pink, and curdles. "
+                "Sabotage complete — report to Sir Amik Varze!", "bgreen")
+        else:
+            say("You find the chimney over the witch's cauldron. Something "
+                "vile dropped in would ruin the potion forever... a CABBAGE, "
+                "say. (The general store sells them.)", "byellow")
+        return
     if loc == "draynor_jail" and _q(p, "prince_ali") == "rescue":
         p.take("blonde wig")
         p.take("bronze key")
@@ -5088,9 +5134,14 @@ def web_room_actions(player):
     if r.get("fish_tools"):
         out.append({"name": "fishing spot", "kind": "fish",
                     "actions": [{"label": "Fish", "cmd": "fish"}]})
-    if r.get("npc"):
-        out.append({"name": "someone to talk to", "kind": "npc",
-                    "actions": [{"label": "Talk", "cmd": "talk"}]})
+    npc = r.get("npc")
+    if npc:
+        keys = npc if isinstance(npc, list) else [npc]
+        for k in keys:
+            nm = NPC_NAMES.get(k, "someone to talk to")
+            out.append({"name": nm, "kind": "npc", "actions": [
+                {"label": "Talk", "cmd": f"talk {nm}" if len(keys) > 1
+                 else "talk"}]})
     for tgt in r.get("pickpocket", []):
         out.append({"name": tgt, "kind": "npc",
                     "actions": [{"label": "Pickpocket", "cmd": f"pickpocket {tgt}"}]})
@@ -5944,6 +5995,108 @@ QUEST_HINTS = {
                 "search Draynor Manor for the three map pieces",
         "sail": "see Klarense at Port Sarim, then 'go crandor' — bring your "
                 "anti-dragon shield!"},
+}
+
+
+# ===========================================================================
+#  BLACK KNIGHTS' FORTRESS
+# ===========================================================================
+# The other 12-QP quest. Sir Amik Varze of the White Knights sends you to
+# infiltrate the Black Knights' fortress on Ice Mountain disguised in a
+# bronze med helm + iron chainbody (Wayne's Chainmail Shop, East Falador),
+# and ruin their invincibility potion with a well-placed cabbage.
+
+# chainbodies + med helms (real OSRS-ish per-type defences, bronze -> rune)
+for _mname, _req, _t in METALS:
+    _v = TIER_VALUE[_t]
+    add_item(f"{_mname} chainbody", 75 * _v, equip={
+        "dstab": 7 + _t * 5, "dslash": 11 + _t * 7, "dcrush": 13 + _t * 8,
+        "dmagic": 0, "drange": 7 + _t * 5, "slot": "body",
+        "req": {"defence": _req}})
+    add_item(f"{_mname} med helm", 18 * _v, equip={
+        "dstab": 3 + _t * 2, "dslash": 4 + _t * 2, "dcrush": 3 + _t * 2,
+        "dmagic": -1, "drange": 3 + _t * 2, "slot": "head",
+        "req": {"defence": _req}})
+
+SHOPS["chainmail"] = {"bronze chainbody": 60, "iron chainbody": 210,
+                      "steel chainbody": 750, "bronze med helm": 24,
+                      "iron med helm": 84, "steel med helm": 300}
+ROOMS["falador_east"]["shop"] = "chainmail"
+ROOMS["falador_east"]["desc"] += " Wayne's Chainmail Shop stands by the gate."
+
+add_item("cabbage", 1, heal=2)
+SHOPS["general"]["cabbage"] = 1
+
+_add_mob("black knight",
+    {"abonus": 10, "atktype": ["slash"], "att": 25, "cb": 33, "dstab": 15,
+     "dslash": 17, "dcrush": 10, "dmagic": 5, "drange": 15, "def": 25,
+     "hp": 42, "maxhit": 5, "str": 25, "weak": "crush"},
+    [("bones", 1, 1, 1.0), ("coins", 5, 60, 0.8),
+     ("black dagger", 1, 1, 0.04), ("black kiteshield", 1, 1, 0.02)],
+    rank="medium")
+
+ROOMS.update({
+    "black_knights_fortress": dict(name="Black Knights' Fortress",
+        desc="A grim fortress atop Ice Mountain. Black Knights drill in the "
+             "yard, and somewhere below, a cauldron bubbles.",
+        exits={"out": "monastery"},
+        monsters=["black knight"],
+        gear_lock=(["bronze med helm", "iron chainbody"],
+                   "The gate guard bars your way: \"No entry to outsiders!\" "
+                   "You'll need to look like one of them to get inside.")),
+})
+ROOMS["monastery"]["exits"]["fortress"] = "black_knights_fortress"
+ROOMS["monastery"]["desc"] += (" To the north, the Black Knights' Fortress "
+                               "glowers atop Ice Mountain ('fortress').")
+REGIONS["black_knights_fortress"] = "Edgeville"
+
+ALL_QUESTS["black_knights"] = "Black Knights' Fortress"
+ALL_QUESTS["dragon_slayer"] = ALL_QUESTS.pop("dragon_slayer")  # capstone last
+QUEST_POINTS["black_knights"] = 3
+
+
+def talk_amik(p):
+    stage = _q(p, "black_knights")
+    if stage == "not_started":
+        qp = quest_points(p)
+        if qp < GUILD_QP:
+            say("Sir Amik Varze: \"This mission needs a proven adventurer — "
+                f"return when you hold {GUILD_QP} quest points. You have "
+                f"{qp}.\"", "byellow")
+            return
+        banner("Quest Start: Black Knights' Fortress", color="purple",
+               line_color="bmagenta")
+        say("Sir Amik Varze: \"The Black Knights are brewing an INVINCIBILITY "
+            "POTION in their fortress on Ice Mountain, near the Edgeville "
+            "monastery. Infiltrate it disguised as one of them — a BRONZE MED "
+            "HELM and an IRON CHAINBODY should fool the guards (Wayne sells "
+            "chainmail in East Falador). Then 'search' for their cauldron and "
+            "ruin the brew. They say a CABBAGE would do horrid things to it.\"")
+        p.quests["black_knights"] = "infiltrate"
+    elif stage == "infiltrate":
+        say("Sir Amik Varze: \"The potion still brews! Wear the bronze med "
+            "helm and iron chainbody, slip into the fortress ('fortress' from "
+            "the monastery), and 'search' — with a cabbage to hand.\"")
+    elif stage == "sabotaged":
+        _complete_banner("Black Knights' Fortress")
+        say("Sir Amik Varze: \"The potion, ruined by a vegetable! Magnificent "
+            "work.\" He counts out 2,500 coins.")
+        p.add("coins", 2500)
+        p.quests["black_knights"] = "complete"
+    else:
+        say("Sir Amik Varze: \"Falador sleeps easier thanks to you.\"")
+
+
+QUEST_TALK["black_knights"] = talk_amik
+ROOMS["white_knights_castle"]["npc"] = ["knights_sword", "black_knights"]
+ROOMS["white_knights_castle"]["desc"] += (" Sir Amik Varze, captain of the "
+                                          "White Knights, studies a map.")
+
+QUEST_HINTS["black_knights"] = {
+    "infiltrate": "wear a bronze med helm + iron chainbody (Wayne's, East "
+                  "Falador), take a cabbage, and 'search' the fortress "
+                  "('fortress' from the monastery)",
+    "sabotaged": "report back to Sir Amik Varze at the White Knights' Castle",
 }
 
 
