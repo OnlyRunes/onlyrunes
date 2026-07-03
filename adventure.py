@@ -3172,6 +3172,9 @@ def cmd_autocast(p, arg):
 
 # --- gathering ------------------------------------------------------------
 def cmd_chop(p, arg):
+    a = arg.strip().lower()
+    if a and _gem_uncut(a):             # 'cut sapphire' = gem cutting
+        return cmd_cutgem(p, a)
     r = ROOMS[p.location]
     trees = r.get("trees", [])
     if not trees:
@@ -3220,6 +3223,10 @@ def cmd_mine(p, arg):
         p.add(product)
         say(f"You manage to mine some {product}.")
         p.gain_xp("mining", xp)
+        if rock != "rune essence" and random.random() < 0.025:
+            gem = random.choices(list(GEM_CUT), weights=[8, 5, 2, 1])[0]
+            p.add(gem)
+            say(f"Your pickaxe strikes something hard — an {gem}!", "bcyan")
         return True
     say("You only chip the rock.")
     return False
@@ -3456,10 +3463,14 @@ CRAFT_RECIPES = {
 def cmd_craft(p, arg):
     name = arg.strip().lower()
     name = {"body": "leather body", "leather": "leather body"}.get(name, name)
+    if name in JEWELLERY:
+        return _craft_jewellery(p, name)
     rec = CRAFT_RECIPES.get(name)
     if not rec:
         say("You can craft: " + ", ".join(CRAFT_RECIPES)
             + ". (Also 'spin' wool/flax, 'tan' hides.)")
+        say("At a furnace, with a gold bar: " + ", ".join(JEWELLERY)
+            + " ('cut' uncut gems with a chisel first).", "grey")
         return
     mat, qty, lvl, xp = rec
     if p.lvl("crafting") < lvl:
@@ -3479,6 +3490,7 @@ def cmd_craft(p, arg):
     p.add(name)
     say(f"You stitch together {name}.")
     p.gain_xp("crafting", xp)
+    return True
 
 
 def cmd_craftrune(p, _a):
@@ -3500,8 +3512,11 @@ def cmd_craftrune(p, _a):
         return
     n = p.count("rune essence")
     p.take("rune essence", n)
-    p.add(rune, n)
-    say(f"You bind the essence into {n}x {rune}.")
+    mult = 1 + min(2, max(0, (p.lvl("runecrafting") - req) // 11))
+    p.add(rune, n * mult)
+    say(f"You bind the essence into {n * mult}x {rune}."
+        + (f" (Your mastery draws x{mult} runes from each essence!)"
+           if mult > 1 else ""))
     p.gain_xp("runecrafting", xp * n)
 
 
@@ -4679,8 +4694,8 @@ def cmd_help(_p, _a):
         "Gear": "equip <item>, unequip <slot>, drop <item> [n|all]",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
-                    "craft <item>, craftrune — add a count or 'all' to repeat: "
-                    "'mine iron 10', 'cook all'",
+                    "craft <item>, cut <gem>, craftrune, skillcape <skill> — "
+                    "add a count or 'all' to repeat: 'mine iron 10', 'cook all'",
         "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>",
         "Town": "bank, deposit/withdraw <item> [n], shop, buy/sell <item> [n], "
                 "ge buy/sell <item> [n]",
@@ -6505,6 +6520,233 @@ def cmd_next(p, _a):
 HANDLERS["challenge"] = cmd_challenge
 HANDLERS["next"] = cmd_next
 HANDLERS["wave"] = cmd_next
+
+
+# ===========================================================================
+#  SKILLING EXPANSION  (gems & jewellery, runecrafting altars, yew/magic
+#  trees + high fletching, skill capes)
+# ===========================================================================
+
+# --- Gem cutting (mining rocks can strike gems; cut them with a chisel) -----
+# uncut gem -> (cut gem, crafting level, xp). Order matters: mining strike
+# weights (8/5/2/1) follow this order, common -> rare.
+GEM_CUT = {
+    "uncut sapphire": ("sapphire", 20, 50),
+    "uncut emerald": ("emerald", 27, 67),
+    "uncut ruby": ("ruby", 34, 85),
+    "uncut diamond": ("diamond", 43, 107),
+}
+
+
+def _gem_uncut(name):
+    if name in GEM_CUT:
+        return name
+    if "uncut " + name in GEM_CUT:
+        return "uncut " + name
+    return None
+
+
+def cmd_cutgem(p, arg):
+    name = arg.strip().lower()
+    uncut = _gem_uncut(name) if name else \
+        next((g for g in GEM_CUT if p.has(g)), None)
+    if not uncut:
+        say("Cut what? You have no uncut gems. (Mining sometimes strikes "
+            "them.)", "grey")
+        return
+    if not p.has(uncut):
+        say(f"You have no {uncut}.")
+        return
+    if not p.find_tool("chisel"):
+        say("You need a chisel (general or crafting shop).")
+        return
+    cut, lvl, xp = GEM_CUT[uncut]
+    if p.lvl("crafting") < lvl:
+        say(f"You need crafting level {lvl} to cut a {uncut}.")
+        return
+    p.take(uncut)
+    p.add(cut)
+    say(f"You carefully chisel the {uncut} into a sparkling {cut}.", "bcyan")
+    p.gain_xp("crafting", xp)
+    return True
+
+
+# --- Jewellery (furnace + gold bar [+ gem] -> rings and amulets) ------------
+# product -> (gem or None, crafting level, xp)
+JEWELLERY = {
+    "gold ring": (None, 5, 15),
+    "sapphire ring": ("sapphire", 20, 40),
+    "emerald ring": ("emerald", 27, 55),
+    "ruby ring": ("ruby", 34, 70),
+    "diamond ring": ("diamond", 43, 85),
+    "gold amulet": (None, 8, 30),
+    "sapphire amulet": ("sapphire", 24, 65),
+    "emerald amulet": ("emerald", 31, 70),
+    "ruby amulet": ("ruby", 50, 85),
+    "diamond amulet": ("diamond", 70, 100),
+}
+
+add_item("gold ring", 315, equip={"slot": "ring"})
+add_item("sapphire ring", 900, equip={"slot": "ring"})
+add_item("emerald ring", 1275, equip={"slot": "ring"})
+add_item("ruby ring", 2025, equip={"slot": "ring"})
+add_item("diamond ring", 3525, equip={"slot": "ring"})
+add_item("gold amulet", 350, equip={"slot": "amulet"})
+add_item("sapphire amulet", 900, equip={
+    "amagic": 2, "dmagic": 2, "slot": "amulet"})
+add_item("emerald amulet", 1250, equip={
+    "arange": 3, "drange": 2, "slot": "amulet"})
+add_item("ruby amulet", 2000, equip={
+    "astab": 4, "aslash": 4, "acrush": 4, "str": 2, "slot": "amulet"})
+add_item("diamond amulet", 3500, equip={
+    "astab": 6, "aslash": 6, "acrush": 6, "amagic": 3, "arange": 3,
+    "str": 3, "slot": "amulet"})
+
+
+def _craft_jewellery(p, name):
+    gem, lvl, xp = JEWELLERY[name]
+    if not ROOMS[p.location].get("furnace"):
+        say("You need a furnace to work gold (Lumbridge, Falador, Al Kharid, "
+            "Edgeville).")
+        return
+    if p.lvl("crafting") < lvl:
+        say(f"You need crafting level {lvl} to make a {name}.")
+        return
+    if not p.has("gold bar"):
+        say("You need a gold bar (smelt gold ore).")
+        return
+    if gem and not p.has(gem):
+        say(f"You need a {gem} (cut an uncut {gem} with a chisel).")
+        return
+    p.take("gold bar")
+    if gem:
+        p.take(gem)
+    p.add(name)
+    say(f"You pour the gold into a mould and set it — a {name}!", "byellow")
+    p.gain_xp("crafting", xp)
+    return True
+
+
+# --- Runecrafting altars across the realm -----------------------------------
+# (the air altar has stood alone long enough; craftrune works at each)
+ROOMS.update({
+    "mind_altar": dict(name="Mind Altar",
+        desc="A wind-scoured shrine on Ice Mountain's shoulder. Thoughts "
+             "hum in the stones. ('craftrune' with rune essence)",
+        exits={"out": "monastery"}, altar="mind"),
+    "water_altar": dict(name="Water Altar",
+        desc="A glassy pool deep in the swamp mist. The air tastes of rain. "
+             "('craftrune' with rune essence)",
+        exits={"out": "swamp"}, altar="water"),
+    "earth_altar": dict(name="Earth Altar",
+        desc="A ring of standing stones north-east of Varrock, thick with "
+             "the smell of loam. ('craftrune' with rune essence)",
+        exits={"out": "varrock_east_bank"}, altar="earth"),
+    "fire_altar": dict(name="Fire Altar",
+        desc="A scorched ruin in the dunes where the sand has turned to "
+             "glass. ('craftrune' with rune essence)",
+        exits={"out": "al_kharid_square"}, altar="fire"),
+    "body_altar": dict(name="Body Altar",
+        desc="A squat stone shrine below Ice Mountain, humming with a slow "
+             "heartbeat. ('craftrune' with rune essence)",
+        exits={"out": "barbarian_village"}, altar="body"),
+})
+ROOMS["monastery"]["exits"]["altar"] = "mind_altar"
+ROOMS["swamp"]["exits"]["altar"] = "water_altar"
+ROOMS["varrock_east_bank"]["exits"]["altar"] = "earth_altar"
+ROOMS["al_kharid_square"]["exits"]["altar"] = "fire_altar"
+ROOMS["barbarian_village"]["exits"]["altar"] = "body_altar"
+ROOMS["swamp"]["desc"] += " A still pool glimmers oddly ('altar')."
+ROOMS["monastery"]["desc"] += " A path climbs toward the Mind Altar ('altar')."
+ROOMS["varrock_east_bank"]["desc"] += " Standing stones rise to the north-east ('altar')."
+ROOMS["al_kharid_square"]["desc"] += " Scorched ruins shimmer in the dunes ('altar')."
+ROOMS["barbarian_village"]["desc"] += " A humming shrine squats by the rocks ('altar')."
+REGIONS.update({"mind_altar": "Edgeville", "water_altar": "Lumbridge",
+                "earth_altar": "Varrock", "fire_altar": "AlKharid",
+                "body_altar": "Barbarian"})
+
+# --- Yew & magic trees + high-tier fletching ---------------------------------
+add_item("yew logs", 160, log_fm_xp=202)
+add_item("magic logs", 640, log_fm_xp=303)
+TREES["yew"] = ("yew logs", 60, 175)
+TREES["magic"] = ("magic logs", 75, 250)
+ROOMS["lumbridge_church"]["trees"] = ["yew"]
+ROOMS["lumbridge_church"]["desc"] += " Ancient yews shade the graveyard."
+ROOMS["seers_village"]["trees"].append("yew")
+ROOMS["catherby"]["trees"].append("magic")
+ROOMS["catherby"]["desc"] += " A lone magic tree sparkles north of the bank."
+
+for _u, _v in [("yew shortbow (u)", 400), ("yew longbow (u)", 480),
+               ("magic shortbow (u)", 800), ("magic longbow (u)", 1050)]:
+    add_item(_u, _v)
+add_item("yew shortbow", 800, members=True,
+         equip={"arange": 47, "slot": "weapon", "req": {"ranged": 40}})
+add_item("yew longbow", 960, members=True,
+         equip={"arange": 55, "slot": "weapon", "req": {"ranged": 40}})
+add_item("magic longbow", 2100, members=True,
+         equip={"arange": 71, "slot": "weapon", "req": {"ranged": 50}})
+FLETCH_CUT["yew logs"] = [("yew shortbow (u)", 65, 67),
+                          ("yew longbow (u)", 70, 75)]
+FLETCH_CUT["magic logs"] = [("magic shortbow (u)", 80, 83),
+                            ("magic longbow (u)", 85, 91)]
+FLETCH_STRING.update({
+    "yew shortbow (u)": ("yew shortbow", 65, 67),
+    "yew longbow (u)": ("yew longbow", 70, 75),
+    "magic shortbow (u)": ("magic shortbow", 80, 83),
+    "magic longbow (u)": ("magic longbow", 85, 91),
+})
+
+# --- Skill capes (99 mastery; the Wise Old Man sells them in Draynor) --------
+SKILLCAPE_PRICE = 99000
+for _s in SKILLS:
+    add_item(f"{_s} cape", SKILLCAPE_PRICE, equip={
+        "dstab": 9, "dslash": 9, "dcrush": 9, "dmagic": 9, "drange": 9,
+        "prayer": 1, "slot": "cape", "req": {_s: 99}})
+
+
+def talk_wise_old_man(p):
+    mastered = [s for s in SKILLS if p.base_lvl(s) >= 99]
+    if not mastered:
+        say("Wise Old Man: \"Master any skill — level 99 — and I'll sell you "
+            "its cape of accomplishment. Off you go; greatness takes "
+            "grinding.\"")
+        return
+    say("Wise Old Man: \"Ah, a true master! I can sell you: "
+        + ", ".join(f"{s} cape" for s in mastered)
+        + f" — {SKILLCAPE_PRICE:,} coins each. Type 'skillcape <skill>'.\"",
+        "gold")
+
+
+def cmd_skillcape(p, arg):
+    if p.location != "draynor_village":
+        say("The Wise Old Man sells skill capes in Draynor Village.", "grey")
+        return
+    skill = _resolve_skill(arg)
+    if not skill:
+        return talk_wise_old_man(p)
+    if p.base_lvl(skill) < 99:
+        say(f"Wise Old Man: \"Come back when your {skill} is level 99 — it's "
+            f"{p.base_lvl(skill)} now.\"", "byellow")
+        return
+    if not p.has("coins", SKILLCAPE_PRICE):
+        say(f"Wise Old Man: \"The cape costs {SKILLCAPE_PRICE:,} coins — "
+            "mastery must be celebrated properly.\"", "byellow")
+        return
+    p.take("coins", SKILLCAPE_PRICE)
+    p.add(f"{skill} cape")
+    banner("CAPE OF ACCOMPLISHMENT", color="gold", line_color="gold")
+    say(f"The Wise Old Man drapes the {skill} cape over your shoulders. "
+        "Wear it with pride, master.", "gold", "bold")
+
+
+QUEST_TALK["skillcape"] = talk_wise_old_man
+NPC_NAMES["skillcape"] = "the Wise Old Man"
+ROOMS["draynor_village"]["npc"] = ["vampyre_slayer", "witch_potion",
+                                   "skillcape"]
+ROOMS["draynor_village"]["desc"] += (" The Wise Old Man watches the street "
+                                     "from his doorway.")
+HANDLERS["skillcape"] = cmd_skillcape
+BATCHABLE.add("craft")      # jewellery & leatherwork batch nicely now
 
 
 def _cave_on_kill(p, target):

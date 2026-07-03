@@ -31,6 +31,8 @@ weapon,adamant pickaxe,17,-2,15,0,0,0,1,0,0,0,19,0,0,0,attack,30,,500,no
 weapon,rune dagger,25,12,-4,0,0,0,0,0,0,0,24,0,0,0,attack,40,,600,no
 weapon,maple longbow,0,0,0,0,29,0,0,0,0,0,0,0,0,0,ranged,30,,640,yes
 weapon,adamant sword,23,18,-2,0,0,0,2,1,0,0,24,0,0,0,attack,30,,750,no
+weapon,yew shortbow,0,0,0,0,47,0,0,0,0,0,0,0,0,0,ranged,40,,800,yes
+weapon,yew longbow,0,0,0,0,55,0,0,0,0,0,0,0,0,0,ranged,40,,960,yes
 weapon,adamant scimitar,6,29,-2,0,0,0,1,0,0,0,28,0,0,0,attack,30,,1000,no
 weapon,rune pickaxe,26,-2,24,0,0,0,1,0,0,0,29,0,0,0,attack,40,,1200,no
 weapon,staff of air,0,-1,7,10,0,2,3,1,10,0,3,0,0,0,attack,1,,1500,no
@@ -39,6 +41,7 @@ weapon,staff of earth,1,-1,9,10,0,2,3,1,10,0,5,0,0,0,attack,1,,1500,no
 weapon,staff of fire,3,-1,9,10,0,2,3,1,10,0,6,0,0,0,attack,1,,1500,no
 weapon,magic shortbow,0,0,0,0,69,0,0,0,0,0,0,0,0,0,ranged,50,,1600,yes
 weapon,rune sword,38,26,-2,0,0,0,2,1,0,0,39,0,0,0,attack,40,,1800,no
+weapon,magic longbow,0,0,0,0,71,0,0,0,0,0,0,0,0,0,ranged,50,,2100,yes
 weapon,rune scimitar,7,45,-2,0,0,0,1,0,0,0,44,0,0,0,attack,40,,2400,no
 weapon,rune crossbow,0,0,0,0,90,0,0,0,0,0,0,0,0,0,ranged,61,,16200,yes
 weapon,dragon dagger,40,25,-4,1,0,0,0,0,1,0,40,0,0,0,attack,60,,30000,yes
@@ -124,12 +127,37 @@ cape,purple cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,,20,no
 cape,team cape,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,50,no
 cape,cape of legends,0,0,0,0,0,7,7,7,7,7,1,0,0,0,,,,1200,yes
 cape,fire cape,1,1,1,1,1,11,11,11,11,11,4,0,0,2,,,,50000,yes
+cape,attack cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,attack,99,,99000,no
+cape,strength cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,strength,99,,99000,no
+cape,defence cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,defence,99,,99000,no
+cape,hitpoints cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,hitpoints,99,,99000,no
+cape,ranged cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,ranged,99,,99000,no
+cape,prayer cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,prayer,99,,99000,no
+cape,magic cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,magic,99,,99000,no
+cape,cooking cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,cooking,99,,99000,no
+cape,woodcutting cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,woodcutting,99,,99000,no
+cape,fishing cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,fishing,99,,99000,no
+cape,firemaking cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,firemaking,99,,99000,no
+cape,crafting cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,crafting,99,,99000,no
+cape,smithing cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,smithing,99,,99000,no
+cape,mining cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,mining,99,,99000,no
+cape,runecrafting cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,runecrafting,99,,99000,no
+cape,thieving cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,thieving,99,,99000,no
+cape,agility cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,agility,99,,99000,no
+cape,slayer cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,slayer,99,,99000,no
+cape,herblore cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,herblore,99,,99000,no
+cape,fletching cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,fletching,99,,99000,no
+amulet,gold amulet,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,350,no
 amulet,amulet of accuracy,4,4,4,4,4,0,0,0,0,0,0,0,0,0,,,,500,no
 amulet,amulet of defence,0,0,0,0,0,7,7,7,7,7,0,0,0,0,,,,600,no
 amulet,holy symbol,0,0,0,0,0,2,2,2,2,2,0,0,0,8,,,,800,no
+amulet,sapphire amulet,0,0,0,2,0,0,0,0,2,0,0,0,0,0,,,,900,no
 amulet,amulet of magic,0,0,0,10,0,0,0,0,0,0,0,0,0,0,,,,1000,no
+amulet,emerald amulet,0,0,0,0,3,0,0,0,0,2,0,0,0,0,,,,1250,no
 amulet,amulet of power,6,6,6,6,6,6,6,6,6,6,6,0,0,1,,,,1500,no
 amulet,amulet of strength,0,0,0,0,0,0,0,0,0,0,10,0,0,0,,,,1800,no
+amulet,ruby amulet,4,4,4,0,0,0,0,0,0,0,2,0,0,0,,,,2000,no
+amulet,diamond amulet,6,6,6,3,3,0,0,0,0,0,3,0,0,0,,,,3500,no
 amulet,amulet of glory,10,10,10,10,10,3,3,3,3,3,6,0,0,3,,,,17625,yes
 gloves,leather gloves,0,0,0,0,0,0,1,2,0,0,0,0,0,0,,,,12,no
 gloves,hardleather gloves,1,1,1,1,1,1,1,1,1,1,1,0,0,0,,,,30,no
@@ -139,5 +167,9 @@ boots,leather boots,0,0,0,0,0,0,1,1,0,0,0,0,0,0,,,,12,no
 boots,climbing boots,0,0,0,0,0,0,2,2,0,0,2,0,0,0,,,,120,yes
 boots,mystic boots,0,0,0,3,0,0,0,0,3,0,0,0,0,0,magic,40,,10000,yes
 boots,dragon boots,0,0,0,-3,-1,16,17,18,0,0,4,0,0,0,defence,60,,20000,yes
-ring,gold ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,350,no
+ring,gold ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,315,no
 ring,ring of recoil,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,500,yes
+ring,sapphire ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,900,no
+ring,emerald ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,1275,no
+ring,ruby ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,2025,no
+ring,diamond ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,3525,no

@@ -38,6 +38,8 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Rune Dagger | +25 | +12 | -4 | · | · | · | · | · | · | · | +24 | · | · | · | attack 40 | 600 |  |  |
 | Maple Longbow | · | · | · | · | +29 | · | · | · | · | · | · | · | · | · | ranged 30 | 640 | M |  |
 | Adamant Sword | +23 | +18 | -2 | · | · | · | +2 | +1 | · | · | +24 | · | · | · | attack 30 | 750 |  |  |
+| Yew Shortbow | · | · | · | · | +47 | · | · | · | · | · | · | · | · | · | ranged 40 | 800 | M |  |
+| Yew Longbow | · | · | · | · | +55 | · | · | · | · | · | · | · | · | · | ranged 40 | 960 | M |  |
 | Adamant Scimitar | +6 | +29 | -2 | · | · | · | +1 | · | · | · | +28 | · | · | · | attack 30 | 1000 |  |  |
 | Rune Pickaxe | +26 | -2 | +24 | · | · | · | +1 | · | · | · | +29 | · | · | · | attack 40 | 1200 |  |  |
 | Staff Of Air | · | -1 | +7 | +10 | · | +2 | +3 | +1 | +10 | · | +3 | · | · | · | attack 1 | 1500 |  |  |
@@ -46,6 +48,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Staff Of Fire | +3 | -1 | +9 | +10 | · | +2 | +3 | +1 | +10 | · | +6 | · | · | · | attack 1 | 1500 |  |  |
 | Magic Shortbow | · | · | · | · | +69 | · | · | · | · | · | · | · | · | · | ranged 50 | 1600 | M |  |
 | Rune Sword | +38 | +26 | -2 | · | · | · | +2 | +1 | · | · | +39 | · | · | · | attack 40 | 1800 |  |  |
+| Magic Longbow | · | · | · | · | +71 | · | · | · | · | · | · | · | · | · | ranged 50 | 2100 | M |  |
 | Rune Scimitar | +7 | +45 | -2 | · | · | · | +1 | · | · | · | +44 | · | · | · | attack 40 | 2400 |  |  |
 | Rune Crossbow | · | · | · | · | +90 | · | · | · | · | · | · | · | · | · | ranged 61 | 16200 | M |  |
 | Dragon Dagger | +40 | +25 | -4 | +1 | · | · | · | · | +1 | · | +40 | · | · | · | attack 60 | 30000 | M |  |
@@ -161,17 +164,42 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Team Cape | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 50 |  |  |
 | Cape Of Legends | · | · | · | · | · | +7 | +7 | +7 | +7 | +7 | +1 | · | · | · | · | 1200 | M |  |
 | Fire Cape | +1 | +1 | +1 | +1 | +1 | +11 | +11 | +11 | +11 | +11 | +4 | · | · | +2 | · | 50000 | M |  |
+| Attack Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | attack 99 | 99000 |  |  |
+| Strength Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | strength 99 | 99000 |  |  |
+| Defence Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | defence 99 | 99000 |  |  |
+| Hitpoints Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | hitpoints 99 | 99000 |  |  |
+| Ranged Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | ranged 99 | 99000 |  |  |
+| Prayer Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | prayer 99 | 99000 |  |  |
+| Magic Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | magic 99 | 99000 |  |  |
+| Cooking Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | cooking 99 | 99000 |  |  |
+| Woodcutting Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | woodcutting 99 | 99000 |  |  |
+| Fishing Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | fishing 99 | 99000 |  |  |
+| Firemaking Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | firemaking 99 | 99000 |  |  |
+| Crafting Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | crafting 99 | 99000 |  |  |
+| Smithing Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | smithing 99 | 99000 |  |  |
+| Mining Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | mining 99 | 99000 |  |  |
+| Runecrafting Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | runecrafting 99 | 99000 |  |  |
+| Thieving Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | thieving 99 | 99000 |  |  |
+| Agility Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | agility 99 | 99000 |  |  |
+| Slayer Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | slayer 99 | 99000 |  |  |
+| Herblore Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | herblore 99 | 99000 |  |  |
+| Fletching Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | fletching 99 | 99000 |  |  |
 
 ## Amulet
 
 | Item | Stab | Slash | Crush | aMag | aRng | dStab | dSlash | dCrush | dMag | dRng | Str | RngStr | Mdmg% | Pray | Req | Value | M | Q |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Gold Amulet | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 350 |  |  |
 | Amulet Of Accuracy | +4 | +4 | +4 | +4 | +4 | · | · | · | · | · | · | · | · | · | · | 500 |  |  |
 | Amulet Of Defence | · | · | · | · | · | +7 | +7 | +7 | +7 | +7 | · | · | · | · | · | 600 |  |  |
 | Holy Symbol | · | · | · | · | · | +2 | +2 | +2 | +2 | +2 | · | · | · | +8 | · | 800 |  |  |
+| Sapphire Amulet | · | · | · | +2 | · | · | · | · | +2 | · | · | · | · | · | · | 900 |  |  |
 | Amulet Of Magic | · | · | · | +10 | · | · | · | · | · | · | · | · | · | · | · | 1000 |  |  |
+| Emerald Amulet | · | · | · | · | +3 | · | · | · | · | +2 | · | · | · | · | · | 1250 |  |  |
 | Amulet Of Power | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | +6 | · | · | +1 | · | 1500 |  |  |
 | Amulet Of Strength | · | · | · | · | · | · | · | · | · | · | +10 | · | · | · | · | 1800 |  |  |
+| Ruby Amulet | +4 | +4 | +4 | · | · | · | · | · | · | · | +2 | · | · | · | · | 2000 |  |  |
+| Diamond Amulet | +6 | +6 | +6 | +3 | +3 | · | · | · | · | · | +3 | · | · | · | · | 3500 |  |  |
 | Amulet Of Glory | +10 | +10 | +10 | +10 | +10 | +3 | +3 | +3 | +3 | +3 | +6 | · | · | +3 | · | 17625 | M |  |
 
 ## Gloves
@@ -196,5 +224,9 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 
 | Item | Stab | Slash | Crush | aMag | aRng | dStab | dSlash | dCrush | dMag | dRng | Str | RngStr | Mdmg% | Pray | Req | Value | M | Q |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Gold Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 350 |  |  |
+| Gold Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 315 |  |  |
 | Ring Of Recoil | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 500 | M |  |
+| Sapphire Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 900 |  |  |
+| Emerald Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 1275 |  |  |
+| Ruby Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 2025 |  |  |
+| Diamond Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 3525 |  |  |
