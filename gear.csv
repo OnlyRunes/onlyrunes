@@ -123,6 +123,7 @@ cape,yellow cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,,20,no
 cape,purple cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,,20,no
 cape,team cape,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,50,no
 cape,cape of legends,0,0,0,0,0,7,7,7,7,7,1,0,0,0,,,,1200,yes
+cape,fire cape,1,1,1,1,1,11,11,11,11,11,4,0,0,2,,,,50000,yes
 amulet,amulet of accuracy,4,4,4,4,4,0,0,0,0,0,0,0,0,0,,,,500,no
 amulet,amulet of defence,0,0,0,0,0,7,7,7,7,7,0,0,0,0,,,,600,no
 amulet,holy symbol,0,0,0,0,0,2,2,2,2,2,0,0,0,8,,,,800,no

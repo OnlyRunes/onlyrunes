@@ -1991,6 +1991,12 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
         else:
             print("  " + paint(f"You {VERB[atype]} the {m['name']} for {dmg}!",
                                "bgreen") + "  " + bar)
+        if dmg > 0 and m.get("recoil"):        # spiky hide bites back (never lethal)
+            hurt = min(m["recoil"], p.hp - 1)
+            if hurt > 0:
+                p.hp -= hurt
+                print("  " + paint(f"Its spiked hide recoils — you take {hurt}!",
+                                   "orange"))
     else:
         miss = "splash on" if kind == "magic" else "fail to hit"
         print("  " + paint(f"You {miss} the {m['name']}.", "grey"))
@@ -2223,6 +2229,11 @@ def _player_def_roll(p, atype):
     return (def_lvl + 9) * (p.equip_bonus(DKEY[atype]) + 64)
 
 
+# monsters with a signature move register it here: name -> fn(p, m, dmg),
+# fired after the monster lands a successful hit (dmg may be 0)
+MONSTER_EFFECTS = {}
+
+
 def _resolve_monster_hit(p, m):
     """Monster swings at the player. Prints, drains prayer. Returns 'died' or None."""
     if m.get("boss"):
@@ -2246,6 +2257,10 @@ def _resolve_monster_hit(p, m):
         else:
             print("  " + paint(f"The {m['name']} hits you for {dmg}.", "bred")
                   + hpbar)
+        if p.hp > 0:
+            eff = MONSTER_EFFECTS.get(m["name"])
+            if eff:
+                eff(p, m, dmg)
     else:
         print("  " + paint(f"You block the {m['name']}.", "grey"))
     if p.active_prayers:
@@ -6114,13 +6129,100 @@ QUEST_HINTS["black_knights"] = {
 # ===========================================================================
 #  THE FIGHT CAVES  (wave minigame -> TzTok-Jad -> fire cape)
 # ===========================================================================
-# 'challenge' in the Fight Caves starts a run: seven waves of escalating
-# monsters, 'next' between waves (heal up first!), leaving or dying abandons
-# the run. The final wave is TzTok-Jad, who telegraphs every attack — switch
-# to the right protection prayer or be flattened. Reward: the fire cape.
+# 'challenge' in the Fight Caves starts a run: seven waves of TzHaar-kin,
+# 'next' between waves (heal up first!), leaving or dying abandons the run.
+# Each TzHaar has its OSRS signature: Tz-Kih drains prayer, Tz-Kek's spikes
+# recoil, Tok-Xil shoots, Yt-MejKot heals itself, Ket-Zek blasts magic. The
+# final wave is TzTok-Jad, who telegraphs every attack — switch to the right
+# protection prayer or be flattened. Reward: the fire cape (and tokkul).
 
-CAVE_WAVES = ["hobgoblin", "hill giant", "moss giant", "ice giant",
-              "lesser demon", "greater demon", "tztok-jad"]
+add_item("tokkul", 1)     # the obsidian currency of the TzHaar
+
+_add_mob("tz-kih",
+    {"abonus": 0, "atktype": ["crush"], "att": 32, "cb": 22, "dstab": 0,
+     "dslash": 0, "dcrush": 0, "dmagic": 0, "drange": 0, "def": 12,
+     "hp": 10, "maxhit": 4, "str": 30, "weak": "crush"},
+    [("tokkul", 3, 9, 1.0)], members=True, rank="easy")
+
+_add_mob("tz-kek",
+    {"abonus": 0, "atktype": ["crush"], "att": 40, "cb": 45, "dstab": 5,
+     "dslash": 5, "dcrush": 5, "dmagic": 5, "drange": 5, "def": 28,
+     "hp": 20, "maxhit": 7, "str": 40, "weak": "slash"},
+    [("tokkul", 6, 15, 1.0)], members=True, rank="medium")
+MONSTERS["tz-kek"]["recoil"] = 1        # spiked hide: melee hits bite back
+
+_add_mob("tok-xil",
+    {"abonus": 20, "atktype": ["ranged"], "att": 65, "cb": 90, "dstab": 20,
+     "dslash": 20, "dcrush": 20, "dmagic": 10, "drange": 25, "def": 45,
+     "hp": 40, "maxhit": 13, "str": 60, "weak": "stab"},
+    [("tokkul", 15, 40, 1.0)], members=True, rank="hard")
+
+_add_mob("yt-mejkot",
+    {"abonus": 10, "atktype": ["slash"], "att": 90, "cb": 180, "dstab": 40,
+     "dslash": 45, "dcrush": 40, "dmagic": 30, "drange": 40, "def": 65,
+     "hp": 80, "maxhit": 20, "str": 95, "weak": "stab"},
+    [("tokkul", 30, 90, 1.0)], members=True, rank="elite")
+
+_add_mob("ket-zek",
+    {"abonus": 40, "atktype": ["magic"], "att": 130, "cb": 360, "dstab": 45,
+     "dslash": 60, "dcrush": 60, "dmagic": 70, "drange": 60, "def": 80,
+     "hp": 160, "maxhit": 22, "str": 120, "weak": "stab"},
+    [("tokkul", 90, 270, 1.0)], members=True, rank="elite")
+
+MONSTER_ART["tz-kih"] = r'''
+      /\  ~  /\
+     ( o \_/ o )
+      \|/ ' \|/
+'''
+MONSTER_ART["tz-kek"] = r'''
+      /\/\/\/\/\
+     <  o    o  >
+     <    __    >
+      \/\/\/\/\/
+'''
+MONSTER_ART["tok-xil"] = r'''
+       |\   /|
+      ( >o.o< )    }---->
+       /|| ||\
+'''
+MONSTER_ART["yt-mejkot"] = r'''
+       _/=====\_
+      (  o _ o  )
+      /|   W   |\
+      \|_______|/
+        |     |
+'''
+MONSTER_ART["ket-zek"] = r'''
+      \ /       \ /
+     --#---------#--
+      ( ((o) (o)) )
+       \   ___   /
+       /|_______|\
+      /_/       \_\
+'''
+
+
+def _kih_drain(p, m, dmg):
+    if p.prayer_points > 0:
+        drain = dmg + 2
+        p.prayer_points = max(0, p.prayer_points - drain)
+        print("  " + paint(f"The Tz-Kih latches on and drains {drain} prayer "
+                           f"points!", "bmagenta"))
+
+
+def _mejkot_heal(p, m, dmg):
+    if m["cur"] < m["hp"]:
+        heal = random.randint(3, 8)
+        m["cur"] = min(m["hp"], m["cur"] + heal)
+        print("  " + paint(f"The Yt-MejKot knits its obsidian flesh back "
+                           f"together. (+{heal})", "lime"))
+
+
+MONSTER_EFFECTS["tz-kih"] = _kih_drain
+MONSTER_EFFECTS["yt-mejkot"] = _mejkot_heal
+
+CAVE_WAVES = ["tz-kih", "tz-kek", "tok-xil", "yt-mejkot", "ket-zek",
+              "ket-zek", "tztok-jad"]
 
 add_item("fire cape", 50000, members=True, equip={
     "astab": 1, "aslash": 1, "acrush": 1, "amagic": 1, "arange": 1,
@@ -6156,7 +6258,7 @@ _add_mob("tztok-jad",
      "cb": 702, "dstab": 0, "dslash": 0, "dcrush": 0, "dmagic": 0,
      "drange": 0, "def": 100, "hp": 250, "maxhit": 25, "str": 160,
      "weak": "ranged"},
-    [("coins", 5000, 20000, 1.0)], members=True)
+    [("coins", 5000, 20000, 1.0), ("tokkul", 1000, 3000, 1.0)], members=True)
 MONSTERS["tztok-jad"]["boss"] = True
 MONSTERS["tztok-jad"]["rank"] = "boss"
 _BOSSES.add("tztok-jad")
@@ -6233,11 +6335,13 @@ def talk_tzhaar(p):
         say("TzHaar-Mej-Jal: \"The JalYt who slew TzTok-Jad! You fight again "
             "any time — 'challenge'.\"", "orange")
         return
-    say("TzHaar-Mej-Jal: \"You want good fight, JalYt? Seven waves, no "
-        "mercy, no leaving. Survive them all and face TZTOK-JAD — watch his "
-        "moves and pray right, or die fast. Beat him and the FIRE CAPE is "
-        "yours. Bring food, prayer potions, your best gear. Type 'challenge' "
-        "to begin.\"", "orange")
+    say("TzHaar-Mej-Jal: \"You want good fight, JalYt? Seven waves of my "
+        "kin, no mercy, no leaving. TZ-KIH drinks your prayers. TZ-KEK's "
+        "spikes bite back. TOK-XIL shoots true. YT-MEJKOT mends its own "
+        "flesh. KET-ZEK burns with sorcery — twice. Survive them all and "
+        "face TZTOK-JAD: watch his moves and pray right, or die fast. Beat "
+        "him and the FIRE CAPE is yours. Bring food, prayer potions, your "
+        "best gear. Type 'challenge' to begin.\"", "orange")
 
 
 QUEST_TALK["tzhaar"] = talk_tzhaar

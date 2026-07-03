@@ -160,6 +160,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Purple Cape | · | · | · | · | · | · | +1 | +1 | · | +2 | · | · | · | · | · | 20 |  |  |
 | Team Cape | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 50 |  |  |
 | Cape Of Legends | · | · | · | · | · | +7 | +7 | +7 | +7 | +7 | +1 | · | · | · | · | 1200 | M |  |
+| Fire Cape | +1 | +1 | +1 | +1 | +1 | +11 | +11 | +11 | +11 | +11 | +4 | · | · | +2 | · | 50000 | M |  |
 
 ## Amulet
 
