@@ -58,6 +58,12 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100000 | M |  |
 | Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100000 | M |  |
 | Abyssal Whip | · | +82 | · | · | · | · | · | · | · | · | +82 | · | · | · | attack 70 | 120001 | M |  |
+| Ahrim'S Staff | · | · | · | +25 | · | · | · | · | +15 | · | · | · | +5 | · | magic 70 | 700000 | M |  |
+| Karil'S Crossbow | · | · | · | · | +94 | · | · | · | · | · | · | · | · | · | ranged 70 | 700000 | M |  |
+| Torag'S Hammers | · | · | +90 | · | · | · | · | · | · | · | +90 | · | · | · | attack 70 | 700000 | M |  |
+| Guthan'S Warspear | +85 | +70 | +70 | · | · | · | · | · | · | · | +85 | · | · | · | attack 70 | 750000 | M |  |
+| Verac'S Flail | +70 | · | +88 | · | · | · | · | · | · | · | +84 | · | · | +3 | attack 70 | 750000 | M |  |
+| Dharok'S Greataxe | · | +90 | +70 | · | · | · | · | · | · | · | +105 | · | · | · | attack 70 | 800000 | M |  |
 
 ## Shield
 
@@ -122,6 +128,12 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Green D'Hide Body | · | · | · | -15 | +15 | +18 | +27 | +24 | +20 | +35 | · | · | · | · | ranged 40 | 7800 |  | Q |
 | Mystic Robe Top | · | · | · | +20 | · | · | · | · | +20 | · | · | · | · | · | magic 40 | 120000 | M |  |
 | Dragon Chainbody | · | · | · | -15 | · | +81 | +93 | +98 | -3 | +82 | · | · | · | · | defence 60 | 250000 | M |  |
+| Ahrim'S Robetop | · | · | · | +22 | · | +35 | +30 | +40 | +60 | · | · | · | · | · | magic 70 | 700000 | M |  |
+| Karil'S Leathertop | · | · | · | · | +3 | +45 | +40 | +45 | +45 | +90 | · | · | · | · | ranged 70 | 700000 | M |  |
+| Torag'S Platebody | · | · | · | · | · | +92 | +90 | +88 | -4 | +92 | · | · | · | · | defence 70 | 700000 | M |  |
+| Guthan'S Platebody | · | · | · | · | · | +88 | +86 | +83 | -5 | +88 | · | · | · | · | defence 70 | 750000 | M |  |
+| Verac'S Brassard | · | · | · | · | · | +85 | +83 | +84 | · | +85 | · | · | · | +3 | defence 70 | 750000 | M |  |
+| Dharok'S Platebody | · | · | · | · | · | +90 | +88 | +85 | -5 | +90 | · | · | · | · | defence 70 | 800000 | M |  |
 
 ## Legs
 
