@@ -1988,6 +1988,11 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
     barrows = _barrows_set(p)
     if barrows == "dharok" and p.max_hp:      # the lower your hp, the harder you hit
         max_hit = int(max_hit * (1 + (1 - p.hp / p.max_hp)))
+    task = getattr(p, "slayer_task", None)    # slayer helmet: on-task ferocity
+    if task and task.get("remaining", 0) > 0 and m["name"] == task.get("monster") \
+            and p.equipment.get("head") == "slayer helmet":
+        att_roll = int(att_roll * 1.15)
+        max_hit = max(1, int(max_hit * 1.15))
     def_bonus = m.get("dbonus", {}).get(atype, 0)     # monster's defence vs this type
     def_roll = (m["defence"] + 9) * (def_bonus + 64)
     hit = random.random() < _accuracy(att_roll, def_roll)
@@ -2847,10 +2852,14 @@ def cmd_agility(p, arg):
         say("Agility is a members skill. Type 'membership' to unlock it.",
             "bmagenta")
         return
-    if not ROOMS[p.location].get("agility_course"):
+    course = ROOMS[p.location].get("agility_course")
+    if not course:
         say("You need an agility course (the one at Barbarian Village).")
         return
-    lvl, xp, dmg = AGILITY_COURSE
+    lvl, xp, dmg = AGILITY_COURSE if course is True else course
+    if p.lvl("agility") < lvl:
+        say(f"You need agility level {lvl} for this course.", "byellow")
+        return
     if random.random() < clamp(0.6 + p.lvl("agility") * 0.01, 0.6, 0.97):
         say("You vault the obstacles and complete a clean lap!", "bgreen")
         p.gain_xp("agility", xp)
@@ -4452,7 +4461,8 @@ def talk_slayer_master(p):
                    if mon in r.get("monsters", [])})
     if locs:
         say("  Find them at: " + ", ".join(locs[:4]), "grey")
-    say("  (Check progress with 'task'.)", "grey")
+    say("  (Check progress with 'task'; spend points with 'slayerbuy'.)",
+        "grey")
 
 
 QUEST_TALK = {
@@ -4655,6 +4665,8 @@ def cmd_task(p, _a):
     else:
         print("  " + paint("No active task — see Vannaka, the Slayer Master in "
                            "Edgeville.", "grey"))
+    print("  " + paint("Spend points with 'slayerbuy' (helmet, xp, skips).",
+                       "grey"))
 
 
 def cmd_search(p, _a):
@@ -7511,6 +7523,115 @@ ROOMS.update({
 ROOMS["falador_square"]["exits"]["park"] = "falador_park"
 ROOMS["falador_square"]["desc"] += " Falador Park lies north ('park')."
 REGIONS.update({"falador_park": "Falador", "mole_lair": "Falador"})
+
+
+# ===========================================================================
+#  SKILLING EXPANSION III  (high runecrafting, wilderness agility, slayer
+#  rewards)
+# ===========================================================================
+
+# --- High runecrafting altars -------------------------------------------------
+RUNECRAFT.update({"chaos rune": (35, 8.5), "nature rune": (44, 9),
+                  "law rune": (54, 9.5), "death rune": (65, 10)})
+ROOMS["chaos_temple"]["altar"] = "chaos"     # the temple earns its name
+ROOMS["chaos_temple"]["desc"] += (" The blood-stained altar also binds "
+                                  "essence into chaos runes ('craftrune').")
+ROOMS.update({
+    "nature_altar": dict(name="Nature Altar",
+        desc="A living shrine deep in the Karamja jungle, vines coiling "
+             "over ancient stone. ('craftrune' with rune essence)",
+        exits={"out": "brimhaven"}, altar="nature", members=True),
+    "law_altar": dict(name="Law Altar",
+        desc="A wind-swept holy islet off Catherby's shore, humming with "
+             "order. ('craftrune' with rune essence)",
+        exits={"boat": "catherby"}, altar="law", members=True),
+    "death_altar": dict(name="Death Altar",
+        desc="A lightless crypt beneath Paterdomus where the air itself "
+             "feels thin. ('craftrune' with rune essence)",
+        exits={"up": "paterdomus"}, altar="death", members=True,
+        qlock=("priest_in_peril", ("complete",),
+               "Drezel bars the crypt stair. (Quest: Priest in Peril)")),
+})
+ROOMS["brimhaven"]["exits"]["altar"] = "nature_altar"
+ROOMS["brimhaven"]["desc"] += " A vine-choked shrine glows in the jungle ('altar')."
+ROOMS["catherby"]["exits"]["islet"] = "law_altar"
+ROOMS["catherby"]["desc"] += " A ferryman poles out to a holy islet ('islet')."
+ROOMS["paterdomus"]["exits"]["crypt"] = "death_altar"
+REGIONS.update({"nature_altar": "Karamja", "law_altar": "Kandarin",
+                "death_altar": "Morytania"})
+
+# --- Wilderness agility course (level 52; great xp, real teeth) ---------------
+ROOMS.update({
+    "wilderness_course": dict(name="Wilderness Agility Course",
+        desc="A gauntlet of rope swings and log balances strung over a "
+             "ravine in the wastes. Only the sure-footed survive. "
+             "('agility' to run a lap)",
+        exits={"south": "deep_wilderness"},
+        agility_course=(52, 48, 9)),
+})
+ROOMS["deep_wilderness"]["exits"]["course"] = "wilderness_course"
+ROOMS["deep_wilderness"]["desc"] += (" Ropes and logs of an agility course "
+                                     "sway over a ravine ('course').")
+REGIONS["wilderness_course"] = "Wilderness"
+
+# --- Slayer rewards (Vannaka trades slayer points) ------------------------------
+add_item("slayer helmet", 50000, members=True, equip={
+    "dstab": 30, "dslash": 32, "dcrush": 27, "dmagic": -1, "drange": 30,
+    "slot": "head", "req": {"defence": 10}})
+
+SLAYER_REWARDS = {
+    "slayer helmet": (60, "a snarling helmet: +15% accuracy & damage "
+                          "against your slayer task"),
+    "slayer tome": (25, "Vannaka's teachings: +2,500 slayer xp, instantly"),
+    "task skip": (8, "abandon your current task and get a fresh one"),
+}
+
+
+def cmd_slayerbuy(p, arg):
+    if not getattr(p, "members", False):
+        say("Slayer is a members skill. Type 'membership' to unlock it.",
+            "bmagenta")
+        return
+    if p.location != "edgeville":
+        say("Vannaka trades slayer points in Edgeville.", "grey")
+        return
+    want = arg.strip().lower()
+    if not want:
+        banner("Slayer Rewards", color="teal", line_color="teal")
+        print("  " + paint(f"Your points: {p.slayer_points}", "white"))
+        for name, (cost, desc) in SLAYER_REWARDS.items():
+            print(f"  {name:14} " + paint(f"{cost:>3} pts", "teal")
+                  + "  " + paint(desc, "grey"))
+        say("  Buy with 'slayerbuy <reward>'.", "grey")
+        return
+    name = next((n for n in SLAYER_REWARDS if want in n), None)
+    if not name:
+        say("Vannaka doesn't trade that. ('slayerbuy' lists rewards.)", "grey")
+        return
+    cost, _desc = SLAYER_REWARDS[name]
+    if p.slayer_points < cost:
+        say(f"You need {cost} slayer points ({p.slayer_points} held). "
+            "Complete tasks to earn more.", "byellow")
+        return
+    if name == "task skip" and not getattr(p, "slayer_task", None):
+        say("You have no task to skip — see Vannaka ('talk').", "grey")
+        return
+    p.slayer_points -= cost
+    if name == "slayer helmet":
+        p.add("slayer helmet")
+        say("Vannaka hands you a snarling SLAYER HELMET. Wear it on task "
+            "and strike true.", "teal", "bold")
+    elif name == "slayer tome":
+        say("You absorb Vannaka's hard-won knowledge.", "teal")
+        p.gain_xp("slayer", 2500)
+    elif name == "task skip":
+        p.slayer_task = None
+        say("Vannaka waves the task away. 'Talk' to me for a new one.",
+            "teal")
+
+
+HANDLERS["slayerbuy"] = cmd_slayerbuy
+HANDLERS["rewards"] = cmd_slayerbuy
 
 
 def _barrows_set(p):

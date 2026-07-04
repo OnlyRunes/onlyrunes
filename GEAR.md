@@ -101,6 +101,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Rune Med Helm | · | · | · | · | · | +15 | +16 | +15 | -1 | +15 | · | · | · | · | defence 40 | 1080 |  |  |
 | Rune Full Helm | · | · | · | -6 | -3 | +30 | +32 | +27 | -1 | +30 | · | · | · | · | defence 40 | 2100 |  |  |
 | Mystic Hat | · | · | · | +4 | · | · | · | · | +4 | · | · | · | · | · | magic 40 | 15000 | M |  |
+| Slayer Helmet | · | · | · | · | · | +30 | +32 | +27 | -1 | +30 | · | · | · | · | defence 10 | 50000 | M |  |
 | Dragon Med Helm | · | · | · | -3 | · | +33 | +35 | +32 | -1 | +34 | · | · | · | · | defence 60 | 60000 | M |  |
 | Berserker Helm | · | · | · | -5 | -5 | +31 | +29 | +33 | · | +30 | +3 | · | · | · | defence 45 | 60000 | M |  |
 
