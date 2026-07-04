@@ -3000,6 +3000,8 @@ def cmd_look(p, _a):
     if r.get("stalls"):
         services.append(paint("stalls to 'steal' from: "
                               + ", ".join(r["stalls"]), "purple"))
+    if r.get("pick"):
+        services.append(paint("'pick': " + ", ".join(r["pick"]), "lime"))
     if r.get("monsters"):
         services.append(paint("monsters: " + ", ".join(r["monsters"]), "bred"))
     if r.get("npc"):
@@ -3305,7 +3307,19 @@ def cmd_fish(p, arg):
                   "cage": "lobster pot"}
         say("You need: " + " or ".join(needed[t] for t in tools))
         return
+    want = arg.strip().lower()
     tool = usable[0]
+    if want:                        # 'fish harpoon' / 'fish lobster' etc.
+        by_tool = next((t for t in usable if want in t), None)
+        by_fish = next((t for t in usable
+                        for prod, _l, _x in FISH[t] if want in prod), None)
+        picked = by_tool or by_fish
+        if not picked:
+            say(f"You can't fish '{want}' here. Spots: "
+                + ", ".join(f"{t} ({', '.join(pr.replace('raw ', '') for pr, _l, _x in FISH[t])})"
+                            for t in usable), "grey")
+            return
+        tool = picked
     options = [o for o in FISH[tool] if p.lvl("fishing") >= o[1]]
     if not options:
         say(f"You need fishing level {FISH[tool][0][1]} to fish here.")
@@ -3393,6 +3407,10 @@ def cmd_bury(p, arg):
     p.take(bone)
     skill, xp = ITEMS[bone]["bury"]
     say(f"You dig a hole and bury the {bone}.")
+    if ROOMS[p.location].get("chaos_altar"):
+        xp = int(xp * 1.5)
+        say("The chaos altar drinks the offering greedily. (+50% xp)",
+            "purple")
     p.gain_xp(skill, xp)
     return True
 
@@ -4086,12 +4104,21 @@ def cmd_milk(p, _a):
     say("You milk the cow, filling your bucket.")
 
 
-def cmd_pick(p, _a):
-    if p.location not in ("lumbridge_farm", "draynor_village"):
-        say("There's no wheat to pick here.")
+def cmd_pick(p, arg):
+    picks = ROOMS[p.location].get("pick", [])
+    if not picks:
+        say("There's nothing to pick here.")
         return
-    p.add("grain")
-    say("You pick some wheat, gathering grain.")
+    want = arg.strip().lower()
+    item = next((i for i in picks if want and want in i), None if want else
+                picks[0])
+    if not item:
+        say(f"No {want} to pick here. You can pick: {', '.join(picks)}")
+        return
+    p.add(item)
+    say("You pick some wheat, gathering grain." if item == "grain"
+        else f"You pick some {item}.")
+    return True
 
 
 def cmd_mill(p, _a):
@@ -4539,6 +4566,8 @@ ACHIEVEMENTS = {
                   "fire cape."),
     "grave_robber": ("Grave Robber", "Put all six Barrows brothers to rest "
                      "and loot the chest."),
+    "whack_a_mole": ("Whack-a-Mole", "Defeat the Giant Mole beneath "
+                     "Falador Park."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4574,6 +4603,8 @@ def _earned_achievements(p):
         got.add("fire_cape")
     if getattr(p, "barrows_loots", 0) >= 1:
         got.add("grave_robber")
+    if "giant mole" in bosses:
+        got.add("whack_a_mole")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -5397,6 +5428,9 @@ def web_room_actions(player):
     for stall in r.get("stalls", []):
         out.append({"name": stall, "kind": "gather",
                     "actions": [{"label": "Steal", "cmd": f"steal {stall}"}]})
+    for item in r.get("pick", []):
+        out.append({"name": item, "kind": "gather",
+                    "actions": [{"label": "Pick", "cmd": f"pick {item}"}]})
     if r.get("agility_course"):
         out.append({"name": "obstacle course", "kind": "gather",
                     "actions": [{"label": "Run a lap", "cmd": "agility"}]})
@@ -7230,6 +7264,14 @@ for _b in BROTHERS:
 
 # --- dig / loot ------------------------------------------------------------------------
 def cmd_dig(p, arg):
+    if p.location == "falador_park":
+        if not p.find_tool("spade"):
+            say("You need a spade (general store).", "byellow")
+            return
+        say("You dig into the great molehill and tumble into a dark, "
+            "earth-smelling burrow...", "brown")
+        p.location = "mole_lair"
+        return cmd_look(p, "")
     if p.location != "barrows_mounds":
         say("There's nothing worth digging here.", "grey")
         return
@@ -7343,6 +7385,132 @@ add_item("verac's flail", 750000, members=True, equip={
 add_item("verac's brassard", 750000, members=True, equip={
     "dstab": 85, "dslash": 83, "dcrush": 84, "dmagic": 0, "drange": 85,
     "prayer": 3, "slot": "body", "req": {"defence": 70}})
+
+
+# ===========================================================================
+#  REGIONAL GAP-FILL  (the world's completed regions get their missing bits)
+# ===========================================================================
+
+# --- Pickables (data-driven 'pick') ------------------------------------------
+add_item("banana", 2, heal=2)
+ROOMS["lumbridge_farm"]["pick"] = ["grain"]
+ROOMS["draynor_village"]["pick"] = ["grain"]
+ROOMS["karamja_port"]["pick"] = ["banana"]
+ROOMS["karamja_port"]["desc"] += " Banana palms sway overhead."
+ROOMS["seers_village"]["pick"] = ["flax"]
+ROOMS["seers_village"]["desc"] += " A blue flax field ripples south of town."
+ROOMS["falador_east"]["pick"] = ["cabbage"]
+ROOMS["falador_east"]["desc"] += " The famous cabbage patch grows by the wall."
+BATCHABLE.add("pick")
+
+# --- Fishing spots the regions were missing -----------------------------------
+ROOMS["draynor_village"]["fish_tools"] = ["net"]
+ROOMS["draynor_village"]["desc"] += " Fishing spots bubble along the riverbank."
+ROOMS["karamja_port"]["fish_tools"] = ["net", "rod", "cage", "harpoon"]
+ROOMS["karamja_port"]["desc"] += (" The dock heaves with lobster pots and "
+                                  "harpoon fishers.")
+
+# --- Edgeville's famous yews ----------------------------------------------------
+ROOMS["edgeville"]["trees"] = ["yew"]
+ROOMS["edgeville"]["desc"] += " A stand of old yews grows south of the bank."
+
+# --- The Wilderness gets its green dragons + the Chaos Temple -------------------
+ROOMS["deep_wilderness"]["monsters"].append("green dragon")
+ROOMS["deep_wilderness"]["desc"] += (" Green dragons wheel over the blasted "
+                                     "ground.")
+ROOMS.update({
+    "chaos_temple": dict(name="Chaos Temple",
+        desc="A ruined shrine to the god of chaos, deep in the wastes. "
+             "Burying bones at its blood-stained altar honours something "
+             "hungry. (bones buried here give +50% prayer xp)",
+        exits={"south": "deep_wilderness"},
+        prayer_altar=True, chaos_altar=True, monsters=["dark wizard"]),
+})
+ROOMS["deep_wilderness"]["exits"]["temple"] = "chaos_temple"
+REGIONS["chaos_temple"] = "Wilderness"
+
+# --- The Giant Mole beneath Falador Park -----------------------------------------
+add_item("mole claw", 3500)
+add_item("mole skin", 1500)
+
+MOLE_ART = r'''
+        ______________
+       /  .-.    .-.  \
+      |  ( o )  ( o )  |__
+      |   `-'.--.`-'   |  \__
+       \    (####)    /  \/..\
+     ___\__ `~~~~' __/____\/\/
+    /_/\_\/_______\/_/\_\_\/
+'''
+
+
+def _mole_intro(name):
+    return [_tint(MOLE_ART, "brown"), _tint(MOLE_ART, "byellow"),
+            _tint(MOLE_ART, "brown", "bold")]
+
+
+def _mole_death(name):
+    return [_tint(MOLE_ART, "brown"), _tint(MOLE_ART, "grey", "dim")]
+
+
+def _mole_dirt(p, m, dmg):
+    p.stat_drain["attack"] = p.stat_drain.get("attack", 0) + 2
+    print("  " + paint("Dirt sprays into your eyes! (-2 attack)", "bblue"))
+
+
+MOLE_ATTACKS = [
+    {"label": "a raking claw swipe", "verb": "lashes out with",
+     "color": ("brown", "bold"),
+     "builder": lambda: [_tint(MOLE_ART, "brown", "bold")],
+     "mult": 1.2, "w": 4, "atype": "slash"},
+    {"label": "a spray of blinding dirt", "verb": "kicks up",
+     "color": ("byellow",),
+     "builder": lambda: [_tint(MOLE_ART, "byellow")],
+     "mult": 0.8, "w": 2, "atype": "ranged", "effect": _mole_dirt},
+    {"label": "a burrowing charge from below", "verb": "erupts in",
+     "color": ("brown", "bold"),
+     "builder": lambda: [_tint(MOLE_ART, "brown")],
+     "mult": 1.4, "w": 2, "atype": "crush"},
+]
+
+
+def _mole_take_turn(p, m):
+    if m["cur"] < m["hp"] and random.random() < 0.2:
+        heal = random.randint(8, 15)
+        m["cur"] = min(m["hp"], m["cur"] + heal)
+        say("The Giant Mole burrows away in a spray of soil... and "
+            f"resurfaces, refreshed. (+{heal})", "brown")
+        return None
+    return _boss_take_turn(p, m, MOLE_ATTACKS)
+
+
+_add_mob("giant mole",
+    {"abonus": 10, "atktype": ["slash", "crush"], "att": 60, "cb": 90,
+     "dstab": 30, "dslash": 40, "dcrush": 40, "dmagic": 20, "drange": 40,
+     "def": 60, "hp": 120, "maxhit": 12, "str": 70, "weak": "stab"},
+    [("big bones", 1, 1, 1.0), ("mole claw", 1, 1, 1.0),
+     ("mole skin", 1, 3, 1.0), ("coins", 200, 1500, 0.9)], rank="boss")
+MONSTERS["giant mole"]["boss"] = True
+_BOSSES.add("giant mole")
+BOSS_INTRO["giant mole"] = _mole_intro
+BOSS_DEATH["giant mole"] = _mole_death
+BOSS_TURN["giant mole"] = _mole_take_turn
+MONSTER_ART["giant mole"] = MOLE_ART
+
+ROOMS.update({
+    "falador_park": dict(name="Falador Park",
+        desc="A tidy garden of hedges and flowerbeds — ruined by an "
+             "enormous molehill in the lawn. ('dig' it, if you dare)",
+        exits={"south": "falador_square"}),
+    "mole_lair": dict(name="Mole Lair",
+        desc="A vast earthen warren beneath the park. Something huge moves "
+             "in the dark, showering soil from the ceiling.",
+        exits={"up": "falador_park"},
+        monsters=["giant mole"], dig_entry=True),
+})
+ROOMS["falador_square"]["exits"]["park"] = "falador_park"
+ROOMS["falador_square"]["desc"] += " Falador Park lies north ('park')."
+REGIONS.update({"falador_park": "Falador", "mole_lair": "Falador"})
 
 
 def _barrows_set(p):
