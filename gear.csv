@@ -168,8 +168,11 @@ boots,climbing boots,0,0,0,0,0,0,2,2,0,0,2,0,0,0,,,,120,yes
 boots,mystic boots,0,0,0,3,0,0,0,0,3,0,0,0,0,0,magic,40,,10000,yes
 boots,dragon boots,0,0,0,-3,-1,16,17,18,0,0,4,0,0,0,defence,60,,20000,yes
 ring,gold ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,315,no
-ring,ring of recoil,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,500,yes
+ring,ring of recoil,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,900,no
 ring,sapphire ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,900,no
+ring,ring of life,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,1200,no
 ring,emerald ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,1275,no
 ring,ruby ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,2025,no
+ring,ring of forging,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,2100,no
 ring,diamond ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,3525,no
+ring,ring of wealth,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,3600,no

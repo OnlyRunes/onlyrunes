@@ -225,8 +225,11 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Item | Stab | Slash | Crush | aMag | aRng | dStab | dSlash | dCrush | dMag | dRng | Str | RngStr | Mdmg% | Pray | Req | Value | M | Q |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Gold Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 315 |  |  |
-| Ring Of Recoil | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 500 | M |  |
+| Ring Of Recoil | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 900 |  |  |
 | Sapphire Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 900 |  |  |
+| Ring Of Life | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 1200 |  |  |
 | Emerald Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 1275 |  |  |
 | Ruby Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 2025 |  |  |
+| Ring Of Forging | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 2100 |  |  |
 | Diamond Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 3525 |  |  |
+| Ring Of Wealth | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 3600 |  |  |

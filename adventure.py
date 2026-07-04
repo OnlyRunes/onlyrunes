@@ -2194,8 +2194,10 @@ def _boss_take_turn(p, m, attacks):
             print("  " + paint("Its blow grazes you. (0)", "grey") + hpbar)
         else:
             print("  " + paint(f"It hits you for {dmg}.", "bred") + hpbar)
-            if p.hp > 0 and atk.get("effect"):
-                atk["effect"](p, m, dmg)
+            if p.hp > 0:
+                _player_recoil(p, m, dmg)
+                if atk.get("effect"):
+                    atk["effect"](p, m, dmg)
     else:
         print("  " + paint("You weather the blow.", "grey"))
     if p.active_prayers:
@@ -2241,6 +2243,29 @@ def _player_def_roll(p, atype):
 MONSTER_EFFECTS = {}
 
 
+def _player_recoil(p, m, dmg):
+    """Ring of recoil: bite back 1 damage when you take a hit (can't kill)."""
+    if dmg > 0 and p.equipment.get("ring") == "ring of recoil" and m["cur"] > 1:
+        m["cur"] -= 1
+        print("  " + paint("Your ring of recoil bites back for 1.", "teal"))
+
+
+def _ring_of_life(p):
+    """At a tenth of your health, a ring of life whisks you to safety."""
+    if p.equipment.get("ring") != "ring of life":
+        return False
+    if p.hp <= 0 or p.hp > max(1, p.max_hp // 10):
+        return False
+    p.equipment["ring"] = None
+    p.combat = None
+    _clear_status(p)
+    banner("RING OF LIFE", color="bgreen", line_color="green")
+    say("The ring flares, crumbles to dust — and whisks you to Lumbridge, "
+        "alive.", "bgreen", "bold")
+    p.location = "lumbridge_castle"
+    return True
+
+
 def _resolve_monster_hit(p, m):
     """Monster swings at the player. Prints, drains prayer. Returns 'died' or None."""
     if m.get("boss"):
@@ -2265,6 +2290,7 @@ def _resolve_monster_hit(p, m):
             print("  " + paint(f"The {m['name']} hits you for {dmg}.", "bred")
                   + hpbar)
         if p.hp > 0:
+            _player_recoil(p, m, dmg)
             eff = MONSTER_EFFECTS.get(m["name"])
             if eff:
                 eff(p, m, dmg)
@@ -2328,6 +2354,8 @@ def fight_auto(p, mname):
             break
         if _resolve_monster_hit(p, m) == "died":
             return "died"
+        if _ring_of_life(p):
+            return "fled"
     if p.hp <= 0:
         return "died"
     _victory(p, m)
@@ -2498,6 +2526,8 @@ def combat_action(p, raw):
     if _resolve_monster_hit(p, m) == "died":
         p.combat = None
         return _handle_death(p)
+    if _ring_of_life(p):                  # emergency escape at low hp
+        return
     _combat_prompt(p)
 
 
@@ -2521,6 +2551,8 @@ def _roll_drops(p, m):
     for item, lo, hi, chance in m["drops"]:
         if random.random() < chance:
             qty = random.randint(lo, hi)
+            if item == "coins" and p.equipment.get("ring") == "ring of wealth":
+                qty = int(qty * 1.25)     # the rich get richer
             if qty > 0:
                 p.add(item, qty)
                 value = ITEMS.get(item, {}).get("value", 0) * qty
@@ -2855,6 +2887,13 @@ def _regen_energy(p):
             p.spec_energy = min(100, p.spec_energy + 10)
         if 0 < p.hp < p.max_hp:
             p.hp += 1
+    f = getattr(p, "fire", None)         # campfires burn down over time
+    if f:
+        f["left"] -= 1
+        if f["left"] <= 0:
+            p.fire = None
+            if p.location == f["room"]:
+                say("Your fire burns down to embers.", "grey")
 
 
 def cmd_travel(p, arg):
@@ -2943,6 +2982,9 @@ def cmd_look(p, _a):
         services.append(paint("rocks: " + ", ".join(r["rocks"]), "brown"))
     if r.get("fish_tools"):
         services.append(paint("fishing spot", "bblue"))
+    if r.get("stalls"):
+        services.append(paint("stalls to 'steal' from: "
+                              + ", ".join(r["stalls"]), "purple"))
     if r.get("monsters"):
         services.append(paint("monsters: " + ", ".join(r["monsters"]), "bred"))
     if r.get("npc"):
@@ -3265,10 +3307,16 @@ def cmd_fish(p, arg):
 
 
 # --- processing -----------------------------------------------------------
+def _has_fire(p):
+    f = getattr(p, "fire", None)
+    return bool(f and f["room"] == p.location and f["left"] > 0)
+
+
 def cmd_cook(p, arg):
     r = ROOMS[p.location]
-    if not (r.get("range") or r.get("fire")):
-        say("You need a cooking range or fire.")
+    if not (r.get("range") or r.get("fire") or _has_fire(p)):
+        say("You need a cooking range or a fire ('light logs' with a "
+            "tinderbox).")
         return
     raw = arg.strip().lower()
     cookable = [i for i in p.inventory if i in RAW_TO_COOKED]
@@ -3312,8 +3360,11 @@ def cmd_light(p, arg):
         say(f"You have no {logs}.")
         return
     p.take(logs)
-    say(f"You light the {logs}. A fire crackles to life.")
+    p.fire = {"room": p.location, "left": 25}
+    say(f"You light the {logs}. A fire crackles to life — you can 'cook' "
+        "over it here while it burns.")
     p.gain_xp("firemaking", ITEMS[logs]["log_fm_xp"])
+    return True
 
 
 def cmd_bury(p, arg):
@@ -3352,8 +3403,9 @@ def cmd_smelt(p, arg):
             return
     for ore, q in ores.items():
         p.take(ore, q)
-    # iron has a 50% chance to fail
-    if bar == "iron bar" and random.random() < 0.5:
+    # iron has a 50% chance to fail (a ring of forging never fails)
+    if bar == "iron bar" and p.equipment.get("ring") != "ring of forging" \
+            and random.random() < 0.5:
         say("The iron ore is too impure — the bar is ruined.")
         p.gain_xp("smithing", xp // 4)
         return False
@@ -3901,6 +3953,9 @@ def _grind_fight(p, target, count):
             outcome = "died"
             break
         if res == "noattack":
+            outcome = "stopped"
+            break
+        if res == "fled":                 # ring of life pulled us out
             outcome = "stopped"
             break
         kills += 1
@@ -4696,7 +4751,8 @@ def cmd_help(_p, _a):
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
                     "craft <item>, cut <gem>, craftrune, skillcape <skill> — "
                     "add a count or 'all' to repeat: 'mine iron 10', 'cook all'",
-        "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>",
+        "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>, "
+                 "enchant <ring>",
         "Town": "bank, deposit/withdraw <item> [n], shop, buy/sell <item> [n], "
                 "ge buy/sell <item> [n]",
         "Quests": "talk, search",
@@ -5305,6 +5361,9 @@ def web_room_actions(player):
     for tgt in r.get("pickpocket", []):
         out.append({"name": tgt, "kind": "npc",
                     "actions": [{"label": "Pickpocket", "cmd": f"pickpocket {tgt}"}]})
+    for stall in r.get("stalls", []):
+        out.append({"name": stall, "kind": "gather",
+                    "actions": [{"label": "Steal", "cmd": f"steal {stall}"}]})
     if r.get("agility_course"):
         out.append({"name": "obstacle course", "kind": "gather",
                     "actions": [{"label": "Run a lap", "cmd": "agility"}]})
@@ -6747,6 +6806,130 @@ ROOMS["draynor_village"]["desc"] += (" The Wise Old Man watches the street "
                                      "from his doorway.")
 HANDLERS["skillcape"] = cmd_skillcape
 BATCHABLE.add("craft")      # jewellery & leatherwork batch nicely now
+
+
+# ===========================================================================
+#  SKILLING SYNERGIES  (jewellery enchanting, thieving stalls)
+# ===========================================================================
+# Enchanting: gem rings become magic rings with real effects (cosmic runes,
+# magic xp). Stalls: Varrock's tea stall and the Ardougne market give
+# thieving a proper ladder beyond pickpocketing.
+
+SHOPS["rune"]["cosmic rune"] = 120
+
+# base ring -> (enchanted ring, magic level, xp, runes)
+ENCHANT = {
+    "sapphire ring": ("ring of recoil", 7, 17,
+                      {"cosmic rune": 1, "water rune": 1}),
+    "emerald ring": ("ring of life", 27, 37,
+                     {"cosmic rune": 1, "air rune": 3}),
+    "ruby ring": ("ring of forging", 49, 59,
+                  {"cosmic rune": 1, "fire rune": 5}),
+    "diamond ring": ("ring of wealth", 57, 67,
+                     {"cosmic rune": 1, "earth rune": 10}),
+}
+add_item("ring of recoil", 900, equip={"slot": "ring"})
+add_item("ring of life", 1200, equip={"slot": "ring"})
+add_item("ring of forging", 2100, equip={"slot": "ring"})
+add_item("ring of wealth", 3600, equip={"slot": "ring"})
+
+
+def cmd_enchant(p, arg):
+    name = arg.strip().lower()
+    if not name:
+        say("Enchant which ring? " + ", ".join(
+            f"{base} → {e[0]} (magic {e[1]})" for base, e in ENCHANT.items()),
+            "bcyan")
+        say("  Each needs cosmic + elemental runes (rune shop, or craft "
+            "them).", "grey")
+        return
+    base = name if name in ENCHANT else \
+        next((b for b, e in ENCHANT.items()
+              if name in b or name in e[0]), None)
+    if not base:
+        say("You can't enchant that. ('enchant' lists the rings.)", "grey")
+        return
+    enchanted, lvl, xp, runes = ENCHANT[base]
+    if not p.has(base):
+        say(f"You have no {base} (craft one at a furnace).", "byellow")
+        return
+    if p.lvl("magic") < lvl:
+        say(f"You need magic level {lvl} to enchant a {base}.", "byellow")
+        return
+    if not _consume_runes(p, runes):
+        say("You need: " + ", ".join(f"{q}x {r}" for r, q in runes.items())
+            + ".", "byellow")
+        return
+    p.take(base)
+    p.add(enchanted)
+    say(f"The gem flares with power — your {base} is now a {enchanted}!",
+        "bmagenta", "bold")
+    p.gain_xp("magic", xp)
+    return True
+
+
+HANDLERS["enchant"] = cmd_enchant
+BATCHABLE.add("enchant")
+
+# ring effects live in: _player_recoil (combat), _ring_of_life (combat),
+# cmd_smelt (forging), _roll_drops (wealth)
+
+# --- Thieving stalls ---------------------------------------------------------
+# stall -> (thieving level, xp, [(loot, weight), ...])
+STALLS = {
+    "tea stall": (5, 16, [("cup of tea", 1.0)]),
+    "baker's stall": (20, 24, [("bread", 0.7), ("cake", 0.3)]),
+    "silk stall": (35, 48, [("silk", 1.0)]),
+    "gem stall": (75, 160, [("uncut sapphire", 0.55), ("uncut emerald", 0.30),
+                            ("uncut ruby", 0.12), ("uncut diamond", 0.03)]),
+}
+add_item("cup of tea", 10, heal=3)
+add_item("silk", 60)
+
+
+def cmd_steal(p, arg):
+    if not getattr(p, "members", False):
+        say("Thieving is a members skill. Type 'membership' to unlock it.",
+            "bmagenta")
+        return
+    stalls = ROOMS[p.location].get("stalls", [])
+    if not stalls:
+        say("There are no stalls to steal from here.")
+        return
+    want = arg.strip().lower()
+    stall = next((s for s in stalls if want and want in s),
+                 None if want else stalls[0])
+    if not stall:
+        say(f"No such stall. Here: {', '.join(stalls)}")
+        return
+    lvl, xp, loot = STALLS[stall]
+    if p.lvl("thieving") < lvl:
+        say(f"You need thieving level {lvl} for the {stall}.", "byellow")
+        return
+    say(f"You wait for the stallkeeper to look away...")
+    if random.random() < gather_chance(p.lvl("thieving"), lvl):
+        item = random.choices([i for i, _ in loot],
+                              weights=[w for _, w in loot])[0]
+        p.add(item)
+        say(f"You swipe {item} from the {stall}!", "purple")
+        p.gain_xp("thieving", xp)
+        return True
+    dmg = min(random.randint(1, 3), max(0, p.hp - 1))   # guards won't kill you
+    p.hp -= dmg
+    say(f"A guard spots you and clubs you for {dmg}! You stumble away, "
+        "stunned.", "bred")
+    return False
+
+
+HANDLERS["steal"] = cmd_steal
+BATCHABLE.add("steal")
+BATCHABLE.add("light")
+
+ROOMS["varrock_square"]["stalls"] = ["tea stall"]
+ROOMS["varrock_square"]["desc"] += " A tea stall steams by the fountain."
+ROOMS["ardougne"]["stalls"] = ["baker's stall", "silk stall", "gem stall"]
+ROOMS["ardougne"]["desc"] += (" Market stalls line the square: baked goods, "
+                              "silk, and glittering gems.")
 
 
 def _cave_on_kill(p, target):
