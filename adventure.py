@@ -747,10 +747,10 @@ SKILLS = [
     "mining", "runecrafting",
     # members skills
     "thieving", "agility", "slayer", "herblore", "fletching", "farming",
-    "construction",
+    "construction", "hunter",
 ]
 MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore", "fletching",
-                  "farming", "construction"}
+                  "farming", "construction", "hunter"}
 
 
 # ===========================================================================
@@ -1713,6 +1713,7 @@ class Player:
         self.farm = {}            # patch id -> {"seed": name, "at": actions}
         self.crops = 0            # crops harvested lifetime
         self.house = []           # furniture built in your player-owned house
+        self.traps = {}           # hunter traps: slot -> {"creature", "at"}
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
         self.poison = 0           # remaining poison ticks (transient combat fx)
@@ -3110,7 +3111,7 @@ SKILL_COLOR = {
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
     "thieving": "purple", "agility": "lime", "slayer": "teal",
     "herblore": "lime", "fletching": "bcyan", "farming": "green",
-    "construction": "brown",
+    "construction": "brown", "hunter": "orange",
 }
 
 
@@ -4805,6 +4806,7 @@ def serialize(p):
             "farm": dict(getattr(p, "farm", {})),
             "crops": getattr(p, "crops", 0),
             "house": list(getattr(p, "house", [])),
+            "traps": dict(getattr(p, "traps", {})),
             "slayer_task": p.slayer_task,
             "slayer_points": p.slayer_points,
             "achievements": list(getattr(p, "achievements", [])),
@@ -4842,6 +4844,7 @@ def deserialize(data):
     p.farm = data.get("farm", {})
     p.crops = data.get("crops", 0)
     p.house = data.get("house", [])
+    p.traps = data.get("traps", {})
     p.slayer_task = data.get("slayer_task", None)
     p.slayer_points = data.get("slayer_points", 0)
     p.achievements = data.get("achievements", [])
@@ -4894,7 +4897,8 @@ def cmd_help(_p, _a):
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
                     "craft <item>, cut <gem>, craftrune, skillcape <skill>, "
                     "plant <seed>, harvest, farm (your patches), "
-                    "saw <logs>, build (your house), home — "
+                    "saw <logs>, build (your house), home, "
+                    "settrap <creature>, check (traps) — "
                     "add a count or 'all' to repeat: 'mine iron 10', 'cook all'",
         "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>, "
                  "enchant <ring>",
@@ -8091,6 +8095,137 @@ HANDLERS["saw"] = cmd_saw
 HANDLERS["build"] = cmd_build
 HANDLERS["home"] = cmd_home
 BATCHABLE.add("saw")
+
+# ===========================================================================
+#  HUNTER  (the 23rd skill — traps spring on the action clock)
+# ===========================================================================
+# Buy traps at the Feldip Hunting Grounds south of Ardougne, 'settrap' for a
+# creature, adventure a while, and 'check' your traps. More levels = more
+# simultaneous traps.
+
+# creature -> (trap item, level, actions to spring, catch xp, {loot: qty})
+HUNT = {
+    "crimson swift": ("bird snare", 1, 12, 34,
+                      {"raw bird meat": 1, "feather": 8}),
+    "copper longtail": ("bird snare", 9, 12, 61,
+                        {"raw bird meat": 1, "feather": 12}),
+    "barb-tailed kebbit": ("box trap", 33, 16, 168, {"kebbit spike": 2}),
+    "grey chinchompa": ("box trap", 53, 18, 198, {"chinchompa": 1}),
+    "red chinchompa": ("box trap", 63, 20, 265, {"red chinchompa": 1}),
+}
+add_item("bird snare", 6)
+add_item("box trap", 38)
+add_item("raw bird meat", 4)
+RAW_TO_COOKED["raw bird meat"] = ("cooked bird meat", "burnt chicken", 1)
+COOK_XP["raw bird meat"] = 30
+add_item("cooked bird meat", 8, heal=4)
+add_item("kebbit spike", 250)
+add_item("chinchompa", 700)
+add_item("red chinchompa", 1500)
+
+SHOPS["hunter"] = {"bird snare": 6, "box trap": 38}
+
+ROOMS.update({
+    "feldip_hills": dict(name="Feldip Hunting Grounds",
+        desc="Rolling scrubland south of Ardougne, alive with darting birds "
+             "and chinchompas. A grizzled tracker sells traps. "
+             "('settrap <creature>', then 'check' later)",
+        exits={"north": "ardougne"}, shop="hunter", members=True),
+})
+ROOMS["ardougne"]["exits"]["south"] = "feldip_hills"
+ROOMS["ardougne"]["desc"] += " Hunting grounds stretch to the south."
+REGIONS["feldip_hills"] = "Kandarin"
+
+
+def _trap_slots(p):
+    return 1 + p.lvl("hunter") // 20      # 1 at lvl 1 -> 5 at 80+
+
+
+def _hunter_gate(p):
+    if not getattr(p, "members", False):
+        say("Hunter is a members skill. Type 'membership' to unlock it.",
+            "bmagenta")
+        return False
+    return True
+
+
+def cmd_settrap(p, arg):
+    if not _hunter_gate(p):
+        return
+    if p.location != "feldip_hills":
+        say("The hunting grounds are south of Ardougne.", "grey")
+        return
+    want = arg.strip().lower()
+    creature = next((c for c in HUNT if want and want in c), None)
+    if not creature:
+        say("Trap what? " + "; ".join(
+            f"{c} (lvl {v[1]}, {v[0]})" for c, v in HUNT.items()), "bcyan")
+        return
+    trap, lvl, spring, xp, loot = HUNT[creature]
+    if p.lvl("hunter") < lvl:
+        say(f"You need hunter level {lvl} for {creature}s.", "byellow")
+        return
+    if not p.has(trap):
+        say(f"You need a {trap} (sold here).", "byellow")
+        return
+    traps = getattr(p, "traps", {})
+    if len(traps) >= _trap_slots(p):
+        say(f"You can only manage {_trap_slots(p)} trap(s) at your level — "
+            "'check' the ones you have.", "byellow")
+        return
+    p.take(trap)
+    slot = str(max([int(k) for k in traps] + [0]) + 1)
+    traps[slot] = {"creature": creature, "at": getattr(p, "actions", 0)}
+    p.traps = traps
+    say(f"You set the {trap} for a {creature}. Give it ~{spring} actions, "
+        "then 'check'.", "orange")
+    p.gain_xp("hunter", max(3, xp // 8))
+    return True
+
+
+def cmd_checktraps(p, _a):
+    if not _hunter_gate(p):
+        return
+    traps = getattr(p, "traps", {})
+    if not traps:
+        say("You have no traps set. ('settrap' at the Feldip Hunting "
+            "Grounds)", "grey")
+        return
+    if p.location != "feldip_hills":
+        say(f"Your {len(traps)} trap(s) are at the Feldip Hunting Grounds — "
+            "go there to 'check' them.", "grey")
+        return
+    for slot in sorted(traps, key=int):
+        info = traps[slot]
+        creature = info["creature"]
+        trap, lvl, spring, xp, loot = HUNT[creature]
+        elapsed = getattr(p, "actions", 0) - info["at"]
+        if elapsed < spring:
+            say(f"  The {trap} for the {creature} hasn't sprung yet "
+                f"(~{spring - elapsed} actions).", "byellow")
+            continue
+        del traps[slot]
+        chance = clamp(0.45 + (p.lvl("hunter") - lvl) * 0.015, 0.45, 0.95)
+        if random.random() < chance:
+            got = ", ".join(f"{q}x {i}" for i, q in loot.items())
+            for i, q in loot.items():
+                p.add(i, q)
+            p.add(trap)                       # trap recovered
+            say(f"  Caught a {creature}! ({got})", "bgreen")
+            p.gain_xp("hunter", xp)
+        else:
+            p.add(trap)
+            say(f"  The {creature} sprang the trap and escaped. You reset "
+                "the pieces.", "grey")
+    return True
+
+
+HANDLERS["settrap"] = cmd_settrap
+HANDLERS["trap"] = cmd_settrap
+HANDLERS["check"] = cmd_checktraps
+HANDLERS["checktraps"] = cmd_checktraps
+HANDLERS["traps"] = cmd_checktraps
+
 
 # items whose powers aren't visible in raw stats — shown by 'examine'
 EFFECT_NOTES = {

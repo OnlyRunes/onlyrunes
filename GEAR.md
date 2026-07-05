@@ -199,6 +199,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Fletching Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | fletching 99 | 99000 |  |  |
 | Farming Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | farming 99 | 99000 |  |  |
 | Construction Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | construction 99 | 99000 |  |  |
+| Hunter Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | hunter 99 | 99000 |  |  |
 
 ## Amulet
 
