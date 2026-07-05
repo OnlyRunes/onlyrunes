@@ -197,6 +197,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Slayer Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | slayer 99 | 99000 |  |  |
 | Herblore Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | herblore 99 | 99000 |  |  |
 | Fletching Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | fletching 99 | 99000 |  |  |
+| Farming Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | farming 99 | 99000 |  |  |
 
 ## Amulet
 

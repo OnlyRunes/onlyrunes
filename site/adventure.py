@@ -746,9 +746,10 @@ SKILLS = [
     "cooking", "woodcutting", "fishing", "firemaking", "crafting", "smithing",
     "mining", "runecrafting",
     # members skills
-    "thieving", "agility", "slayer", "herblore", "fletching",
+    "thieving", "agility", "slayer", "herblore", "fletching", "farming",
 ]
-MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore", "fletching"}
+MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore", "fletching",
+                  "farming"}
 
 
 # ===========================================================================
@@ -1707,6 +1708,9 @@ class Player:
         self.cave_wave = 0        # Fight Caves progress (0 = no active run)
         self.barrows = []         # brothers slain this Barrows run
         self.barrows_loots = 0    # chests looted lifetime
+        self.actions = 0          # lifetime action clock (crops grow on it)
+        self.farm = {}            # patch id -> {"seed": name, "at": actions}
+        self.crops = 0            # crops harvested lifetime
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
         self.poison = 0           # remaining poison ticks (transient combat fx)
@@ -2903,6 +2907,7 @@ def _teleport_for(dest_room):
 
 
 def _regen_energy(p):
+    p.actions = getattr(p, "actions", 0) + 1     # the world's clock ticks
     if getattr(p, "run_energy", 100) < 100:
         p.run_energy = min(100, p.run_energy + ENERGY_REGEN)
     # special energy and hitpoints recover slowly, out of combat only
@@ -3011,6 +3016,17 @@ def cmd_look(p, _a):
                               + ", ".join(r["stalls"]), "purple"))
     if r.get("pick"):
         services.append(paint("'pick': " + ", ".join(r["pick"]), "lime"))
+    for ptype in r.get("patches", []):
+        crop = getattr(p, "farm", {}).get(f"{p.location}:{ptype}")
+        if crop:
+            ready, left = _patch_state(p, crop)
+            services.append(paint(
+                f"{ptype} patch: {crop['seed'].replace(' seed', '')}"
+                + (" — READY ('harvest')" if ready
+                   else f" (~{left} actions to grow)"), "green"))
+        else:
+            services.append(paint(f"{ptype} patch: empty — 'plant <seed>'",
+                                  "green"))
     if r.get("monsters"):
         services.append(paint("monsters: " + ", ".join(r["monsters"]), "bred"))
     if r.get("npc"):
@@ -3079,7 +3095,7 @@ SKILL_COLOR = {
     "fishing": "bcyan", "firemaking": "orange", "crafting": "brown",
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
     "thieving": "purple", "agility": "lime", "slayer": "teal",
-    "herblore": "lime", "fletching": "bcyan",
+    "herblore": "lime", "fletching": "bcyan", "farming": "green",
 }
 
 
@@ -4597,6 +4613,7 @@ ACHIEVEMENTS = {
                      "and loot the chest."),
     "whack_a_mole": ("Whack-a-Mole", "Defeat the Giant Mole beneath "
                      "Falador Park."),
+    "green_thumb": ("Green Thumb", "Harvest 25 crops from your patches."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4634,6 +4651,8 @@ def _earned_achievements(p):
         got.add("grave_robber")
     if "giant mole" in bosses:
         got.add("whack_a_mole")
+    if getattr(p, "crops", 0) >= 25:
+        got.add("green_thumb")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -4761,6 +4780,9 @@ def serialize(p):
             "cave_wave": getattr(p, "cave_wave", 0),
             "barrows": list(getattr(p, "barrows", [])),
             "barrows_loots": getattr(p, "barrows_loots", 0),
+            "actions": getattr(p, "actions", 0),
+            "farm": dict(getattr(p, "farm", {})),
+            "crops": getattr(p, "crops", 0),
             "slayer_task": p.slayer_task,
             "slayer_points": p.slayer_points,
             "achievements": list(getattr(p, "achievements", [])),
@@ -4794,6 +4816,9 @@ def deserialize(data):
     p.cave_wave = data.get("cave_wave", 0)
     p.barrows = data.get("barrows", [])
     p.barrows_loots = data.get("barrows_loots", 0)
+    p.actions = data.get("actions", 0)
+    p.farm = data.get("farm", {})
+    p.crops = data.get("crops", 0)
     p.slayer_task = data.get("slayer_task", None)
     p.slayer_points = data.get("slayer_points", 0)
     p.achievements = data.get("achievements", [])
@@ -4844,7 +4869,8 @@ def cmd_help(_p, _a):
         "Gear": "equip <item>, unequip <slot>, drop <item> [n|all]",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
-                    "craft <item>, cut <gem>, craftrune, skillcape <skill> — "
+                    "craft <item>, cut <gem>, craftrune, skillcape <skill>, "
+                    "plant <seed>, harvest, farm (your patches) — "
                     "add a count or 'all' to repeat: 'mine iron 10', 'cook all'",
         "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>, "
                  "enchant <ring>",
@@ -5466,6 +5492,18 @@ def web_room_actions(player):
     for item in r.get("pick", []):
         out.append({"name": item, "kind": "gather",
                     "actions": [{"label": "Pick", "cmd": f"pick {item}"}]})
+    for ptype in r.get("patches", []):
+        crop = getattr(player, "farm", {}).get(f"{player.location}:{ptype}")
+        if crop:
+            ready, left = _patch_state(player, crop)
+            nm = crop["seed"].replace(" seed", "")
+            out.append({"name": f"{ptype}: {nm}"
+                        + ("" if ready else f" (~{left})"), "kind": "gather",
+                        "actions": [{"label": "Harvest",
+                                     "cmd": f"harvest {ptype}"}]})
+        else:
+            out.append({"name": f"{ptype} patch", "kind": "gather",
+                        "actions": [{"label": "Plant", "cmd": "farm"}]})
     if r.get("agility_course"):
         out.append({"name": "obstacle course", "kind": "gather",
                     "actions": [{"label": "Run a lap", "cmd": "agility"}]})
@@ -7698,6 +7736,199 @@ def cmd_me(p, _a):
 HANDLERS["me"] = cmd_me
 HANDLERS["character"] = cmd_me
 HANDLERS["profile"] = cmd_me
+
+# ===========================================================================
+#  FARMING  (the 21st skill — crops grow on the action clock while you play)
+# ===========================================================================
+# 'plant <seed>' at a patch, adventure elsewhere, come back and 'harvest'.
+# 'farm' shows every patch you own, anywhere in the world.
+
+# seed -> (patch type, level, actions to grow, product, min, max, xp/harvest)
+SEEDS = {
+    "potato seed": ("allotment", 1, 30, "potato", 3, 6, 9),
+    "onion seed": ("allotment", 5, 35, "onion", 3, 6, 11),
+    "cabbage seed": ("allotment", 7, 40, "cabbage", 3, 6, 12),
+    "sweetcorn seed": ("allotment", 20, 50, "sweetcorn", 3, 6, 19),
+    "watermelon seed": ("allotment", 47, 70, "watermelon", 3, 5, 49),
+    "guam seed": ("herb", 9, 45, "grimy guam", 3, 5, 13),
+    "marrentill seed": ("herb", 14, 50, "grimy marrentill", 3, 5, 15),
+    "tarromin seed": ("herb", 19, 55, "grimy tarromin", 3, 5, 18),
+    "ranarr seed": ("herb", 32, 65, "grimy ranarr", 3, 5, 31),
+}
+for _s in SEEDS:
+    add_item(_s, 40 if "ranarr" in _s else 4)
+add_item("potato", 3, heal=2)
+add_item("onion", 3, heal=1)
+add_item("sweetcorn", 10, heal=3)
+add_item("watermelon", 30, heal=5)
+
+SHOPS["farming"] = {"potato seed": 4, "onion seed": 6, "cabbage seed": 8,
+                    "sweetcorn seed": 25, "guam seed": 10,
+                    "marrentill seed": 16, "tarromin seed": 24}
+
+ROOMS["falador_park"]["patches"] = ["allotment", "herb"]
+ROOMS["falador_park"]["shop"] = "farming"
+ROOMS["falador_park"]["desc"] += (" A gardener tends tilled farming patches "
+                                  "and sells seeds.")
+ROOMS["lumbridge_farm"]["patches"] = ["allotment"]
+ROOMS["lumbridge_farm"]["desc"] += " A tilled allotment patch waits for seeds."
+ROOMS["catherby"]["patches"] = ["allotment", "herb"]
+ROOMS["catherby"]["desc"] += " Farming patches line the shore road."
+ROOMS["ardougne"]["patches"] = ["allotment", "herb"]
+ROOMS["ardougne"]["desc"] += " Tilled patches sit north of the market."
+ROOMS["canifis"]["patches"] = ["herb"]
+ROOMS["canifis"]["desc"] += " A dark-soiled herb patch grows strangely well."
+
+# the Draynor seed stall feeds thieving into farming
+STALLS["seed stall"] = (27, 10, [("potato seed", 0.25), ("onion seed", 0.2),
+                                 ("cabbage seed", 0.15),
+                                 ("guam seed", 0.15),
+                                 ("marrentill seed", 0.1),
+                                 ("tarromin seed", 0.08),
+                                 ("sweetcorn seed", 0.04),
+                                 ("ranarr seed", 0.02),
+                                 ("watermelon seed", 0.01)])
+ROOMS["draynor_village"]["stalls"] = ["seed stall"]
+ROOMS["draynor_village"]["desc"] += " A seed stall stands in the market."
+
+
+def _patch_state(p, crop):
+    """(ready?, actions left) for a planted crop."""
+    grow = SEEDS[crop["seed"]][2]
+    elapsed = getattr(p, "actions", 0) - crop["at"]
+    return elapsed >= grow, max(0, grow - elapsed)
+
+
+def _farm_gate(p):
+    if not getattr(p, "members", False):
+        say("Farming is a members skill. Type 'membership' to unlock it.",
+            "bmagenta")
+        return False
+    return True
+
+
+def cmd_plant(p, arg):
+    if not _farm_gate(p):
+        return
+    patches = ROOMS[p.location].get("patches", [])
+    if not patches:
+        say("There's no farming patch here. (Lumbridge farm, Falador Park, "
+            "Catherby, Ardougne, Canifis)", "grey")
+        return
+    want = arg.strip().lower()
+    if want and not want.endswith(" seed"):
+        want += " seed"
+    seed = want if want in SEEDS else \
+        next((s for s in SEEDS if want and want in s), None) if want else \
+        next((s for s in SEEDS if p.has(s)
+              and SEEDS[s][0] in patches), None)
+    if not seed:
+        have = [s for s in SEEDS if p.has(s)]
+        say("Plant what? You have: " + (", ".join(have) if have else
+            "no seeds (seed stall in Draynor, farming shop in Falador Park, "
+            "or monster drops)."), "bcyan")
+        return
+    ptype, lvl, grow, product, lo, hi, xp = SEEDS[seed]
+    if ptype not in patches:
+        say(f"No {ptype} patch here for {seed}.", "byellow")
+        return
+    pid = f"{p.location}:{ptype}"
+    crop = getattr(p, "farm", {}).get(pid)
+    if crop:
+        ready, left = _patch_state(p, crop)
+        say(f"The {ptype} patch already grows {crop['seed'].replace(' seed', '')}"
+            + (" — it's READY ('harvest')." if ready
+               else f" (~{left} actions to go)."), "byellow")
+        return
+    if p.lvl("farming") < lvl:
+        say(f"You need farming level {lvl} to plant {seed}.", "byellow")
+        return
+    if not p.has(seed):
+        say(f"You have no {seed}.", "byellow")
+        return
+    p.take(seed)
+    p.farm[pid] = {"seed": seed, "at": getattr(p, "actions", 0)}
+    say(f"You sow the {seed} into the {ptype} patch. It will be ready in "
+        f"about {grow} actions — go adventure and come back!", "green")
+    p.gain_xp("farming", max(4, xp // 2))
+    return True
+
+
+def cmd_harvest(p, arg):
+    if not _farm_gate(p):
+        return
+    patches = ROOMS[p.location].get("patches", [])
+    if not patches:
+        say("There's no farming patch here.", "grey")
+        return
+    want = arg.strip().lower()
+    grown = [(t, getattr(p, "farm", {}).get(f"{p.location}:{t}"))
+             for t in patches]
+    grown = [(t, c) for t, c in grown if c and (not want or want in t)]
+    if not grown:
+        say("Nothing is planted here." if not want else
+            f"Nothing growing in a '{want}' patch here.", "grey")
+        return
+    harvested = False
+    for ptype, crop in grown:
+        ready, left = _patch_state(p, crop)
+        name = crop["seed"].replace(" seed", "")
+        if not ready:
+            say(f"The {name} isn't ready — about {left} actions to go.",
+                "byellow")
+            continue
+        _t, _l, _g, product, lo, hi, xp = SEEDS[crop["seed"]]
+        qty = random.randint(lo, hi)
+        p.add(product, qty)
+        del p.farm[f"{p.location}:{ptype}"]
+        p.crops = getattr(p, "crops", 0) + qty
+        say(f"You harvest {qty}x {product} from the {ptype} patch!", "bgreen")
+        p.gain_xp("farming", xp * qty)
+        harvested = True
+    return True if harvested else None
+
+
+def cmd_farm(p, _a):
+    if not _farm_gate(p):
+        return
+    banner("Your Patches", color="green", line_color="green")
+    farm = getattr(p, "farm", {})
+    if not farm:
+        say("  Nothing planted anywhere. Patches: Lumbridge farm, Falador "
+            "Park, Catherby, Ardougne, Canifis. Get seeds from the Draynor "
+            "seed stall, the Falador Park shop, or drops.", "grey")
+        return
+    for pid, crop in sorted(farm.items()):
+        room, ptype = pid.split(":")
+        ready, left = _patch_state(p, crop)
+        name = crop["seed"].replace(" seed", "")
+        state = paint("READY — go 'harvest'!", "bgreen", "bold") if ready \
+            else paint(f"~{left} actions to go", "byellow")
+        print("  " + paint(f"{ROOMS[room]['name']:22}", "white")
+              + paint(f"{ptype:10}", "grey")
+              + paint(f"{name:12}", "green") + state)
+    say(f"  Lifetime crops harvested: {getattr(p, 'crops', 0)}", "grey")
+
+
+HANDLERS["plant"] = cmd_plant
+HANDLERS["sow"] = cmd_plant
+HANDLERS["harvest"] = cmd_harvest
+HANDLERS["farm"] = cmd_farm
+HANDLERS["patches"] = cmd_farm
+
+# a few growers drop seeds now
+for _mob, _seed, _ch in [("goblin", "potato seed", 0.15),
+                         ("goblin", "cabbage seed", 0.08),
+                         ("barbarian", "guam seed", 0.10),
+                         ("hobgoblin", "marrentill seed", 0.10),
+                         ("guard", "tarromin seed", 0.08),
+                         ("moss giant", "ranarr seed", 0.05),
+                         ("chaos druid", "ranarr seed", 0.06),
+                         ("hill giant", "guam seed", 0.10),
+                         ("ice giant", "watermelon seed", 0.05)]:
+    if _mob in MONSTERS:
+        MONSTERS[_mob]["drops"].append((_seed, 1, 2, _ch))
+
 
 # items whose powers aren't visible in raw stats — shown by 'examine'
 EFFECT_NOTES = {
