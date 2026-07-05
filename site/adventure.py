@@ -3788,17 +3788,31 @@ def cmd_cast(p, arg):
 
 
 # --- banking, shops, GE ---------------------------------------------------
-def cmd_bank(p, _a):
+def cmd_bank(p, arg=""):
     if not ROOMS[p.location].get("bank"):
         say("There's no bank here.")
         return
-    banner("Bank of Gielinor")
+    total = sum(ITEMS.get(i, {}).get("value", 0) * q for i, q in p.bank.items())
+    banner(f"Bank of Gielinor — {len(p.bank)} stack(s), worth ~{total:,} gp")
     if not p.bank:
         say("Your bank is empty.")
     else:
-        for item, q in sorted(p.bank.items()):
-            say(f"  {item} x{q}")
-    say("\nUse: deposit <item> [n|all] | withdraw <item> [n|all] | deposit all")
+        flt = (arg or "").strip().lower()
+        items = sorted(p.bank.items(),
+                       key=lambda kv: -ITEMS.get(kv[0], {}).get("value", 0)
+                       * kv[1])
+        shown = [(i, q) for i, q in items if flt in i] if flt else items
+        if flt and not shown:
+            say(f"  Nothing in the bank matches '{flt}'.", "grey")
+        for item, q in shown[:40]:
+            worth = ITEMS.get(item, {}).get("value", 0) * q
+            print("  " + paint(f"{item} x{q}", item_rarity_color(item))
+                  + paint(f"   ({worth:,} gp)" if worth else "", "grey"))
+        if len(shown) > 40:
+            say(f"  ...and {len(shown) - 40} more — narrow it down with "
+                "'bank <name>'.", "grey")
+    say("\nUse: deposit <item> [n|all] | withdraw <item> [n|all] | "
+        "deposit all | bank <filter>")
 
 
 def cmd_deposit(p, arg):
@@ -3856,8 +3870,13 @@ def cmd_shop(p, _a):
         say("There's no shop here.")
         return
     banner(f"Shop — {shop}")
+    print("  " + paint(f"Your coins: {p.coins:,}", "gold")
+          + paint("   (shops pay 40% of value when you sell)", "grey"))
     for item, price in SHOPS[shop].items():
-        say(f"  {item:22} {price} coins")
+        affordable = "bwhite" if p.coins >= price else "grey"
+        print("  " + paint(f"{item:22}", affordable)
+              + paint(f"{price:,} coins", "gold" if p.coins >= price
+                      else "grey"))
     say("\nUse: buy <item> [n] | sell <item> [n]")
 
 
@@ -4817,8 +4836,8 @@ def cmd_help(_p, _a):
     banner("Commands")
     groups = {
         "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
-        "Info": "stats [skill], inventory (i), equipment, quests, "
-                "examine <item|creature>, bestiary",
+        "Info": "me (character card), stats [skill], inventory (i), "
+                "equipment, quests, examine <item|creature>, bestiary",
         "Combat": "fight [monster], spec (special attack), "
                   "style <melee|ranged|magic|stab|slash|crush>, "
                   "autocast <spell>, eat [food], drink [potion]",
@@ -4849,7 +4868,8 @@ def _intro_tips():
         ("Move", "type a direction (n/s/e/w) — or tap the arrow buttons."),
         ("Look", "'look' shows what's here, who's around, and your exits."),
         ("Fight", "'fight chicken' (or tap a creature). Win XP and loot."),
-        ("Progress", "'stats' for levels, 'inventory' for items, 'equipment' for gear."),
+        ("Progress", "'me' for your character card; 'stats', 'inventory', "
+                     "'equipment' for detail."),
         ("Spend", "'bank' to store loot; 'shop' and 'ge' to buy & sell."),
         ("Help", "'help' lists every command; 'tutorial' shows this again."),
     ]:
@@ -4961,6 +4981,9 @@ def cmd_examine(p, arg):
     sp = SPECIAL_ATTACKS.get(name)
     if sp:
         say(f"  special: {sp['name']} ({sp['cost']}%) — {sp['desc']}", "teal")
+    note = EFFECT_NOTES.get(name)
+    if note:
+        say(f"  effect: {note}", "bmagenta")
 
 
 def cmd_bestiary(p, _a):
@@ -7632,6 +7655,78 @@ def cmd_slayerbuy(p, arg):
 
 HANDLERS["slayerbuy"] = cmd_slayerbuy
 HANDLERS["rewards"] = cmd_slayerbuy
+
+
+# ===========================================================================
+#  INTERFACE REFINEMENTS  (character dashboard + item effect notes)
+# ===========================================================================
+def cmd_me(p, _a):
+    """One-screen character dashboard."""
+    banner(f"{p.name} — Combat level {p.combat_level()}", color="gold")
+    total = sum(p.lvl(s) for s in SKILLS)
+    txp = sum(p.skills[s] for s in SKILLS)
+    done = sum(1 for k in ALL_QUESTS if _q(p, k) == "complete")
+    ach = len(getattr(p, "achievements", []))
+    bosses = getattr(p, "bosses", [])
+    bank_val = sum(ITEMS.get(i, {}).get("value", 0) * q
+                   for i, q in p.bank.items())
+    task = getattr(p, "slayer_task", None)
+    task_str = (f"  ·  task: {task['remaining']}/{task['amount']} "
+                f"{task['monster']}s" if task and task.get("remaining")
+                else "")
+    rows = [
+        ("Total level", f"{total}   ({txp:,} xp)"),
+        ("Quests", f"{done}/{len(ALL_QUESTS)} complete  ·  "
+                   f"{quest_points(p)} quest points"),
+        ("Achievements", f"{ach}/{len(ACHIEVEMENTS)} unlocked"),
+        ("Combat", f"{getattr(p, 'kills', 0):,} kills  ·  "
+                   f"{len(bosses)}/{len(_BOSSES)} bosses slain"),
+        ("Slayer", f"level {p.lvl('slayer')}  ·  "
+                   f"{p.slayer_points} points{task_str}"),
+        ("Barrows", f"{getattr(p, 'barrows_loots', 0)} chest(s) looted"),
+        ("Wealth", f"{p.coins:,} coins held  ·  bank worth ~{bank_val:,} gp"),
+        ("Location", ROOMS[p.location]["name"]
+                     + ("  ·  member" if p.members else "")),
+    ]
+    for k, v in rows:
+        print("  " + paint(f"{k:13}", "byellow") + paint(v, "white"))
+    if bosses:
+        say("  Bosses: " + ", ".join(sorted(bosses)), "grey")
+    say("  ('stats' for skills, 'quests', 'achievements', 'bestiary')", "grey")
+
+
+HANDLERS["me"] = cmd_me
+HANDLERS["character"] = cmd_me
+HANDLERS["profile"] = cmd_me
+
+# items whose powers aren't visible in raw stats — shown by 'examine'
+EFFECT_NOTES = {
+    "ring of recoil": "when a monster hits you, it takes 1 damage back "
+                      "(can't land the killing blow)",
+    "ring of life": "at a tenth of your health it crumbles and teleports "
+                    "you to Lumbridge, alive",
+    "ring of forging": "iron bars never fail to smelt while worn",
+    "ring of wealth": "+25% coins from monster drops",
+    "slayer helmet": "+15% accuracy and damage against your slayer task",
+    "anti-dragon shield": "soaks dragonfire — breath damage cut to a third",
+    "fire cape": "proof you conquered the Fight Caves; the best cape there is",
+    "spade": "digs into burial mounds and suspicious molehills",
+}
+_BARROWS_SET_NOTES = {
+    "dharok": "SET (weapon+body): your max hit climbs as YOUR hp falls — "
+              "up to double at death's door",
+    "ahrim": "SET (weapon+body): magic hits may sap the monster's strength",
+    "karil": "SET (weapon+body): ranged hits may corrode the monster's "
+             "defence",
+    "guthan": "SET (weapon+body): a quarter of your hits siphon life, "
+              "healing you",
+    "torag": "SET (weapon+body): hits may leave the monster reeling, "
+             "losing its turn",
+    "verac": "SET (weapon+body): a quarter of your misses strike true "
+             "anyway",
+}
+for _piece in BARROWS_GEAR:
+    EFFECT_NOTES[_piece] = _BARROWS_SET_NOTES[_piece.split("'")[0]]
 
 
 def _barrows_set(p):
