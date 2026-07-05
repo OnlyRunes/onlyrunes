@@ -5409,6 +5409,42 @@ def web_commands():
     return json.dumps(sorted(verbs))
 
 
+def web_scene(player):
+    """Everything the browser's 3D room viewport needs to draw the scene."""
+    r = ROOMS[player.location]
+    m = getattr(player, "combat", None)
+    mons = []
+    for name in r.get("monsters", []):
+        info = MONSTERS.get(name, {})
+        mons.append({"name": name, "level": info.get("level") or 0,
+                     "rank": info.get("rank", "medium"),
+                     "boss": bool(info.get("boss"))})
+    npc = r.get("npc")
+    npc_count = len(npc) if isinstance(npc, list) else (1 if npc else 0)
+    return json.dumps({
+        "room": player.location,
+        "name": r["name"],
+        "region": REGIONS.get(player.location, "Wild"),
+        "trees": r.get("trees", []),
+        "rocks": r.get("rocks", []),
+        "water": bool(r.get("fish_tools")),
+        "bank": bool(r.get("bank")),
+        "shop": bool(r.get("shop")),
+        "furnace": bool(r.get("furnace")),
+        "anvil": bool(r.get("anvil")),
+        "range": bool(r.get("range")),
+        "altar": bool(r.get("altar") or r.get("prayer_altar")),
+        "stalls": len(r.get("stalls", [])),
+        "mounds": bool(r.get("barrows")),
+        "caves": bool(r.get("fight_caves")),
+        "npcs": npc_count,
+        "fire": _has_fire(player),
+        "monsters": mons,
+        "enemy": ({"name": m["name"], "hp": max(0, m["cur"]), "max": m["hp"],
+                   "boss": bool(m.get("boss"))} if m else None),
+    })
+
+
 def web_room_actions(player):
     """Interactable entities in the current room, for clickable UI chips."""
     # in interactive combat, show the combat moves instead of room entities
