@@ -747,9 +747,10 @@ SKILLS = [
     "mining", "runecrafting",
     # members skills
     "thieving", "agility", "slayer", "herblore", "fletching", "farming",
+    "construction",
 ]
 MEMBERS_SKILLS = {"thieving", "agility", "slayer", "herblore", "fletching",
-                  "farming"}
+                  "farming", "construction"}
 
 
 # ===========================================================================
@@ -1711,6 +1712,7 @@ class Player:
         self.actions = 0          # lifetime action clock (crops grow on it)
         self.farm = {}            # patch id -> {"seed": name, "at": actions}
         self.crops = 0            # crops harvested lifetime
+        self.house = []           # furniture built in your player-owned house
         self.slayer_task = None   # {"monster","amount","remaining"} or None
         self.slayer_points = 0
         self.poison = 0           # remaining poison ticks (transient combat fx)
@@ -2768,7 +2770,7 @@ def cmd_pray(p, arg):
     if p.prayer_points > mx:
         p.prayer_points = mx
     if arg in ("recharge", "altar", "restore"):
-        if ROOMS[p.location].get("prayer_altar"):
+        if ROOMS[p.location].get("prayer_altar") or _house_perk(p, "chapel altar"):
             p.prayer_points = mx
             say(f"You pray at the altar. Prayer points restored to {int(mx)}.",
                 "bmagenta")
@@ -2978,18 +2980,26 @@ def cmd_travel(p, arg):
 
 
 def cmd_rest(p, _a):
-    if p.location not in set(TRAVEL_HUBS.values()):
-        say("You can only rest in a major city.", "grey")
+    in_bed = _house_perk(p, "oak bed")
+    if p.location not in set(TRAVEL_HUBS.values()) and not in_bed:
+        say("You can only rest in a major city — or your own bed at home.",
+            "grey")
         return
     if getattr(p, "run_energy", 100) >= 100 and p.hp >= p.max_hp and \
-            getattr(p, "spec_energy", 100) >= 100:
+            getattr(p, "spec_energy", 100) >= 100 and \
+            (not in_bed or p.prayer_points >= p.prayer_max()):
         say("You're already fully rested.", "grey")
         return
     p.run_energy = 100
     p.spec_energy = 100
     p.hp = p.max_hp
-    say("You rest a while in the city — hitpoints, run and special energy "
-        "fully restored.", "bgreen")
+    if in_bed:
+        p.prayer_points = p.prayer_max()
+        say("You sleep soundly in your own bed — everything restored, even "
+            "your prayers.", "bgreen")
+    else:
+        say("You rest a while in the city — hitpoints, run and special energy "
+            "fully restored.", "bgreen")
 
 
 def cmd_look(p, _a):
@@ -3016,6 +3026,10 @@ def cmd_look(p, _a):
                               + ", ".join(r["stalls"]), "purple"))
     if r.get("pick"):
         services.append(paint("'pick': " + ", ".join(r["pick"]), "lime"))
+    if p.location == "your_house":
+        built = getattr(p, "house", [])
+        services.append(paint("furniture: " + (", ".join(built) if built
+                              else "none yet — 'build'"), "brown"))
     for ptype in r.get("patches", []):
         crop = getattr(p, "farm", {}).get(f"{p.location}:{ptype}")
         if crop:
@@ -3096,6 +3110,7 @@ SKILL_COLOR = {
     "smithing": "grey", "mining": "brown", "runecrafting": "bmagenta",
     "thieving": "purple", "agility": "lime", "slayer": "teal",
     "herblore": "lime", "fletching": "bcyan", "farming": "green",
+    "construction": "brown",
 }
 
 
@@ -3366,9 +3381,15 @@ def _has_fire(p):
     return bool(f and f["room"] == p.location and f["left"] > 0)
 
 
+def _house_perk(p, furniture):
+    """True when standing in your house with that furniture built."""
+    return p.location == "your_house" and furniture in getattr(p, "house", [])
+
+
 def cmd_cook(p, arg):
     r = ROOMS[p.location]
-    if not (r.get("range") or r.get("fire") or _has_fire(p)):
+    if not (r.get("range") or r.get("fire") or _has_fire(p)
+            or _house_perk(p, "kitchen range")):
         say("You need a cooking range or a fire ('light logs' with a "
             "tinderbox).")
         return
@@ -3475,7 +3496,7 @@ def cmd_smelt(p, arg):
 
 def cmd_smith(p, arg):
     r = ROOMS[p.location]
-    if not r.get("anvil"):
+    if not (r.get("anvil") or _house_perk(p, "workbench")):
         say("You need an anvil.")
         return
     if not p.find_tool("hammer"):
@@ -4783,6 +4804,7 @@ def serialize(p):
             "actions": getattr(p, "actions", 0),
             "farm": dict(getattr(p, "farm", {})),
             "crops": getattr(p, "crops", 0),
+            "house": list(getattr(p, "house", [])),
             "slayer_task": p.slayer_task,
             "slayer_points": p.slayer_points,
             "achievements": list(getattr(p, "achievements", [])),
@@ -4819,6 +4841,7 @@ def deserialize(data):
     p.actions = data.get("actions", 0)
     p.farm = data.get("farm", {})
     p.crops = data.get("crops", 0)
+    p.house = data.get("house", [])
     p.slayer_task = data.get("slayer_task", None)
     p.slayer_points = data.get("slayer_points", 0)
     p.achievements = data.get("achievements", [])
@@ -4870,7 +4893,8 @@ def cmd_help(_p, _a):
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
                     "craft <item>, cut <gem>, craftrune, skillcape <skill>, "
-                    "plant <seed>, harvest, farm (your patches) — "
+                    "plant <seed>, harvest, farm (your patches), "
+                    "saw <logs>, build (your house), home — "
                     "add a count or 'all' to repeat: 'mine iron 10', 'cook all'",
         "Magic": "cast <spell> (teleports/alchemy), autocast <combat spell>, "
                  "enchant <ring>",
@@ -7929,6 +7953,144 @@ for _mob, _seed, _ch in [("goblin", "potato seed", 0.15),
     if _mob in MONSTERS:
         MONSTERS[_mob]["drops"].append((_seed, 1, 2, _ch))
 
+
+# ===========================================================================
+#  CONSTRUCTION  (the 22nd skill — a house of your own outside Rimmington)
+# ===========================================================================
+# Saw logs into planks at the Varrock sawmill, claim your house ('go house'
+# from Rimmington), and 'build' furniture with real perks — up to a portal
+# chamber that teleports you home from anywhere.
+
+add_item("plank", 30)
+add_item("oak plank", 120)
+
+# furniture -> (construction level, {materials}, xp, perk blurb)
+FURNITURE = {
+    "crude chair": (1, {"plank": 2}, 58,
+                    "somewhere to sit. It's a start."),
+    "oak bed": (10, {"oak plank": 3}, 90,
+                "'rest' at home restores EVERYTHING — prayers included"),
+    "workbench": (20, {"oak plank": 4}, 120,
+                  "works as an anvil — 'smith' at home"),
+    "kitchen range": (25, {"plank": 4, "steel bar": 1}, 140,
+                      "'cook' at home"),
+    "chapel altar": (45, {"oak plank": 6, "gold bar": 1}, 240,
+                     "'pray altar' at home restores prayer points"),
+    "portal chamber": (65, {"oak plank": 8, "law rune": 20}, 400,
+                       "'home' teleports you here from anywhere"),
+}
+
+ROOMS.update({
+    "sawmill": dict(name="Varrock Sawmill",
+        desc="A creaking mill north of the Grand Exchange. The operator "
+             "saws logs into planks for a fee. ('saw logs [n]' — plain 25gp, "
+             "oak 60gp)",
+        exits={"south": "grand_exchange"}),
+    "your_house": dict(name="Your House",
+        desc="Your own plot on the edge of Rimmington. What it becomes is "
+             "up to you. ('build' to see what you can add)",
+        exits={"out": "rimmington"}),
+})
+ROOMS["grand_exchange"]["exits"]["mill"] = "sawmill"
+ROOMS["grand_exchange"]["desc"] += " A sawmill creaks to the north ('mill')."
+ROOMS["rimmington"]["exits"]["house"] = "your_house"
+ROOMS["rimmington"]["desc"] += " Your house plot sits west of the village ('house')."
+REGIONS.update({"sawmill": "Varrock", "your_house": "Rimmington"})
+
+_SAW = {"logs": ("plank", 25), "oak logs": ("oak plank", 60)}
+
+
+def cmd_saw(p, arg):
+    if p.location != "sawmill":
+        say("You need the sawmill, north of the Grand Exchange.", "grey")
+        return
+    want = arg.strip().lower() or next((l for l in _SAW if p.has(l)), "logs")
+    logs = want if want in _SAW else want + " logs" \
+        if want + " logs" in _SAW else None
+    if not logs:
+        say("The sawmill takes: " + ", ".join(_SAW), "grey")
+        return
+    plank, fee = _SAW[logs]
+    if not p.has(logs):
+        say(f"You have no {logs}.", "byellow")
+        return
+    if not p.has("coins", fee):
+        say(f"The operator charges {fee} coins per {plank}.", "byellow")
+        return
+    p.take(logs)
+    p.take("coins", fee)
+    p.add(plank)
+    say(f"The saw screams through the {logs} — one {plank}. (-{fee} coins)")
+    return True
+
+
+def cmd_build(p, arg):
+    if not getattr(p, "members", False):
+        say("Construction is a members skill. Type 'membership' to unlock "
+            "it.", "bmagenta")
+        return
+    if p.location != "your_house":
+        say("You can only build in your own house ('go house' from "
+            "Rimmington).", "grey")
+        return
+    want = arg.strip().lower()
+    if not want:
+        banner("Your House — Construction", color="brown", line_color="brown")
+        for name, (lvl, mats, xp, perk) in FURNITURE.items():
+            built = name in p.house
+            mark = paint("✓ built", "bgreen") if built else \
+                paint(f"lvl {lvl}: " + ", ".join(f"{q}x {m}"
+                      for m, q in mats.items()), "grey")
+            print("  " + paint(f"{name:16}", "bwhite" if not built else "grey")
+                  + mark + "  " + paint(perk, "bcyan"))
+        say("  'build <furniture>' — you'll need a hammer. Planks come from "
+            "the Varrock sawmill.", "grey")
+        return
+    name = next((f for f in FURNITURE if want in f), None)
+    if not name:
+        say("You can't build that. ('build' lists your options.)", "grey")
+        return
+    if name in p.house:
+        say(f"Your {name} is already built.", "grey")
+        return
+    lvl, mats, xp, perk = FURNITURE[name]
+    if p.lvl("construction") < lvl:
+        say(f"You need construction level {lvl} for a {name}.", "byellow")
+        return
+    if not p.find_tool("hammer"):
+        say("You need a hammer.", "byellow")
+        return
+    missing = [f"{q}x {m}" for m, q in mats.items() if not p.has(m, q)]
+    if missing:
+        say("You still need: " + ", ".join(missing) + ".", "byellow")
+        return
+    for m, q in mats.items():
+        p.take(m, q)
+    p.house.append(name)
+    banner(f"Built: {name}", color="brown", line_color="brown")
+    say(f"You hammer the {name} together. ({perk})", "bgreen")
+    p.gain_xp("construction", xp)
+    return True
+
+
+def cmd_home(p, _a):
+    if "portal chamber" not in getattr(p, "house", []):
+        say("You have no portal chamber. (Build one in your house — "
+            "construction 65.)", "grey")
+        return
+    if p.location == "your_house":
+        say("You're already home.", "grey")
+        return
+    say("The portal hums and folds the world around you — you step out "
+        "into your own house.", "bmagenta")
+    p.location = "your_house"
+    cmd_look(p, "")
+
+
+HANDLERS["saw"] = cmd_saw
+HANDLERS["build"] = cmd_build
+HANDLERS["home"] = cmd_home
+BATCHABLE.add("saw")
 
 # items whose powers aren't visible in raw stats — shown by 'examine'
 EFFECT_NOTES = {

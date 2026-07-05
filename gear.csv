@@ -161,6 +161,7 @@ cape,slayer cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,slayer,99,,99000,no
 cape,herblore cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,herblore,99,,99000,no
 cape,fletching cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,fletching,99,,99000,no
 cape,farming cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,farming,99,,99000,no
+cape,construction cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,construction,99,,99000,no
 amulet,gold amulet,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,350,no
 amulet,amulet of accuracy,4,4,4,4,4,0,0,0,0,0,0,0,0,0,,,,500,no
 amulet,amulet of defence,0,0,0,0,0,7,7,7,7,7,0,0,0,0,,,,600,no
