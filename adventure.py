@@ -1873,6 +1873,21 @@ class Player:
             say(f"You don't have {item}.")
             return False
         slot = eq["slot"]
+        # two-handed weapons need both hands; shields evict them right back
+        if slot == "weapon" and eq.get("two_handed") and self.equipment.get("shield"):
+            shield = self.equipment["shield"]
+            self.add(shield)
+            self.equipment["shield"] = None
+            if not silent:
+                say(f"You sling the {shield} on your back — the {item} "
+                    "needs both hands.", "grey")
+        if slot == "shield":
+            w = self.equipment.get("weapon")
+            if w and ITEMS.get(w, {}).get("equip", {}).get("two_handed"):
+                self.add(w)
+                self.equipment["weapon"] = None
+                if not silent:
+                    say(f"You put away the {w} to raise a shield.", "grey")
         if self.equipment[slot]:
             self.add(self.equipment[slot])
         self.take(item)
@@ -5075,6 +5090,8 @@ def cmd_examine(p, arg):
     if "equip" in info:
         eq = info["equip"]
         bits.append("slot " + eq["slot"])
+        if eq.get("two_handed"):
+            bits.append("two-handed")
         labels = [("astab", "stab"), ("aslash", "slash"), ("acrush", "crush"),
                   ("amagic", "atk-mage"), ("arange", "atk-rng"),
                   ("str", "str"), ("rstr", "rng-str"), ("mdmg", "mage-dmg%"),
@@ -5141,6 +5158,10 @@ def _best_gear_for_style(style):
             continue
         if slot not in best_score or sc > best_score[slot]:
             best_score[slot], best[slot] = sc, name
+    # a two-handed weapon leaves no hand for a shield
+    w = best.get("weapon")
+    if w and ITEMS[w].get("equip", {}).get("two_handed"):
+        best.pop("shield", None)
     return best
 
 
@@ -8819,6 +8840,25 @@ def _cave_on_kill(p, target):
         say("TzHaar-Mej-Jal: \"You defeated TzTok-Jad?! Unbelievable, JalYt! "
             "Take this — you have earned it.\"", "orange", "bold")
         say("You receive a FIRE CAPE! ('equip fire cape')", "bgreen", "bold")
+
+
+# ===========================================================================
+#  TWO-HANDED WEAPONS  (both hands or none — no shield alongside these)
+# ===========================================================================
+_TWO_HANDED = [
+    # every bow needs a draw arm (crossbows are one-handed, bar Karil's)
+    "shortbow", "longbow", "oak shortbow", "oak longbow", "willow shortbow",
+    "willow longbow", "maple shortbow", "maple longbow", "yew shortbow",
+    "yew longbow", "magic shortbow", "magic longbow", "karil's crossbow",
+    # great weapons
+    "bandos godsword", "armadyl godsword", "zamorak godsword",
+    "saradomin godsword", "dharok's greataxe", "guthan's warspear",
+    "torag's hammers", "verac's flail", "zamorakian spear",
+    "saradomin sword", "granite maul", "hill giant club",
+]
+for _n in _TWO_HANDED:
+    if _n in ITEMS and ITEMS[_n].get("equip"):
+        ITEMS[_n]["equip"]["two_handed"] = True
 
 
 # ===========================================================================

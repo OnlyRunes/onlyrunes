@@ -16,7 +16,7 @@ FIELDS = ["astab", "aslash", "acrush", "amagic", "arange",
 CSV_HEAD = ["Slot", "Item", "AStab", "ASlash", "ACrush", "AMagic", "ARange",
             "DStab", "DSlash", "DCrush", "DMagic", "DRange", "MeleeStr",
             "RangeStr", "MagicDmg", "Prayer", "Req Skill", "Req Level",
-            "Quest", "Value", "Members"]
+            "Quest", "2H", "Value", "Members"]
 SLOT_ORDER = ["weapon", "shield", "head", "body", "legs", "ammo",
               "cape", "amulet", "gloves", "boots", "ring"]
 
@@ -34,6 +34,7 @@ def rows():
             "stats": [eq.get(f, 0) for f in FIELDS],
             "req_skill": req_skill, "req_lvl": req_lvl,
             "quest": a.ALL_QUESTS.get(eq.get("quest", ""), ""),
+            "two_handed": bool(eq.get("two_handed")),
             "value": it.get("value", 0),
             "members": bool(it.get("members")),
         })
@@ -48,8 +49,9 @@ def write_csv(items, path):
         w.writerow(CSV_HEAD)
         for r in items:
             w.writerow([r["slot"], r["name"], *r["stats"], r["req_skill"],
-                        r["req_lvl"], r["quest"], r["value"],
-                        "yes" if r["members"] else "no"])
+                        r["req_lvl"], r["quest"],
+                        "yes" if r["two_handed"] else "",
+                        r["value"], "yes" if r["members"] else "no"])
 
 
 def write_md(items, path):
