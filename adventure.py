@@ -2505,6 +2505,7 @@ def combat_action(p, raw):
     verb = parts[0].lower() if parts else ""
     arg = parts[1] if len(parts) > 1 else ""
     verb = {"1": "attack", "2": "eat", "3": "pray", "4": "flee",
+            "5": "spec",
             "a": "attack", "hit": "attack", "run": "flee", "escape": "flee",
             "special": "spec", "": "attack"}.get(verb, verb)
 
@@ -5402,6 +5403,8 @@ def dispatch(player, raw):
     if getattr(player, "auto", None) is not None:
         player.auto = None
         say("(You break off the auto-fight.)", "byellow")
+        if raw.lower() == "stop":
+            return True
     # interactive combat captures every command (Enter = attack); quit still works
     if getattr(player, "combat", None) is not None:
         if raw.lower() in ("quit", "exit", "q"):
@@ -5613,6 +5616,11 @@ def cmd_goal(p, _a):
     say("  ('quests', 'me' and 'stats' for the full picture)", "grey")
 
 
+def cmd_stop(p, _a):
+    say("Nothing left to stop.", "grey")
+
+
+HANDLERS["stop"] = cmd_stop
 HANDLERS["goal"] = cmd_goal
 HANDLERS["goals"] = cmd_goal
 HANDLERS["hint"] = cmd_goal
@@ -5709,6 +5717,36 @@ def web_commands():
     verbs -= _HIDDEN_VERBS
     verbs.discard("?")
     return json.dumps(sorted(verbs))
+
+
+def web_panel(player):
+    """Live sidebar data: goal, slayer standing, farm patches, traps."""
+    task = getattr(player, "slayer_task", None)
+    patches = []
+    for pid, crop in sorted(getattr(player, "farm", {}).items()):
+        room, ptype = pid.split(":")
+        ready, left = _patch_state(player, crop)
+        patches.append({"place": ROOMS[room]["name"], "type": ptype,
+                        "crop": crop["seed"].replace(" seed", ""),
+                        "ready": ready, "left": left})
+    traps = []
+    for slot in sorted(getattr(player, "traps", {}), key=int):
+        info = player.traps[slot]
+        trap, lvl, spring, xp, loot = HUNT[info["creature"]]
+        elapsed = getattr(player, "actions", 0) - info["at"]
+        traps.append({"creature": info["creature"],
+                      "ready": elapsed >= spring,
+                      "left": max(0, spring - elapsed)})
+    return json.dumps({
+        "goal": _next_goal(player),
+        "task": ({"monster": task["monster"], "amount": task["amount"],
+                  "remaining": task["remaining"]}
+                 if task and task.get("remaining", 0) > 0 else None),
+        "streak": getattr(player, "task_streak", 0),
+        "points": getattr(player, "slayer_points", 0),
+        "patches": patches,
+        "traps": traps,
+    })
 
 
 def web_room_actions(player):

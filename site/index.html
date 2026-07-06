@@ -35,10 +35,26 @@
   }
   h1 .of { color: #6ee36e; }
   .tag { margin: 4px 0 0; font-size: 14px; color: #8b93a0; }
+  #frame { width: 100%; max-width: 1220px; margin: 0 auto; display: flex;
+    align-items: flex-start; gap: 14px; flex: 1; }
   #shell {
     width: 100%; max-width: 920px; margin: 0 auto; padding: 12px 16px 0; flex: 1;
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; min-width: 0;
   }
+  #sidepanel { display: none; width: 268px; flex: 0 0 268px; padding: 12px 0;
+    position: sticky; top: 0; }
+  @media (min-width: 1200px) { #sidepanel { display: block; } }
+  .sp-card { background: #14161b; border: 1px solid #262a33;
+    border-radius: 10px; padding: 9px 12px; margin-bottom: 10px;
+    font-size: 12.5px; }
+  .sp-card h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: #6b7280; font-weight: 600; }
+  .sp-card .row { display: flex; justify-content: space-between; gap: 8px;
+    color: #c8cdd6; margin: 3px 0; }
+  .sp-card .muted { color: #6b7280; }
+  .sp-card .good { color: #6ee36e; }
+  .sp-card .warn { color: #ffce42; }
+  .sp-goal { color: #7fd4e6; line-height: 1.45; }
   #terminal {
     width: 100%; height: 70vh; min-height: 360px;
     background: #14161b; border: 1px solid #262a33; border-radius: 12px;
@@ -156,6 +172,7 @@
     <p class="tag">A text adventure in a world that's totally not Gielinor</p>
   </header>
 
+  <div id="frame">
   <main id="shell">
     <div id="statusbar">
       <span><span class="lbl">Lvl</span> <b id="st-cb">1</b></span>
@@ -185,6 +202,9 @@
     <div id="quickbar"></div>
     <div id="actions"></div>
   </main>
+
+  <aside id="sidepanel" aria-label="Live journal"></aside>
+  </div>
 
   <footer>
     OnlyRunes is a fan-made tribute and parody. It is <b>not</b> affiliated with,
@@ -433,6 +453,45 @@
         b.addEventListener("click", () => runCommand(b.getAttribute("data-dir"))));
     };
 
+    const renderPanel = () => {
+      const sp = document.getElementById("sidepanel");
+      if (!sp || !player || !mod) return;
+      if (!window.matchMedia("(min-width: 1200px)").matches) return;
+      let d;
+      try { d = JSON.parse(mod.web_panel(player)); } catch (e) { return; }
+      const esc2 = (s) => esc(String(s));
+      let h = `<div class="sp-card"><h4>Next up</h4>` +
+              `<div class="sp-goal">${esc2(d.goal)}</div></div>`;
+      h += `<div class="sp-card"><h4>Slayer</h4>`;
+      if (d.task) {
+        h += `<div class="row"><span>task</span><b>${esc2(d.task.remaining)}` +
+             `/${esc2(d.task.amount)} ${esc2(d.task.monster)}s</b></div>`;
+      } else {
+        h += `<div class="row muted"><span>no task — see a master</span></div>`;
+      }
+      h += `<div class="row"><span>streak</span><b>${esc2(d.streak)}</b></div>` +
+           `<div class="row"><span>points</span><b>${esc2(d.points)}</b></div></div>`;
+      if (d.patches.length) {
+        h += `<div class="sp-card"><h4>Farm</h4>`;
+        for (const pt of d.patches) {
+          h += `<div class="row"><span>${esc2(pt.crop)} · ${esc2(pt.place)}</span>` +
+               (pt.ready ? `<b class="good">ready!</b>`
+                         : `<span class="warn">~${esc2(pt.left)}</span>`) + `</div>`;
+        }
+        h += `</div>`;
+      }
+      if (d.traps.length) {
+        h += `<div class="sp-card"><h4>Traps</h4>`;
+        for (const t of d.traps) {
+          h += `<div class="row"><span>${esc2(t.creature)}</span>` +
+               (t.ready ? `<b class="good">sprung!</b>`
+                        : `<span class="warn">~${esc2(t.left)}</span>`) + `</div>`;
+        }
+        h += `</div>`;
+      }
+      sp.innerHTML = h;
+    };
+
     const refreshUI = () => {
       if (!player || !mod) return;
       let st = null;
@@ -441,6 +500,8 @@
       try {
         renderActions(mode === "play" ? JSON.parse(mod.web_room_actions(player)) : []);
       } catch (e) {}
+      try { renderPanel(); } catch (e) {}
+      try { ensureStopChip(autoRunning && mode === "play"); } catch (e) {}
       inCombat = !!(st && st.in_combat);
     };
 
@@ -569,11 +630,33 @@
 
     // ---- auto-fight autopilot: the game plays a kill every beat ----
     let autoTimer = null;
+    let autoRunning = false;
+    const ensureStopChip = (on) => {
+      const bar = document.getElementById("actions");
+      if (!bar) return;
+      let chip = document.getElementById("autoStopChip");
+      if (on && !chip) {
+        chip = document.createElement("button");
+        chip.id = "autoStopChip";
+        chip.className = "btn";
+        chip.style.cssText = "background:#4a2326;border-color:#8a3a3e;" +
+          "color:#ffd9b6;font-weight:600;margin-bottom:6px;";
+        chip.textContent = "⏹ Stop auto-fight";
+        chip.addEventListener("click", () => runCommand("stop"));
+        bar.prepend(chip);
+      } else if (!on && chip) {
+        chip.remove();
+      }
+    };
     const cancelAuto = () => {
       if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+      autoRunning = false;
+      ensureStopChip(false);
     };
     const scheduleAuto = () => {
-      cancelAuto();
+      if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+      autoRunning = true;
+      ensureStopChip(true);
       autoTimer = setTimeout(() => {
         autoTimer = null;
         if (mode !== "play" || !player || !mod) return;
@@ -582,9 +665,10 @@
         catch (e) { return; }
         writeWithAnim(r.text, () => {
           persist();
+          if (!r.auto) autoRunning = false;
           refreshUI();
           if (r.auto) scheduleAuto();
-          else prompt();
+          else { ensureStopChip(false); prompt(); }
         });
       }, 700);
     };
