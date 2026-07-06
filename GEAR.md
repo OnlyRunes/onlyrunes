@@ -83,6 +83,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Mithril Kiteshield | · | · | · | -8 | -3 | +18 | +22 | +20 | -1 | +20 | · | · | · | · | defence 20 | 720 |  |  |
 | Adamant Kiteshield | · | · | · | -8 | -3 | +27 | +31 | +29 | -1 | +29 | · | · | · | · | defence 30 | 1500 |  |  |
 | Rune Kiteshield | · | · | · | -8 | -3 | +44 | +48 | +46 | -1 | +46 | · | · | · | · | defence 40 | 3600 |  |  |
+| Mirror Shield | · | · | · | · | · | +20 | +22 | +20 | +25 | +22 | · | · | · | · | defence 20 | 5000 | M |  |
 | Dragon Kiteshield | · | · | · | -8 | -3 | +56 | +60 | +58 | -1 | +58 | · | · | · | · | defence 60 | 1600000 | M |  |
 
 ## Head
@@ -99,6 +100,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Black Med Helm | · | · | · | · | · | +9 | +10 | +9 | -1 | +9 | · | · | · | · | defence 10 | 126 |  |  |
 | Steel Full Helm | · | · | · | -6 | -3 | +9 | +10 | +7 | -1 | +9 | · | · | · | · | defence 5 | 140 |  |  |
 | Coif | · | · | · | -1 | +2 | +4 | +6 | +8 | +4 | +4 | · | · | · | · | · | 200 |  |  |
+| Earmuffs | · | · | · | · | · | +1 | +1 | +1 | · | · | · | · | · | · | · | 200 | M |  |
 | Mithril Med Helm | · | · | · | · | · | +11 | +12 | +11 | -1 | +11 | · | · | · | · | defence 20 | 216 |  |  |
 | Black Full Helm | · | · | · | -6 | -3 | +12 | +13 | +10 | -1 | +12 | · | · | · | · | defence 10 | 245 |  |  |
 | Mithril Full Helm | · | · | · | -6 | -3 | +13 | +14 | +11 | -1 | +13 | · | · | · | · | defence 20 | 420 |  |  |
