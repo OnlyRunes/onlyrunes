@@ -2378,6 +2378,12 @@ def fight_auto(p, mname):
     banner(lbl, color="bred", line_color="red")
     print("  " + paint(f"{mname}: ", "white")
           + bar_meter(m["cur"], m["hp"], 18, fill_color="bred"))
+    sp = SPECIAL_ATTACKS.get(p.equipment.get("weapon"))
+    if sp and getattr(p, "spec_energy", 100) >= sp["cost"]:
+        r = _do_special(p, m)               # open with your special, like a pro
+        if r == "won":
+            _victory(p, m)
+            return "won"
     while m["cur"] > 0 and p.hp > 0:
         r = _resolve_player_hit(p, m)
         if r == "noattack":
@@ -5264,7 +5270,7 @@ def _run_batch(p, handler, arg, n):
     inv0 = dict(p.inventory)
     sk0 = dict(p.skills)
     done = 0
-    for _ in range(n):
+    for i in range(n):
         _QUIET = True
         try:
             r = handler(p, arg)
@@ -5274,6 +5280,8 @@ def _run_batch(p, handler, arg, n):
             handler(p, arg)         # replay once, loudly, to say why
             break
         done += 1
+        if i < n - 1:               # each batched action moves the world
+            _regen_energy(p)        # (dispatch ticks once more at the end)
     if not done:
         return
     parts = []
