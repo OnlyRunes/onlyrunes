@@ -57,6 +57,12 @@ weapon,torag's hammers,0,0,90,0,0,0,0,0,0,0,90,0,0,0,attack,70,,700000,yes
 weapon,guthan's warspear,85,70,70,0,0,0,0,0,0,0,85,0,0,0,attack,70,,750000,yes
 weapon,verac's flail,70,0,88,0,0,0,0,0,0,0,84,0,0,3,attack,70,,750000,yes
 weapon,dharok's greataxe,0,90,70,0,0,0,0,0,0,0,105,0,0,0,attack,70,,800000,yes
+weapon,saradomin sword,0,82,60,0,0,0,0,0,0,0,82,0,0,1,attack,70,,1200000,yes
+weapon,zamorakian spear,85,65,65,0,0,0,0,0,0,0,75,0,0,2,attack,70,,2000000,yes
+weapon,bandos godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,3000000,yes
+weapon,armadyl godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,3000000,yes
+weapon,zamorak godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,3000000,yes
+weapon,saradomin godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,3000000,yes
 shield,anti-dragon shield,0,0,0,-8,-2,7,9,8,1,9,0,0,0,0,,,,40,no
 shield,bronze kiteshield,0,0,0,-8,-3,5,7,6,-1,6,0,0,0,0,defence,1,,60,no
 shield,iron kiteshield,0,0,0,-8,-3,8,10,9,-1,9,0,0,0,0,defence,1,,120,no
@@ -113,6 +119,8 @@ body,torag's platebody,0,0,0,0,0,92,90,88,-4,92,0,0,0,0,defence,70,,700000,yes
 body,guthan's platebody,0,0,0,0,0,88,86,83,-5,88,0,0,0,0,defence,70,,750000,yes
 body,verac's brassard,0,0,0,0,0,85,83,84,0,85,0,0,0,3,defence,70,,750000,yes
 body,dharok's platebody,0,0,0,0,0,90,88,85,-5,90,0,0,0,0,defence,70,,800000,yes
+body,bandos chestplate,0,0,0,0,0,92,90,88,-5,92,4,0,0,0,defence,65,,2500000,yes
+body,armadyl chestplate,0,0,0,0,12,55,55,55,50,90,0,0,0,0,ranged,70,,2500000,yes
 legs,bronze platelegs,0,0,0,-21,-11,8,7,6,-4,7,0,0,0,0,defence,1,,70,no
 legs,iron platelegs,0,0,0,-21,-11,11,10,10,-4,10,0,0,0,0,defence,1,,140,no
 legs,steel platelegs,0,0,0,-21,-11,17,16,15,-4,16,0,0,0,0,defence,5,,280,no
@@ -123,6 +131,8 @@ legs,green d'hide chaps,0,0,0,-10,8,12,15,18,8,17,0,0,0,0,ranged,40,,3900,no
 legs,rune platelegs,0,0,0,-21,-11,51,49,47,-4,49,0,0,0,0,defence,40,,4200,no
 legs,mystic robe bottom,0,0,0,15,0,0,0,0,15,0,0,0,0,0,magic,40,,80000,yes
 legs,dragon platelegs,0,0,0,-21,-11,68,66,63,-4,65,0,0,0,0,defence,60,,270000,yes
+legs,bandos tassets,0,0,0,0,0,85,82,80,-5,85,2,0,0,0,defence,65,,2000000,yes
+legs,armadyl chainskirt,0,0,0,0,8,50,50,50,45,85,0,0,0,0,ranged,70,,2000000,yes
 ammo,bronze arrow,0,0,0,0,0,0,0,0,0,0,0,7,0,0,,,,2,no
 ammo,iron arrow,0,0,0,0,0,0,0,0,0,0,0,10,0,0,,,,5,no
 ammo,steel arrow,0,0,0,0,0,0,0,0,0,0,0,16,0,0,,,,8,no

@@ -64,6 +64,12 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Guthan'S Warspear | +85 | +70 | +70 | · | · | · | · | · | · | · | +85 | · | · | · | attack 70 | 750000 | M |  |
 | Verac'S Flail | +70 | · | +88 | · | · | · | · | · | · | · | +84 | · | · | +3 | attack 70 | 750000 | M |  |
 | Dharok'S Greataxe | · | +90 | +70 | · | · | · | · | · | · | · | +105 | · | · | · | attack 70 | 800000 | M |  |
+| Saradomin Sword | · | +82 | +60 | · | · | · | · | · | · | · | +82 | · | · | +1 | attack 70 | 1200000 | M |  |
+| Zamorakian Spear | +85 | +65 | +65 | · | · | · | · | · | · | · | +75 | · | · | +2 | attack 70 | 2000000 | M |  |
+| Bandos Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
+| Armadyl Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
+| Zamorak Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
+| Saradomin Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
 
 ## Shield
 
@@ -135,6 +141,8 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Guthan'S Platebody | · | · | · | · | · | +88 | +86 | +83 | -5 | +88 | · | · | · | · | defence 70 | 750000 | M |  |
 | Verac'S Brassard | · | · | · | · | · | +85 | +83 | +84 | · | +85 | · | · | · | +3 | defence 70 | 750000 | M |  |
 | Dharok'S Platebody | · | · | · | · | · | +90 | +88 | +85 | -5 | +90 | · | · | · | · | defence 70 | 800000 | M |  |
+| Bandos Chestplate | · | · | · | · | · | +92 | +90 | +88 | -5 | +92 | +4 | · | · | · | defence 65 | 2500000 | M |  |
+| Armadyl Chestplate | · | · | · | · | +12 | +55 | +55 | +55 | +50 | +90 | · | · | · | · | ranged 70 | 2500000 | M |  |
 
 ## Legs
 
@@ -150,6 +158,8 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Rune Platelegs | · | · | · | -21 | -11 | +51 | +49 | +47 | -4 | +49 | · | · | · | · | defence 40 | 4200 |  |  |
 | Mystic Robe Bottom | · | · | · | +15 | · | · | · | · | +15 | · | · | · | · | · | magic 40 | 80000 | M |  |
 | Dragon Platelegs | · | · | · | -21 | -11 | +68 | +66 | +63 | -4 | +65 | · | · | · | · | defence 60 | 270000 | M |  |
+| Bandos Tassets | · | · | · | · | · | +85 | +82 | +80 | -5 | +85 | +2 | · | · | · | defence 65 | 2000000 | M |  |
+| Armadyl Chainskirt | · | · | · | · | +8 | +50 | +50 | +50 | +45 | +85 | · | · | · | · | ranged 70 | 2000000 | M |  |
 
 ## Ammo
 
