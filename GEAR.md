@@ -55,6 +55,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Hill Giant Club | -4 | +50 | +65 | -4 | · | · | · | · | · | -1 | +70 | · | · | · | attack 40 | 45000 |  |  |
 | Dragon Mace | +40 | -2 | +60 | · | · | · | · | · | · | · | +55 | · | · | +5 | attack 60 | 50000 | M |  |
 | Granite Maul | · | · | +81 | · | · | · | · | · | · | · | +79 | · | · | · | attack 50 | 50000 | M |  |
+| Dragon Axe | · | +38 | +32 | · | · | · | · | · | · | · | +42 | · | · | · | woodcutting 61 | 61000 | M |  |
 | Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100000 | M |  |
 | Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100000 | M |  |
 | Abyssal Whip | · | +82 | · | · | · | · | · | · | · | · | +82 | · | · | · | attack 70 | 120001 | M |  |
@@ -110,6 +111,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Rune Full Helm | · | · | · | -6 | -3 | +30 | +32 | +27 | -1 | +30 | · | · | · | · | defence 40 | 2100 |  |  |
 | Mystic Hat | · | · | · | +4 | · | · | · | · | +4 | · | · | · | · | · | magic 40 | 15000 | M |  |
 | Slayer Helmet | · | · | · | · | · | +30 | +32 | +27 | -1 | +30 | · | · | · | · | defence 10 | 50000 | M |  |
+| Helm Of Neitiznot | · | · | · | · | · | +31 | +29 | +34 | +3 | +30 | +3 | · | · | +3 | · | 55000 | M | Q |
 | Dragon Med Helm | · | · | · | -3 | · | +33 | +35 | +32 | -1 | +34 | · | · | · | · | defence 60 | 60000 | M |  |
 | Berserker Helm | · | · | · | -5 | -5 | +31 | +29 | +33 | · | +30 | +3 | · | · | · | defence 45 | 60000 | M |  |
 
@@ -261,3 +263,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Ring Of Forging | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 2100 |  |  |
 | Diamond Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 3525 |  |  |
 | Ring Of Wealth | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 3600 |  |  |
+| Warrior Ring | · | +4 | · | · | · | · | +4 | · | · | · | · | · | · | · | · | 30000 | M |  |
+| Seers Ring | · | · | · | +6 | · | · | · | · | +6 | · | · | · | · | · | · | 38000 | M |  |
+| Archers Ring | · | · | · | · | +4 | · | · | · | · | +4 | · | · | · | · | · | 42000 | M |  |
+| Berserker Ring | · | · | · | · | · | +4 | +4 | +4 | · | · | +4 | · | · | · | · | 45000 | M |  |

@@ -48,6 +48,7 @@ weapon,dragon dagger,40,25,-4,1,0,0,0,0,1,0,40,0,0,0,attack,60,,,30000,yes
 weapon,hill giant club,-4,50,65,-4,0,0,0,0,0,-1,70,0,0,0,attack,40,,yes,45000,no
 weapon,dragon mace,40,-2,60,0,0,0,0,0,0,0,55,0,0,5,attack,60,,,50000,yes
 weapon,granite maul,0,0,81,0,0,0,0,0,0,0,79,0,0,0,attack,50,,yes,50000,yes
+weapon,dragon axe,0,38,32,0,0,0,0,0,0,0,42,0,0,0,woodcutting,61,,,61000,yes
 weapon,dragon scimitar,8,67,-2,0,0,0,1,0,0,0,66,0,0,0,attack,60,,,100000,yes
 weapon,dragon longsword,58,69,-2,0,0,0,3,2,0,0,71,0,0,0,attack,60,,,100000,yes
 weapon,abyssal whip,0,82,0,0,0,0,0,0,0,0,82,0,0,0,attack,70,,,120001,yes
@@ -93,6 +94,7 @@ head,rune med helm,0,0,0,0,0,15,16,15,-1,15,0,0,0,0,defence,40,,,1080,no
 head,rune full helm,0,0,0,-6,-3,30,32,27,-1,30,0,0,0,0,defence,40,,,2100,no
 head,mystic hat,0,0,0,4,0,0,0,0,4,0,0,0,0,0,magic,40,,,15000,yes
 head,slayer helmet,0,0,0,0,0,30,32,27,-1,30,0,0,0,0,defence,10,,,50000,yes
+head,helm of neitiznot,0,0,0,0,0,31,29,34,3,30,3,0,0,3,,,The Fremennik Trials,,55000,yes
 head,dragon med helm,0,0,0,-3,0,33,35,32,-1,34,0,0,0,0,defence,60,,,60000,yes
 head,berserker helm,0,0,0,-5,-5,31,29,33,0,30,3,0,0,0,defence,45,,,60000,yes
 body,wizard robe,0,0,0,3,0,0,0,0,3,0,0,0,0,0,,,,,20,no
@@ -204,3 +206,7 @@ ring,ruby ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,2025,no
 ring,ring of forging,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,2100,no
 ring,diamond ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,3525,no
 ring,ring of wealth,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,3600,no
+ring,warrior ring,0,4,0,0,0,0,4,0,0,0,0,0,0,0,,,,,30000,yes
+ring,seers ring,0,0,0,6,0,0,0,0,6,0,0,0,0,0,,,,,38000,yes
+ring,archers ring,0,0,0,0,4,0,0,0,0,4,0,0,0,0,,,,,42000,yes
+ring,berserker ring,0,0,0,0,0,4,4,4,0,0,4,0,0,0,,,,,45000,yes
