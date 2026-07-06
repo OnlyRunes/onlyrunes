@@ -2029,6 +2029,18 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
     if hit:
         dmg = random.randint(0, max_hit)
         m["cur"] -= dmg
+        if m.get("carapace") and not m.get("phase2") and atype != "crush" \
+                and dmg > 1:
+            dmg = max(1, dmg // 2)
+            m["cur"] += dmg              # give back the halved portion
+            print("  " + paint("Her carapace turns the blow — only CRUSH "
+                               "bites deep!", "byellow"))
+        if m["cur"] <= 0 and m.get("transform") and not m.get("phase2"):
+            m["phase2"] = True
+            m["cur"] = m["hp"]
+            m["flying"] = True
+            say("The carapace SPLITS — the Kalphite Queen sheds her shell "
+                "and takes wing, reborn!", "bmagenta", "bold")
         if m["cur"] <= 0 and m.get("finisher") and not p.has(m["finisher"]):
             m["cur"] = max(1, int(m["hp"] * 0.3))
             print("  " + paint(f"The {m['name']} starts to crumble \u2014 "
@@ -2547,6 +2559,9 @@ def combat_action(p, raw):
             if r == "won":
                 return _end_combat_victory(p)
     elif verb == "spec":
+        if getattr(p, "duel", None) and p.duel["rule"] == "no specials":
+            return say("Duel rules: NO SPECIALS. Win with plain steel.",
+                       "bred")
         if getattr(p, "frozen", False):
             p.frozen = False            # one wasted attack, then you thaw
             say("You are frozen solid — your special fails! You shatter the "
@@ -2558,6 +2573,8 @@ def combat_action(p, raw):
             if r == "won":
                 return _end_combat_victory(p)
     elif verb == "eat":
+        if getattr(p, "duel", None) and p.duel["rule"] == "no food":
+            return say("Duel rules: NO FOOD. The crowd would riot.", "bred")
         foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
         food = arg or (foods[0] if foods else "")
         if not food or not p.has(food):
@@ -2572,6 +2589,9 @@ def combat_action(p, raw):
             return say("You have no potions to drink!", "grey")
         cmd_drink(p, arg)
     elif verb == "pray":
+        if getattr(p, "duel", None) and p.duel["rule"] == "no prayer":
+            return say("Duel rules: NO PRAYER. The gods are not invited.",
+                       "bred")
         before = list(p.active_prayers)
         cmd_pray(p, arg)
         if list(p.active_prayers) == before and arg not in PRAYERS:
@@ -2582,6 +2602,9 @@ def combat_action(p, raw):
         elif random.random() < 0.55:
             p.combat = None
             _clear_status(p)
+            if getattr(p, "duel", None):
+                say("You yield the duel!", "byellow")
+                return _duel_loss(p)
             return say("You break off and flee the battle!", "byellow")
         else:
             say("You fail to escape!", "grey")
@@ -2592,6 +2615,8 @@ def combat_action(p, raw):
     # monster's turn
     if _resolve_monster_hit(p, m) == "died":
         p.combat = None
+        if getattr(p, "duel", None):
+            return _duel_loss(p)
         return _handle_death(p)
     if _ring_of_life(p):                  # emergency escape at low hp
         return
@@ -2819,6 +2844,10 @@ def cmd_pray(p, arg):
             p.prayer_points = mx
             say(f"You pray at the altar. Prayer points restored to {int(mx)}.",
                 "bmagenta")
+            if p.location == "nardah":
+                _nardah_blessing(p)
+                say("The fountain's blessing washes over you \u2014 wounds, "
+                    "poison and weariness, all gone.", "bcyan")
         else:
             say("You need a prayer altar (e.g. Lumbridge Church) to recharge.")
         return
@@ -2961,11 +2990,28 @@ def _regen_energy(p):
     if getattr(p, "run_energy", 100) < 100:
         p.run_energy = min(100, p.run_energy + ENERGY_REGEN)
     # special energy and hitpoints recover slowly, out of combat only
+    # (but nothing recovers under the desert sun)
+    in_desert = ROOMS.get(p.location, {}).get("desert")
     if getattr(p, "combat", None) is None:
         if getattr(p, "spec_energy", 100) < 100:
             p.spec_energy = min(100, p.spec_energy + 10)
-        if 0 < p.hp < p.max_hp:
+        if 0 < p.hp < p.max_hp and not in_desert:
             p.hp += 1
+    if in_desert:                                   # the sun is a monster too
+        p.heat = getattr(p, "heat", 0) + 1
+        if p.heat >= 8:
+            p.heat = 0
+            if p.has("waterskin"):
+                p.take("waterskin")
+                say("You take a pull from a waterskin against the heat. "
+                    f"({p.count('waterskin')} left)", "bcyan")
+            else:
+                dmg = min(random.randint(2, 4), max(0, p.hp - 1))
+                if dmg > 0:
+                    p.hp -= dmg
+                    print("  " + paint(f"The desert sun sears you for {dmg}! "
+                                       "(carry waterskins — Shantay sells "
+                                       "them)", "orange"))
     f = getattr(p, "fire", None)         # campfires burn down over time
     if f:
         f["left"] -= 1
@@ -4673,6 +4719,14 @@ def _quest_on_kill(p, target):
             "is safe!", "bgreen")
     _cave_on_kill(p, target)            # Fight Caves wave progression
     _barrows_on_kill(p, target)         # Barrows brothers put to rest
+    duel = getattr(p, "duel", None)
+    if duel and target == "arena duelist":
+        winnings = duel["stake"] * 2
+        p.add("coins", winnings)
+        p.duel = None
+        banner("DUEL WON", color="gold", line_color="gold")
+        say(f"The crowd roars! The Duelmaster pays out {winnings:,} coins.",
+            "gold", "bold")
     god = GWD_FOLLOWERS.get(target)     # god followers grant kill count
     if god and ROOMS[p.location].get("gwd"):
         kc = getattr(p, "gwd_kc", {})
@@ -4763,6 +4817,8 @@ ACHIEVEMENTS = {
     "god_slayer": ("God Slayer", "Defeat all four generals of the God Wars "
                    "Dungeon."),
     "taskmaster": ("Taskmaster", "Reach a 10-task slayer streak."),
+    "hive_slayer": ("Hive Slayer", "Defeat both bodies of the Kalphite "
+                    "Queen."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4807,6 +4863,8 @@ def _earned_achievements(p):
         got.add("god_slayer")
     if getattr(p, "task_streak", 0) >= 10:
         got.add("taskmaster")
+    if "kalphite queen" in bosses:
+        got.add("hive_slayer")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -5599,6 +5657,10 @@ def _next_goal(p):
                 "commander zilyana")):
         return ("The God Wars rage beneath the deep Wilderness ('chasm') — "
                 "four generals, four godswords.")
+    if "kalphite queen" not in getattr(p, "bosses", []):
+        return ("Beneath the Kharidian sands the Kalphite Queen waits in "
+                "two bodies \u2014 bring crush weapons, waterskins, and "
+                "nerve ('south' from Al Kharid).")
     if not any(p.base_lvl(s) >= 99 for s in SKILLS):
         return ("Chase your first level 99 — the Wise Old Man in Draynor "
                 "sells the cape to prove it.")
@@ -8967,6 +9029,237 @@ def _cave_on_kill(p, target):
         say("TzHaar-Mej-Jal: \"You defeated TzTok-Jad?! Unbelievable, JalYt! "
             "Take this — you have earned it.\"", "orange", "bold")
         say("You receive a FIRE CAPE! ('equip fire cape')", "bgreen", "bold")
+
+
+# ===========================================================================
+#  THE KHARIDIAN DESERT  (heat, thieves, the Duel Arena, and the Queen)
+# ===========================================================================
+# South through the Shantay Pass the sun becomes a monster: carry waterskins
+# or burn. Pollnivneach fences stolen goods, Nardah's fountain restores the
+# faithful, gamblers stake coins at the Duel Arena — and beneath the sands,
+# the Kalphite Queen waits in two bodies.
+
+add_item("waterskin", 10)
+add_item("kebab", 12, heal=6)
+
+SHOPS["shantay"] = {"waterskin": 10, "knife": 6, "bread": 12}
+SHOPS["kebab"] = {"kebab": 12, "waterskin": 12}
+
+PICKPOCKET["menaphite thug"] = (65, 137, 140, 5)
+
+_add_mob("desert bandit",
+    {"abonus": 10, "atktype": ["slash"], "att": 40, "cb": 41, "dstab": 15,
+     "dslash": 15, "dcrush": 15, "dmagic": 10, "drange": 15, "def": 30,
+     "hp": 40, "maxhit": 6, "str": 40, "weak": "crush"},
+    [("coins", 20, 180, 0.9), ("waterskin", 1, 2, 0.3)],
+    members=True, rank="medium")
+
+_add_mob("kalphite worker",
+    {"abonus": 5, "atktype": ["crush"], "att": 25, "cb": 28, "dstab": 20,
+     "dslash": 20, "dcrush": 10, "dmagic": 15, "drange": 20, "def": 22,
+     "hp": 32, "maxhit": 4, "str": 25, "weak": "crush"},
+    [("coins", 10, 80, 0.7), ("waterskin", 1, 1, 0.1)],
+    members=True, rank="medium")
+
+_add_mob("kalphite soldier",
+    {"abonus": 20, "atktype": ["crush"], "att": 75, "cb": 85, "dstab": 45,
+     "dslash": 45, "dcrush": 25, "dmagic": 35, "drange": 45, "def": 60,
+     "hp": 90, "maxhit": 12, "str": 80, "weak": "crush"},
+    [("coins", 80, 400, 0.9), ("mithril bar", 1, 1, 0.1)],
+    members=True, rank="elite")
+
+# --- the Queen: two bodies, one grudge ------------------------------------------
+KQ_ART = r"""
+       \_          _/
+        \ \__    __/ /
+     ____\/##\==/##\/____
+    <=((  \(@)==(@)/  ))=>
+        \_/|/    \|\_/
+      _/  /|      |\  \_
+     <__ / |______| \ __>
+"""
+
+
+def _kq_intro(name):
+    return [_tint(KQ_ART, "brown"), _tint(KQ_ART, "byellow", "bold"),
+            _tint(KQ_ART, "orange", "bold")]
+
+
+def _kq_death(name):
+    return [_tint(KQ_ART, "orange"), _tint(KQ_ART, "grey", "dim")]
+
+
+KQ_ATTACKS = [
+    {"label": "her scything mandibles", "verb": "snaps with",
+     "color": ("byellow", "bold"),
+     "builder": lambda: [_tint(KQ_ART, "byellow", "bold")],
+     "mult": 1.2, "w": 3, "atype": "crush"},
+    {"label": "a hail of hardened chitin", "verb": "flings",
+     "color": ("brown",),
+     "builder": lambda: [_tint(KQ_ART, "brown")],
+     "mult": 1.0, "w": 2, "atype": "ranged"},
+    {"label": "a crackling bolt of hive-magic", "verb": "spits",
+     "color": ("bmagenta", "bold"),
+     "builder": lambda: [_tint(KQ_ART, "bmagenta", "bold")],
+     "mult": 1.1, "w": 2, "atype": "magic"},
+]
+
+_add_mob("kalphite queen",
+    {"abonus": 35, "atktype": ["crush", "ranged", "magic"], "att": 150,
+     "cb": 333, "dstab": 70, "dslash": 70, "dcrush": 50, "dmagic": 60,
+     "drange": 70, "def": 85, "hp": 255, "maxhit": 22, "str": 150,
+     "weak": "crush"},
+    [("big bones", 1, 1, 1.0), ("coins", 3000, 12000, 1.0),
+     ("dragon chainbody", 1, 1, 0.04), ("uncut diamond", 1, 2, 0.15),
+     ("grimy ranarr", 1, 3, 0.3), ("waterskin", 2, 4, 0.5)], members=True)
+MONSTERS["kalphite queen"]["boss"] = True
+MONSTERS["kalphite queen"]["rank"] = "boss"
+MONSTERS["kalphite queen"]["carapace"] = True
+MONSTERS["kalphite queen"]["transform"] = True
+_BOSSES.add("kalphite queen")
+BOSS_INTRO["kalphite queen"] = _kq_intro
+BOSS_DEATH["kalphite queen"] = _kq_death
+BOSS_TURN["kalphite queen"] = lambda p, m: _boss_take_turn(p, m, KQ_ATTACKS)
+MONSTER_ART["kalphite queen"] = KQ_ART
+
+# --- the region -------------------------------------------------------------------
+ROOMS.update({
+    "shantay_pass": dict(name="Shantay Pass",
+        desc="The gate to the Kharidian Desert. Shantay eyes your pack: "
+             "'Waterskins, friend. The sun out there is a murderer.'",
+        exits={"north": "al_kharid_square", "south": "desert_road"},
+        shop="shantay", desert=True, members=True),
+    "desert_road": dict(name="Kharidian Dunes",
+        desc="An ocean of sand rolling south. Bandits shadow the caravan "
+             "routes, and something vast has tunnelled under the western "
+             "dunes ('hive').",
+        exits={"north": "shantay_pass", "south": "pollnivneach",
+               "hive": "kalphite_hive"},
+        monsters=["desert bandit", "scorpion"], hostile=True, desert=True,
+        members=True),
+    "pollnivneach": dict(name="Pollnivneach",
+        desc="A lawless town of thieves and kebab smoke, halfway to "
+             "nowhere. Menaphite thugs swagger between the tents — light "
+             "fingers could live well here.",
+        exits={"north": "desert_road", "south": "nardah"},
+        pickpocket=["menaphite thug", "man"], shop="kebab", desert=True,
+        members=True),
+    "nardah": dict(name="Nardah",
+        desc="A shrine town at the desert's edge, built around a holy "
+             "fountain said to wash away any weariness ('pray altar').",
+        exits={"north": "pollnivneach"},
+        bank=True, prayer_altar=True, desert=True, members=True),
+    "kalphite_hive": dict(name="Kalphite Hive",
+        desc="A honeycomb of waxy tunnels breathing hot, sweet air. "
+             "Workers boil out of the dark, and a deeper shaft descends "
+             "('down').",
+        exits={"out": "desert_road", "down": "kq_lair"},
+        monsters=["kalphite worker", "kalphite soldier"], hostile=True,
+        desert=True, members=True),
+    "kq_lair": dict(name="The Queen's Chamber",
+        desc="The heart of the hive. THE KALPHITE QUEEN towers over her "
+             "eggs, carapace glinting like wet amber.",
+        exits={"up": "kalphite_hive"},
+        monsters=["kalphite queen"], desert=True, members=True),
+    "duel_arena": dict(name="Duel Arena",
+        desc="A colosseum of hot sandstone east of Al Kharid. The "
+             "Duelmaster takes stakes and the crowd takes sides. "
+             "('duel <coins>' to fight under the rules of the house)",
+        exits={"west": "al_kharid_square"},
+        npc="duelmaster", desert=True, members=True),
+})
+ROOMS["al_kharid_square"]["exits"]["south"] = "shantay_pass"
+ROOMS["al_kharid_square"]["exits"]["arena"] = "duel_arena"
+ROOMS["al_kharid_square"]["desc"] += (" The Shantay Pass opens south, and "
+                                      "the Duel Arena roars east ('arena').")
+for _rm in ("shantay_pass", "desert_road", "pollnivneach", "nardah",
+            "kalphite_hive", "kq_lair", "duel_arena"):
+    REGIONS[_rm] = "AlKharid"
+TRAVEL_HUBS["pollnivneach"] = "pollnivneach"
+TRAVEL_NAMES.append("Pollnivneach")
+
+# the Nardah fountain washes away everything
+def _nardah_blessing(p):
+    p.hp = p.max_hp
+    p.poison = 0
+    p.stat_drain = {}
+
+
+# --- the Duel Arena -----------------------------------------------------------------
+_add_mob("arena duelist",
+    {"abonus": 15, "atktype": ["slash"], "att": 60, "cb": 70, "dstab": 30,
+     "dslash": 30, "dcrush": 30, "dmagic": 25, "drange": 30, "def": 50,
+     "hp": 70, "maxhit": 9, "str": 60, "weak": "crush"},
+    [], members=True, rank="hard")
+
+DUEL_RULES = ["no food", "no prayer", "no specials", "anything goes"]
+
+
+def talk_duelmaster(p):
+    say("Duelmaster: \"Stake your coins and fight my champions \u2014 "
+        "matched to your measure, under the rules of the house. Win and "
+        "I pay DOUBLE. 'duel <coins>' (minimum 100). Lose \u2014 or "
+        "yield \u2014 and the stake is mine.\"", "gold")
+
+
+QUEST_TALK["duelmaster"] = talk_duelmaster
+NPC_NAMES["duelmaster"] = "the Duelmaster"
+
+
+def cmd_duel(p, arg):
+    if not getattr(p, "members", False):
+        say("The Duel Arena is members-only. Type 'membership'.", "bmagenta")
+        return
+    if p.location != "duel_arena":
+        say("The Duel Arena is east of Al Kharid.", "grey")
+        return
+    if getattr(p, "combat", None) is not None:
+        say("You're already fighting!", "bred")
+        return
+    try:
+        stake = int(arg.strip().split()[0])
+    except (ValueError, IndexError):
+        say("Stake how much? 'duel 500' (minimum 100 coins).", "bcyan")
+        return
+    if stake < 100:
+        say("The Duelmaster sneers: \"Minimum stake is 100 coins.\"",
+            "grey")
+        return
+    if not p.has("coins", stake):
+        say(f"You don't have {stake:,} coins to stake.", "byellow")
+        return
+    p.take("coins", stake)
+    rule = random.choice(DUEL_RULES)
+    p.duel = {"stake": stake, "rule": rule}
+    banner("DUEL!", color="gold", line_color="gold")
+    say(f"Stake: {stake:,} coins.  House rule: {rule.upper()}.",
+        "gold", "bold")
+    _start_combat(p, "arena duelist")
+    # the house matches champions to your measure
+    m = p.combat
+    cb = p.combat_level()
+    m["attack"] = max(20, int(cb * 0.9))
+    m["defence"] = max(15, int(cb * 0.7))
+    m["max_hit"] = max(4, cb // 9)
+    m["hp"] = m["cur"] = max(40, p.max_hp - 10)
+    m["level"] = cb
+
+
+def _duel_loss(p):
+    duel = getattr(p, "duel", None)
+    p.duel = None
+    p.combat = None
+    _clear_status(p)
+    p.hp = max(p.hp, 1)
+    stake = duel["stake"] if duel else 0
+    say(f"The Duelmaster collects your stake of {stake:,} coins. The "
+        "medics drag you out \u2014 beaten, breathing, and poorer.",
+        "byellow")
+    p.location = "duel_arena"
+    return True
+
+
+HANDLERS["duel"] = cmd_duel
 
 
 # ===========================================================================
