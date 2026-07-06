@@ -2406,7 +2406,9 @@ def _combat_prompt(p):
     print()
     print("  " + paint(f"{m['name']}: ", "white")
           + bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred")
-          + paint("    You: ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 14))
+          + paint("    You: ", "white") + bar_meter(max(p.hp, 0), p.max_hp, 14)
+          + paint(f"  Pray {int(p.prayer_points)}/{int(p.prayer_max())}",
+                  "bmagenta"))
     status = []
     if getattr(p, "poison", 0) > 0:
         status.append(paint(f"poisoned ({p.poison})", "bgreen"))
@@ -2536,6 +2538,9 @@ def combat_action(p, raw):
         food = arg or (foods[0] if foods else "")
         if not food or not p.has(food):
             return say("You have no food to eat!", "grey")
+        if p.hp >= p.max_hp:
+            return say("You're already at full health — save the food.",
+                       "grey")
         cmd_eat(p, food)
     elif verb == "drink":
         pots = [i for i in p.inventory if ITEMS.get(i, {}).get("potion")]
@@ -3698,6 +3703,9 @@ def cmd_eat(p, arg):
     if "heal" not in ITEMS.get(item, {}):
         say(f"You can't eat {item}.")
         return
+    if p.hp >= p.max_hp:
+        say("You're already at full health — save the food.", "grey")
+        return
     if not p.has(item):
         say(f"You have no {item}.")
         return
@@ -4648,7 +4656,11 @@ def cmd_quests(p, _a):
         color = {"complete": "bgreen", "started": "byellow"}.get(st, "grey")
         print(f"  {title:20} " + paint(st, color)
               + paint(f"  ({QUEST_POINTS.get(key, 1)} qp)", "grey"))
-        if raw not in ("not_started", "complete"):     # current objective
+        if raw == "not_started":                        # where it begins
+            start = QUEST_STARTS.get(key)
+            if start:
+                print("    " + paint("start: " + start, "grey"))
+        elif raw != "complete":                         # current objective
             hint = QUEST_HINTS.get(key, {}).get(raw)
             if hint:
                 print("    " + paint("→ " + hint, "bcyan"))
@@ -5432,6 +5444,86 @@ def web_welcome(player):
     return _capture(_show)
 
 
+def _next_goal(p):
+    """The game's living compass: one suggestion matched to where you are.
+    Ordered from first steps to the end of everything."""
+    qp = quest_points(p)
+    cb = p.combat_level()
+    done = {k for k in ALL_QUESTS if _q(p, k) == "complete"}
+    if getattr(p, "kills", 0) == 0:
+        return ("Win your first fight — cows and chickens graze west of "
+                "Lumbridge. ('fight cow')")
+    if _q(p, "cooks_assistant") == "not_started":
+        return ("Start your first quest: the Cook is fretting in Lumbridge "
+                "Castle. ('talk')")
+    if cb < 12:
+        return ("Train your combat on the goblins in Lumbridge Forest — "
+                "'fight goblin auto' handles a few at once.")
+    if max(p.lvl(s) for s in ("woodcutting", "mining", "fishing")) < 15:
+        return ("Pick up a trade: chop trees, mine rocks or fish — and "
+                "batch the work ('mine copper 10', 'fish all').")
+    if len(done) < 3:
+        return ("Work your quest journal — 'quests' shows where every story "
+                "starts and what to do next.")
+    if cb < 25:
+        return ("The Stronghold of Security under Barbarian Village is "
+                "made for your level — and Al Kharid's mine pays well.")
+    if qp < 12:
+        return (f"Earn 12 quest points ({qp} so far) — the Champions' Guild "
+                "and the Black Knights' Fortress both demand a proven "
+                "adventurer.")
+    if _q(p, "dragon_slayer") != "complete":
+        return ("DRAGON SLAYER awaits — speak to the Guildmaster at the "
+                "Champions' Guild and earn the right to rune armour. "
+                "('quests' tracks each step)")
+    if not getattr(p, "members", False):
+        return ("The members' world is open in this tribute — type "
+                "'membership' and the map doubles.")
+    if p.lvl("slayer") < 20:
+        return ("Take a slayer task from Vannaka in Edgeville — focused "
+                "kills, bonus xp, and points for the reward shop.")
+    if cb < 70:
+        return ("Push toward combat 70 — green dragons in the Wilderness "
+                "and the Giant Mole under Falador Park are worthy prey.")
+    if "obor" not in getattr(p, "bosses", []):
+        return ("A giant key sometimes drops from hill giants — Obor waits "
+                "behind the locked door in Edgeville Dungeon.")
+    if _q(p, "priest_in_peril") != "complete":
+        return ("King Roald in Varrock Palace has work east of the Salve — "
+                "Morytania (and the Barrows) lie beyond.")
+    if getattr(p, "barrows_loots", 0) == 0:
+        return ("Six brothers stir beneath the Barrows mounds in Morytania. "
+                "Bring a spade, food, and prayers.")
+    if "tztok-jad" not in getattr(p, "bosses", []):
+        return ("The Fight Caves smoulder in the Karamja volcano — seven "
+                "waves, then TzTok-Jad, then the fire cape.")
+    if not all(g in getattr(p, "bosses", []) for g in
+               ("general graardor", "kree'arra", "k'ril tsutsaroth",
+                "commander zilyana")):
+        return ("The God Wars rage beneath the deep Wilderness ('chasm') — "
+                "four generals, four godswords.")
+    if not any(p.base_lvl(s) >= 99 for s in SKILLS):
+        return ("Chase your first level 99 — the Wise Old Man in Draynor "
+                "sells the cape to prove it.")
+    mastered = sum(1 for s in SKILLS if p.base_lvl(s) >= 99)
+    if mastered < len(SKILLS):
+        return (f"{mastered}/{len(SKILLS)} skills mastered. The grind is "
+                "the destination.")
+    return ("You have conquered Gielinor — every god, every skill, every "
+            "story. Thank you for playing.")
+
+
+def cmd_goal(p, _a):
+    banner("Next Up", color="bcyan", line_color="teal")
+    say("  " + _next_goal(p), "bcyan")
+    say("  ('quests', 'me' and 'stats' for the full picture)", "grey")
+
+
+HANDLERS["goal"] = cmd_goal
+HANDLERS["goals"] = cmd_goal
+HANDLERS["hint"] = cmd_goal
+
+
 def _resume_summary(player):
     """Print a 'welcome back' status block + current room (shared web/CLI)."""
     done = sum(1 for s in player.quests.values() if s == "complete")
@@ -5447,6 +5539,8 @@ def _resume_summary(player):
           + paint(f"    Style: {player.style}", "grey"))
     print("  " + paint("You were last at: ", "grey")
           + paint(ROOMS[player.location]["name"], "bcyan", "bold"))
+    print("  " + paint("Next up: ", "bcyan", "bold")
+          + paint(_next_goal(player), "bcyan"))
     print()
     cmd_look(player, "")
 
@@ -6551,6 +6645,25 @@ QUEST_HINTS["black_knights"] = {
                   "Falador), take a cabbage, and 'search' the fortress "
                   "('fortress' from the monastery)",
     "sabotaged": "report back to Sir Amik Varze at the White Knights' Castle",
+}
+
+# where every quest begins ('quests' shows this for unstarted ones)
+QUEST_STARTS = {
+    "cooks_assistant": "the Cook, Lumbridge Castle",
+    "sheep_shearer": "Farmer Fred, Lumbridge Farm",
+    "dorics_quest": "Doric, Falador",
+    "romeo_juliet": "Romeo, Varrock Square",
+    "vampyre_slayer": "Morgan, Draynor Village",
+    "restless_ghost": "Father Aereck, Lumbridge Church",
+    "rune_mysteries": "Sedridor, Wizard's Tower",
+    "imp_catcher": "Wizard Mizgog, Wizard's Tower",
+    "witch_potion": "Aggie, Draynor Village",
+    "ernest_chicken": "Professor Oddenstein, Draynor Manor",
+    "knights_sword": "the squire, White Knights' Castle",
+    "prince_ali": "Osman, Al Kharid Palace",
+    "black_knights": "Sir Amik Varze, White Knights' Castle (12 qp)",
+    "priest_in_peril": "King Roald, Varrock Palace",
+    "dragon_slayer": "the Guildmaster, Champions' Guild (12 qp)",
 }
 
 
@@ -7807,6 +7920,8 @@ def cmd_me(p, _a):
         print("  " + paint(f"{k:13}", "byellow") + paint(v, "white"))
     if bosses:
         say("  Bosses: " + ", ".join(sorted(bosses)), "grey")
+    print("  " + paint("Next up      ", "bcyan", "bold")
+          + paint(_next_goal(p), "bcyan"))
     say("  ('stats' for skills, 'quests', 'achievements', 'bestiary')", "grey")
 
 
@@ -8704,6 +8819,73 @@ def _cave_on_kill(p, target):
         say("TzHaar-Mej-Jal: \"You defeated TzTok-Jad?! Unbelievable, JalYt! "
             "Take this — you have earned it.\"", "orange", "bold")
         say("You receive a FIRE CAPE! ('equip fire cape')", "bgreen", "bold")
+
+
+# ===========================================================================
+#  DESCRIPTION POLISH  (rooms that accumulated bolted-on hints get rewritten
+#  as one clean paragraph — keep every 'keyword' players need)
+# ===========================================================================
+for _room, _desc in {
+    "draynor_village": (
+        "A run-down village where willows lean over the riverbank and "
+        "fishing spots bubble in the shallows. Morgan looks terrified, "
+        "Aggie's cauldron reeks, the Wise Old Man watches from his doorway, "
+        "and a seed stall does quiet business in the market. A squat jail "
+        "stands at the edge of town ('jail'), and the manor looms north."),
+    "falador_square": (
+        "The white-walled heart of Asgarnia. Doric the dwarf works his "
+        "forge near the square, the White Knights' Castle rises north "
+        "('castle'), Falador Park lies just beyond ('park'), and a mine "
+        "shaft drops away to the south."),
+    "port_sarim": (
+        "A busy port smelling of tar and fish. Klarense tends the Lady "
+        "Lumbridge at her mooring, boats run south to Karamja, and the "
+        "fishing shop serves the docks. Mudskipper Point lies along the "
+        "coast ('point')."),
+    "edgeville": (
+        "A frontier town on the Wilderness' doorstep, with a bank, a "
+        "furnace, and old yews south of the wall. Vannaka the Slayer "
+        "Master takes names here, Oziach's shabby hut sits by the river "
+        "('hut'), and a dungeon mouth gapes below ('down'). North, past "
+        "the ditch, the law runs out."),
+    "varrock_east_bank": (
+        "A bank on Varrock's east side. The road north leads to the Grand "
+        "Exchange, standing stones rise to the north-east ('altar'), and "
+        "the long road east runs for the River Salve and Paterdomus."),
+    "karamja_port": (
+        "A tropical island port under swaying banana palms ('pick'). The "
+        "dock heaves with lobster pots and harpoon fishers, a volcano "
+        "smokes inland ('volcano'), and Brimhaven lies east along the "
+        "coast."),
+    "rimmington": (
+        "A small mining village with Doric's spare anvil and a scatter of "
+        "copper, tin, iron and clay rocks. Your house plot sits west of "
+        "the village ('house'), and the sealed ruin of Melzar's Maze "
+        "stands to the north ('maze')."),
+    "grand_exchange": (
+        "Traders from across Gielinor shout prices under the great arches. "
+        "A bank is on site, and a sawmill creaks just north ('mill')."),
+    "monastery": (
+        "A peaceful monastery where monks tend the altar — and their "
+        "pockets jingle with coin. A path climbs toward the Mind Altar "
+        "('altar'), and to the north the Black Knights' Fortress glowers "
+        "on Ice Mountain ('fortress')."),
+    "deep_wilderness": (
+        "The lawless wastes stretch to the horizon. Dark warriors, giants "
+        "and green dragons roam the blasted ground, an agility course "
+        "sways over a ravine ('course'), the Chaos Temple squats to the "
+        "north ('temple') — and a frozen chasm yawns where the God Wars "
+        "rage below ('chasm')."),
+    "ardougne": (
+        "A grand split city. Market stalls line the square — baked goods, "
+        "silk, glittering gems — pickpockets work the crowds, and paladins "
+        "patrol the palace walls. Tilled farming patches sit north of the "
+        "market, and hunting grounds stretch south. (members)"),
+    "lumbridge_church": (
+        "A quiet stone church where Father Aereck tends the altar and "
+        "prayers are restored. Ancient yews shade the graveyard out back."),
+}.items():
+    ROOMS[_room]["desc"] = _desc
 
 
 if __name__ == "__main__":
