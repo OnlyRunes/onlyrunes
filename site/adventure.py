@@ -2787,6 +2787,9 @@ def cmd_pray(p, arg):
         p.active_prayers = []
         say("You close your mind and deactivate all prayers.", "grey")
         return
+    # players say 'ranged'; the old gods say 'missiles'
+    arg = arg.replace("protect from ranged", "protect from missiles") \
+             .replace("protect from range", "protect from missiles")
     if not arg:
         banner("Prayer", color="bmagenta", line_color="magenta")
         print("  " + paint(f"Prayer level {p.lvl('prayer')}", "bmagenta")
