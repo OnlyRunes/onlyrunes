@@ -567,7 +567,30 @@
       inp.click();
     };
 
+    // ---- auto-fight autopilot: the game plays a kill every beat ----
+    let autoTimer = null;
+    const cancelAuto = () => {
+      if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    };
+    const scheduleAuto = () => {
+      cancelAuto();
+      autoTimer = setTimeout(() => {
+        autoTimer = null;
+        if (mode !== "play" || !player || !mod) return;
+        let r;
+        try { r = JSON.parse(mod.web_autostep(player)); }
+        catch (e) { return; }
+        writeWithAnim(r.text, () => {
+          persist();
+          refreshUI();
+          if (r.auto) scheduleAuto();
+          else prompt();
+        });
+      }, 700);
+    };
+
     const handleLine = (line) => {
+      cancelAuto();                     // any input breaks off the autopilot
       if (mode === "load") {
         if (line.trim().toLowerCase().startsWith("y")) {
           try {
@@ -618,8 +641,10 @@
         catch (e) { w("\r\n\x1b[91mError: " + e + "\x1b[0m\r\n"); prompt(); return; }
         writeWithAnim(res.text, () => {
           persist();
-          if (res.alive) { prompt(); }
-          else {
+          if (res.alive) {
+            if (res.auto) { scheduleAuto(); }   // autopilot: no prompt yet
+            else { prompt(); }
+          } else {
             w("\r\n\x1b[90m(refresh the page to begin a new adventure)\x1b[0m\r\n");
             mode = "ended";
           }

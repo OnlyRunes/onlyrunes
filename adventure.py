@@ -4082,78 +4082,104 @@ def _handle_death(p):
     p.location = "lumbridge_castle"
 
 
-def _grind_fight(p, target, count):
-    """Auto-fight up to `count`, one kill at a time (shown), auto-chaining."""
+def _start_auto(p, target, count):
+    """Engage the autopilot: the game fights for you, one kill at a time.
+    In the browser each kill lands on a timer; in a terminal it's paced
+    with real seconds. Any command breaks it off."""
     rank = MONSTERS[target].get("rank", "medium")
-    banner(f"Auto-fight: {target} ×{count}", color="gold", line_color="brown")
+    p.auto = {"target": target, "count": count, "done": 0,
+              "xp": {}, "loot": {}}
+    banner(f"Auto-fight: {target} \u00d7{count}", color="gold", line_color="brown")
     print("  " + paint(f"rank: {rank}", RANK_COLOR.get(rank, "white"))
-          + paint("   (one at a time, automatically)", "grey"))
-    total_xp = {}
-    total_loot = {}
-    kills = 0
-    outcome = "done"
-    for n in range(1, count + 1):
-        # don't wade into another to-the-death fight while badly hurt
-        if p.hp <= p.max_hp * 0.4 and kills > 0:
-            outcome = "retreat"
-            break
-        before_xp = {s: p.skills[s] for s in SKILLS}
-        before_inv = {i: q for i, q in p.inventory.items()}
-        before_lvls = {s: p.lvl(s) for s in SKILLS}
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            res = fight_auto(p, target)
-            if res == "won":
-                _quest_on_kill(p, target)
-        if res == "died":
-            outcome = "died"
-            break
-        if res == "noattack":
-            outcome = "stopped"
-            break
-        if res == "fled":                 # ring of life pulled us out
-            outcome = "stopped"
-            break
-        kills += 1
-        gained = {s: p.skills[s] - before_xp[s] for s in SKILLS}
-        gx = int(sum(gained.values()))
-        ups = [s for s in SKILLS if p.lvl(s) > before_lvls[s]]
-        loot = {i: p.count(i) - before_inv.get(i, 0) for i in p.inventory
-                if p.count(i) - before_inv.get(i, 0) > 0}
-        for s, v in gained.items():
-            if v:
-                total_xp[s] = total_xp.get(s, 0) + v
-        for i, v in loot.items():
-            total_loot[i] = total_loot.get(i, 0) + v
-        loot_str = ", ".join(f"{i} x{v}" for i, v in loot.items()) or "no loot"
-        hp_col = "bgreen" if p.hp > p.max_hp * 0.5 else \
-            ("byellow" if p.hp > p.max_hp * 0.3 else "bred")
-        print(f"  [{n}/{count}] slew the {target}  "
-              + paint(f"+{gx} xp", "bcyan") + "  " + paint(loot_str, "byellow")
-              + "  " + paint(f"HP {max(p.hp,0)}/{p.max_hp}", hp_col))
-        if ups:
-            print("       " + paint("LEVEL UP: "
-                  + ", ".join(f"{s} {p.lvl(s)}" for s in ups), "byellow", "bold"))
-        if p.hp <= p.max_hp * 0.3:
-            outcome = "retreat"
-            break
+          + paint("   (the game fights for you \u2014 type anything to break "
+                  "off)", "grey"))
+    if WEB:
+        _auto_step(p)          # first kill now; the browser paces the rest
+        return
+    try:                       # terminal: live pacing with real seconds
+        while getattr(p, "auto", None):
+            _auto_step(p)
+            if getattr(p, "auto", None) and sys.stdout.isatty():
+                time.sleep(0.6)
+    except KeyboardInterrupt:
+        p.auto = None
+        say("\n  You break off the auto-fight.", "byellow")
 
+
+def _auto_step(p):
+    """One autopilot kill. Clears p.auto when the run ends."""
+    a = getattr(p, "auto", None)
+    if not a:
+        return
+    target, count = a["target"], a["count"]
+    if p.hp <= p.max_hp * 0.4 and a["done"] > 0:
+        _auto_finish(p, "retreat")
+        return
+    before_xp = {s: p.skills[s] for s in SKILLS}
+    before_inv = {i: q for i, q in p.inventory.items()}
+    before_lvls = {s: p.lvl(s) for s in SKILLS}
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        res = fight_auto(p, target)
+        if res == "won":
+            _quest_on_kill(p, target)
+    if res == "died":
+        _auto_finish(p, "died")
+        return
+    if res in ("noattack", "fled"):
+        print(buf.getvalue().strip()[-200:] if res == "noattack" else "",
+              end="")
+        _auto_finish(p, "stopped")
+        return
+    a["done"] += 1
+    n = a["done"]
+    gained = {s: p.skills[s] - before_xp[s] for s in SKILLS}
+    gx = int(sum(gained.values()))
+    ups = [s for s in SKILLS if p.lvl(s) > before_lvls[s]]
+    loot = {i: p.count(i) - before_inv.get(i, 0) for i in p.inventory
+            if p.count(i) - before_inv.get(i, 0) > 0}
+    for s, v in gained.items():
+        if v:
+            a["xp"][s] = a["xp"].get(s, 0) + v
+    for i, v in loot.items():
+        a["loot"][i] = a["loot"].get(i, 0) + v
+    loot_str = ", ".join(f"{i} x{v}" for i, v in loot.items()) or "no loot"
+    hp_col = "bgreen" if p.hp > p.max_hp * 0.5 else \
+        ("byellow" if p.hp > p.max_hp * 0.3 else "bred")
+    print(f"  [{n}/{count}] slew the {target}  "
+          + paint(f"+{gx} xp", "bcyan") + "  " + paint(loot_str, "byellow")
+          + "  " + paint(f"HP {max(p.hp,0)}/{p.max_hp}", hp_col))
+    if ups:
+        print("       " + paint("LEVEL UP: "
+              + ", ".join(f"{s} {p.lvl(s)}" for s in ups), "byellow", "bold"))
+    if n >= count:
+        _auto_finish(p, "done")
+    elif p.hp <= p.max_hp * 0.3:
+        _auto_finish(p, "retreat")
+
+
+def _auto_finish(p, outcome):
+    """Close out an autopilot run with the totals."""
+    a = getattr(p, "auto", None)
+    p.auto = None
+    if not a:
+        return
     print()
-    print(paint(f"  Defeated {kills} {target}(s).", "bgreen", "bold")
+    print(paint(f"  Defeated {a['done']} {a['target']}(s).", "bgreen", "bold")
           + paint(f"    HP {max(p.hp,0)}/{p.max_hp}", "white"))
-    if total_xp:
+    if a["xp"]:
         print("  " + paint("Total XP: ", "bcyan")
-              + ", ".join(f"{s} +{int(v)}" for s, v in total_xp.items()))
-    if total_loot:
+              + ", ".join(f"{s} +{int(v)}" for s, v in a["xp"].items()))
+    if a["loot"]:
         print("  " + paint("Total loot: ", "byellow")
-              + ", ".join(f"{i} x{v}" for i, v in sorted(total_loot.items())))
+              + ", ".join(f"{i} x{v}" for i, v in sorted(a["loot"].items())))
     if outcome == "retreat":
-        say("  You break off, badly wounded — rest or heal before continuing.",
-            "byellow")
+        say("  You break off, badly wounded \u2014 rest or heal before "
+            "continuing.", "byellow")
     elif outcome == "stopped":
-        say("  You stopped (out of ammo or runes).", "grey")
+        say("  The auto-fight stopped.", "grey")
     elif outcome == "died":
-        say(f"  You were slain after {kills} kill(s).", "bred")
+        say(f"  You were slain after {a['done']} kill(s).", "bred")
         _handle_death(p)
 
 
@@ -4197,14 +4223,7 @@ def cmd_fight(p, arg):
     if count > cap:
         say(f"Auto-fight is capped at {cap} for {rank}-rank monsters.", "grey")
     count = clamp(count, 1, cap)
-    if count == 1:
-        res = fight_auto(p, target)
-        if res == "died":
-            _handle_death(p)
-        elif res == "won":
-            _quest_on_kill(p, target)
-    else:
-        _grind_fight(p, target, count)
+    _start_auto(p, target, count)
 
 
 def cmd_collect(p, _a):
@@ -5333,6 +5352,9 @@ def _run_batch(p, handler, arg, n):
 def dispatch(player, raw):
     """Execute a single command line. Returns False if the player quit."""
     raw = raw.strip()
+    if getattr(player, "auto", None) is not None:
+        player.auto = None
+        say("(You break off the auto-fight.)", "byellow")
     # interactive combat captures every command (Enter = attack); quit still works
     if getattr(player, "combat", None) is not None:
         if raw.lower() in ("quit", "exit", "q"):
@@ -5572,11 +5594,22 @@ def web_resume(player):
 
 
 def web_command(player, line):
-    """Run one command; return JSON {text, alive} for the browser."""
+    """Run one command; return JSON {text, alive, auto} for the browser."""
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         alive = dispatch(player, line)
-    return json.dumps({"text": buf.getvalue(), "alive": alive})
+    return json.dumps({"text": buf.getvalue(), "alive": alive,
+                       "auto": getattr(player, "auto", None) is not None})
+
+
+def web_autostep(player):
+    """One autopilot kill, browser-paced. Same shape as web_command."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        _auto_step(player)
+        _check_achievements(player)
+    return json.dumps({"text": buf.getvalue(), "alive": True,
+                       "auto": getattr(player, "auto", None) is not None})
 
 
 def web_status(player):
