@@ -1696,6 +1696,7 @@ class Player:
         self.bank = {}
         self.equipment = {slot: None for slot in EQUIP_SLOTS}
         self.style = "melee"      # melee / ranged / magic
+        self.train = "shared"     # melee xp focus: attack/strength/defence/shared
         self.attack_type = "slash"  # melee sub-type: stab / slash / crush
         self.autocast = "wind strike"
         self.quests = {}          # quest_key -> stage string
@@ -2592,8 +2593,12 @@ def combat_action(p, raw):
 def _award_combat_xp(p, mhp):
     cxp = mhp * 4
     if p.style == "melee":
-        for s in ("attack", "strength", "defence"):
-            p.gain_xp(s, cxp / 3)
+        focus = getattr(p, "train", "shared")
+        if focus in ("attack", "strength", "defence"):
+            p.gain_xp(focus, cxp)          # aimed training
+        else:
+            for s in ("attack", "strength", "defence"):
+                p.gain_xp(s, cxp / 3)
     elif p.style == "ranged":
         p.gain_xp("ranged", cxp)
     elif p.style == "magic":
@@ -2999,6 +3004,8 @@ def cmd_travel(p, arg):
             p.gain_xp("magic", s["xp"])
             say(f"You cast {tp} and vanish in a flash of light!", "bblue")
             cmd_look(p, "")
+            _ambient(p)
+            _maybe_ambush(p)
             return
     # otherwise run there, spending energy (cheaper with agility)
     cost = _travel_cost(p)
@@ -3012,6 +3019,8 @@ def cmd_travel(p, arg):
         + paint(f"(-{cost} energy → {int(p.run_energy)}/100)", "grey"), "bgreen")
     p.location = room
     cmd_look(p, "")
+    _ambient(p)
+    _maybe_ambush(p)
 
 
 def cmd_rest(p, _a):
@@ -3152,6 +3161,8 @@ def cmd_go(p, arg):
             say(f"You pay the {toll} coin toll.")
     p.location = dest
     cmd_look(p, "")
+    _ambient(p)
+    _maybe_ambush(p)
 
 
 # skill -> theme colour for the stats screen
@@ -3243,8 +3254,10 @@ def cmd_inventory(p, _a):
     print(paint(f"  {n} item type(s)  ·  {p.coins:,} coins", "grey"))
     for item, q in sorted(p.inventory.items()):
         qty = f" x{q}" if q > 1 else ""
+        worth = ITEMS.get(item, {}).get("value", 0) * q
         print("  " + paint(item, item_rarity_color(item))
-              + paint(qty, "grey"))
+              + paint(qty, "grey")
+              + paint(f"   ({worth:,} gp)" if worth >= 50 else "", "grey"))
 
 
 def cmd_equipment(p, _a):
@@ -3348,6 +3361,8 @@ def cmd_chop(p, arg):
         p.add(product)
         say(f"You get some {product}.")
         p.gain_xp("woodcutting", xp)
+        if random.random() < 1 / 32:
+            _birds_nest(p)
         return True
     say("You fail to get any logs this time.")
     return False
@@ -4886,6 +4901,7 @@ def serialize(p):
     return {"name": p.name, "location": p.location, "skills": p.skills,
             "hp": p.hp, "inventory": p.inventory, "bank": p.bank,
             "equipment": p.equipment, "style": p.style,
+            "train": getattr(p, "train", "shared"),
             "attack_type": getattr(p, "attack_type", "slash"), "autocast": p.autocast,
             "quests": p.quests, "members": p.members,
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
@@ -4921,6 +4937,7 @@ def deserialize(data):
     eq.update(data.get("equipment", {}))
     p.equipment = eq
     p.style = data.get("style", "melee")
+    p.train = data.get("train", "shared")
     p.attack_type = data.get("attack_type", "slash")
     p.autocast = data.get("autocast", "wind strike")
     p.quests = data.get("quests", {})
@@ -4983,6 +5000,7 @@ def cmd_help(_p, _a):
         "Info": "me (character card), stats [skill], inventory (i), "
                 "equipment, quests, examine <item|creature>, bestiary",
         "Combat": "fight [monster], spec (special attack), "
+                  "train <attack|strength|defence|shared>, "
                   "style <melee|ranged|magic|stab|slash|crush>, "
                   "autocast <spell>, eat [food], drink [potion]",
         "Gear": "equip <item>, unequip <slot>, drop <item> [n|all]",
@@ -8873,6 +8891,137 @@ def _cave_on_kill(p, target):
         say("TzHaar-Mej-Jal: \"You defeated TzTok-Jad?! Unbelievable, JalYt! "
             "Take this — you have earned it.\"", "orange", "bold")
         say("You receive a FIRE CAPE! ('equip fire cape')", "bgreen", "bold")
+
+
+# ===========================================================================
+#  THE WORLD PUSHES BACK  (ambushes, training focus, nests, ambience)
+# ===========================================================================
+
+# --- melee training focus ----------------------------------------------------
+def cmd_train(p, arg):
+    """Aim your melee xp: attack (accurate), strength (aggressive),
+    defence (defensive), or shared."""
+    want = arg.strip().lower()
+    names = {"attack": "attack", "accurate": "attack",
+             "strength": "strength", "aggressive": "strength",
+             "str": "strength",
+             "defence": "defence", "defensive": "defence", "def": "defence",
+             "shared": "shared", "controlled": "shared", "all": "shared"}
+    if not want:
+        cur = getattr(p, "train", "shared")
+        say(f"Melee training focus: {cur}. "
+            "('train attack|strength|defence|shared' \u2014 ranged and magic "
+            "train themselves)", "bcyan")
+        return
+    focus = names.get(want)
+    if not focus:
+        say("Train what? attack (accurate), strength (aggressive), "
+            "defence (defensive), or shared.", "grey")
+        return
+    p.train = focus
+    if focus == "shared":
+        say("You balance your technique \u2014 melee xp is shared across "
+            "attack, strength and defence.", "bcyan")
+    else:
+        say(f"You focus your technique \u2014 melee kills now train {focus}.",
+            "bcyan")
+
+
+HANDLERS["train"] = cmd_train
+HANDLERS["focus"] = cmd_train
+
+# --- bird's nests (woodcutting's little jackpot) --------------------------------
+_NEST_LOOT = [("potato seed", 18), ("onion seed", 14), ("cabbage seed", 12),
+              ("guam seed", 12), ("marrentill seed", 8), ("tarromin seed", 6),
+              ("sweetcorn seed", 5), ("gold ring", 10), ("sapphire ring", 6),
+              ("emerald ring", 4), ("ranarr seed", 3), ("watermelon seed", 2)]
+
+
+def _birds_nest(p):
+    prize = random.choices([i for i, _ in _NEST_LOOT],
+                           weights=[w for _, w in _NEST_LOOT])[0]
+    p.add(prize)
+    print("  " + paint(f"\u2726 A bird's nest tumbles from the branches "
+                       f"\u2014 inside: {prize}!", "gold", "bold"))
+
+
+# --- hostile territory: some places attack YOU ----------------------------------
+for _rm in ("wilderness_edge", "deep_wilderness", "chaos_temple",
+            "wilderness_course", "varrock_sewers", "edgeville_dungeon",
+            "stronghold_security", "members_dungeon", "taverley_dungeon",
+            "melzars_maze", "icy_cavern", "draynor_manor",
+            "black_knights_fortress", "mort_myre", "crandor",
+            "karamja_volcano", "gwd_entrance", "bandos_stronghold",
+            "armadyl_eyrie", "zamorak_fortress", "saradomin_encampment"):
+    if _rm in ROOMS:
+        ROOMS[_rm]["hostile"] = True
+
+
+def _maybe_ambush(p):
+    """Entering hostile ground can start a fight on THEIR terms. Strong
+    adventurers get left alone (double a monster's level and it ignores
+    you), and bosses never lurk."""
+    r = ROOMS[p.location]
+    if not r.get("hostile") or getattr(p, "combat", None) is not None:
+        return
+    if getattr(p, "auto", None) is not None:
+        return
+    cb = p.combat_level()
+    lurkers = [m for m in r.get("monsters", [])
+               if not MONSTERS[m].get("boss")
+               and (MONSTERS[m].get("level") or 1) * 2 >= cb]
+    if not lurkers or random.random() > 0.30:
+        return
+    m = random.choice(lurkers)
+    say(f"\u26a0 Ambush! A {m} lunges at you from the shadows!",
+        "bred", "bold")
+    _start_combat(p, m)
+
+
+# --- ambient flavour on the road --------------------------------------------------
+REGION_AMBIENT = {
+    "Wilderness": [
+        "A cold wind drags ash across the wastes.",
+        "Somewhere out in the grey, something howls.",
+        "Old bones crunch underfoot.",
+    ],
+    "Morytania": [
+        "The mist thickens, and the light gives up early here.",
+        "Something watches from between the trees. It does not blink.",
+        "A church bell tolls, far off and wrong.",
+    ],
+    "Karamja": [
+        "Parrots shriek somewhere in the green.",
+        "The volcano grumbles in its sleep.",
+        "The air is thick enough to drink.",
+    ],
+    "AlKharid": [
+        "Heat shimmers off the dunes.",
+        "Sand hisses across the road.",
+    ],
+    "Kandarin": [
+        "Bees drone through the long grass.",
+        "A cart rattles by on the King's road.",
+    ],
+}
+
+
+REGIONS.update({
+    "giant_lair": "Edgeville", "mining_guild": "Falador",
+    "crafting_guild": "Falador", "monastery": "Edgeville",
+    "deep_wilderness": "Wilderness", "taverley": "Kandarin",
+    "taverley_dungeon": "Kandarin", "white_wolf_mountain": "Kandarin",
+    "catherby": "Kandarin", "seers_village": "Kandarin",
+    "ardougne": "Kandarin", "brimhaven": "Karamja",
+    "karamja_volcano": "Karamja", "crandor": "Crandor",
+    "elvarg_lair": "Crandor",
+})
+
+
+def _ambient(p):
+    lines = REGION_AMBIENT.get(REGIONS.get(p.location, ""))
+    if lines and random.random() < 0.22:
+        say(random.choice(lines), "grey")
 
 
 # ===========================================================================
