@@ -44,6 +44,7 @@ weapon,rune sword,38,26,-2,0,0,0,2,1,0,0,39,0,0,0,attack,40,,,1800,no
 weapon,magic longbow,0,0,0,0,71,0,0,0,0,0,0,0,0,0,ranged,50,,yes,2100,yes
 weapon,rune scimitar,7,45,-2,0,0,0,1,0,0,0,44,0,0,0,attack,40,,,2400,no
 weapon,rune crossbow,0,0,0,0,90,0,0,0,0,0,0,0,0,0,ranged,61,,,16200,yes
+weapon,excalibur,20,29,0,0,0,0,0,0,0,0,25,0,0,0,attack,30,Merlin's Crystal,,20000,yes
 weapon,dragon dagger,40,25,-4,1,0,0,0,0,1,0,40,0,0,0,attack,60,,,30000,yes
 weapon,hill giant club,-4,50,65,-4,0,0,0,0,0,-1,70,0,0,0,attack,40,,yes,45000,no
 weapon,dragon mace,40,-2,60,0,0,0,0,0,0,0,55,0,0,5,attack,60,,,50000,yes

@@ -51,6 +51,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Magic Longbow | · | · | · | · | +71 | · | · | · | · | · | · | · | · | · | ranged 50 | 2100 | M |  |
 | Rune Scimitar | +7 | +45 | -2 | · | · | · | +1 | · | · | · | +44 | · | · | · | attack 40 | 2400 |  |  |
 | Rune Crossbow | · | · | · | · | +90 | · | · | · | · | · | · | · | · | · | ranged 61 | 16200 | M |  |
+| Excalibur | +20 | +29 | · | · | · | · | · | · | · | · | +25 | · | · | · | attack 30 | 20000 | M | Q |
 | Dragon Dagger | +40 | +25 | -4 | +1 | · | · | · | · | +1 | · | +40 | · | · | · | attack 60 | 30000 | M |  |
 | Hill Giant Club | -4 | +50 | +65 | -4 | · | · | · | · | · | -1 | +70 | · | · | · | attack 40 | 45000 |  |  |
 | Dragon Mace | +40 | -2 | +60 | · | · | · | · | · | · | · | +55 | · | · | +5 | attack 60 | 50000 | M |  |
