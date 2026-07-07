@@ -63,6 +63,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100000 | M |  |
 | Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100000 | M |  |
 | Abyssal Whip | · | +82 | · | · | · | · | · | · | · | · | +82 | · | · | · | attack 70 | 120001 | M |  |
+| Pharaoh'S Sceptre | · | · | · | +5 | · | · | · | · | +3 | · | · | · | · | · | · | 250000 | M |  |
 | Smoke Battlestaff | · | · | · | +15 | · | · | · | · | +3 | · | · | · | +5 | · | magic 60 | 300000 | M |  |
 | Nightmare Staff | · | · | +25 | +16 | · | · | · | · | +5 | · | +30 | · | +15 | · | magic 65 | 350000 | M |  |
 | Granite Hammer | · | · | +57 | · | · | · | · | · | · | · | +56 | · | · | · | attack 50 | 400000 | M |  |

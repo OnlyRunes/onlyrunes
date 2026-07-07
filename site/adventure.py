@@ -1696,6 +1696,7 @@ class Player:
         self.bank = {}
         self.equipment = {slot: None for slot in EQUIP_SLOTS}
         self.style = "melee"      # melee / ranged / magic
+        self.spellbook = "standard"   # standard / ancient (Desert Treasure)
         self.train = "shared"     # melee xp focus: attack/strength/defence/shared
         self.attack_type = "slash"  # melee sub-type: stab / slash / crush
         self.autocast = "wind strike"
@@ -1940,6 +1941,9 @@ def _best_attack_type(item):
     return max(vals, key=vals.get) if any(v > 0 for v in vals.values()) else "slash"
 
 
+_LAST_SPELL = [None]        # spell cast this attack (for on-hit effects)
+
+
 def _player_attack(p, m):
     """Return (kind, atype, att_roll, max_hit) for one player attack, or None."""
     if p.style == "ranged":
@@ -1972,12 +1976,19 @@ def _player_attack(p, m):
         if not spell or spell["type"] != "combat":
             say("Set a combat spell with 'autocast <spell>'.")
             return None
+        if spell.get("book", "standard") != getattr(p, "spellbook",
+                                                    "standard"):
+            say(f"{p.autocast.title()} belongs to the "
+                f"{spell.get('book', 'standard')} spellbook — swap books "
+                "at its altar.")
+            return None
         if p.lvl("magic") < spell["lvl"]:
             say(f"You need magic level {spell['lvl']} to cast {p.autocast}.")
             return None
         if not _consume_runes(p, spell["runes"]):
             say(f"You don't have the runes for {p.autocast}.")
             return None
+        _LAST_SPELL[0] = p.autocast
         att_roll = (p.lvl("magic") + 9) * (p.equip_bonus("amagic") + 64)
         # magic-damage gear (ahrim's, nightmare staff) raises the spell cap
         max_hit = int(spell["max"] * (1 + p.equip_bonus("mdmg") / 100))
@@ -2070,6 +2081,10 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
                                f"then its stone knits back together! "
                                f"(finish it with a {m['finisher']})",
                                "byellow"))
+        if dmg > 0 and kind == "magic" and m["cur"] > 0 and _LAST_SPELL[0]:
+            _sp = SPELLS.get(_LAST_SPELL[0])
+            if _sp and _sp.get("effect"):
+                _sp["effect"](p, m, dmg)   # ancient magicks bite twice
         if dmg > 0 and barrows and m["cur"] > 0:
             _barrows_set_proc(p, m, barrows, kind, dmg)
         bar = bar_meter(max(m["cur"], 0), m["hp"], 18, fill_color="bred")
@@ -2879,6 +2894,8 @@ def cmd_pray(p, arg):
                 _nardah_blessing(p)
                 say("The fountain's blessing washes over you \u2014 wounds, "
                     "poison and weariness, all gone.", "bcyan")
+            if p.location == "jaldraocht":
+                _jaldraocht_altar(p)
         else:
             say("You need a prayer altar (e.g. Lumbridge Church) to recharge.")
         return
@@ -3259,6 +3276,8 @@ def cmd_go(p, arg):
     if ROOMS[p.location].get("inferno") and getattr(p, "inferno_wave", 0):
         p.inferno_wave = 0
         say("You leave the Inferno — your run is abandoned.", "byellow")
+    if p.location == "plunder_pyramid" and getattr(p, "plunder_tier", 0):
+        p.plunder_tier = 0          # daylight resets the pyramid's depths
     if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
         if _q(p, "prince_ali") == "complete":       # Prince Ali Rescue reward
             say("The gate guards recognise the prince's rescuer and wave you "
@@ -3431,7 +3450,9 @@ def cmd_style(p, arg):
         if s == "magic":
             # auto-pick the strongest spell you can cast, unless the player
             # has deliberately chosen something beyond the starter spell
+            book = getattr(p, "spellbook", "standard")
             castable = [n for n, d in SPELLS.items() if d["type"] == "combat"
+                        and d.get("book", "standard") == book
                         and p.lvl("magic") >= d["lvl"]]
             cur = SPELLS.get(p.autocast)
             if castable and (not cur or p.autocast == "wind strike"):
@@ -3447,9 +3468,16 @@ def cmd_style(p, arg):
 
 def cmd_autocast(p, arg):
     spell = arg.strip().lower()
+    book = getattr(p, "spellbook", "standard")
     if spell not in SPELLS or SPELLS[spell]["type"] != "combat":
-        combat_spells = [s for s in SPELLS if SPELLS[s]["type"] == "combat"]
-        say("Combat spells: " + ", ".join(combat_spells))
+        combat_spells = [s for s in SPELLS if SPELLS[s]["type"] == "combat"
+                         and SPELLS[s].get("book", "standard") == book]
+        say(f"Combat spells ({book} book): " + ", ".join(combat_spells))
+        return
+    if SPELLS[spell].get("book", "standard") != book:
+        say(f"{spell.title()} belongs to the "
+            f"{SPELLS[spell].get('book', 'standard')} spellbook — swap "
+            "books at its altar.", "byellow")
         return
     p.autocast = spell
     p.style = "magic"
@@ -4815,6 +4843,15 @@ def _quest_on_kill(p, target):
         say("DAD crashes down and the gate-hall stands open. Somewhere "
             "deeper, chains rattle — find Godric! ('talk godric')",
             "bgreen")
+    if _q(p, "desert_treasure") == "diamonds" and \
+            target in _DT_GUARDIANS:
+        gem, room, _s = _DT_GUARDIANS[target]
+        if not p.has(gem):
+            p.add(gem)
+            if target in ROOMS[room]["monsters"]:
+                ROOMS[room]["monsters"].remove(target)
+            say(f"From the guardian's ashes you take the {gem.upper()}!",
+                "bmagenta", "bold")
     if target == "the experiment" and _q(p, "fenkenstrain") == "creature":
         p.quests["fenkenstrain"] = "loose"
         if "the experiment" in ROOMS["fenkenstrain_castle"]["monsters"]:
@@ -5153,6 +5190,7 @@ def serialize(p):
             "equipment": p.equipment, "style": p.style,
             "train": getattr(p, "train", "shared"),
             "attack_type": getattr(p, "attack_type", "slash"), "autocast": p.autocast,
+            "spellbook": getattr(p, "spellbook", "standard"),
             "quests": p.quests, "members": p.members,
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
             "run_energy": p.run_energy, "spec_energy": getattr(p, "spec_energy", 100),
@@ -5200,6 +5238,7 @@ def deserialize(data):
     p.spec_energy = data.get("spec_energy", 100)
     p.cave_wave = data.get("cave_wave", 0)
     p.inferno_wave = data.get("inferno_wave", 0)
+    p.spellbook = data.get("spellbook", "standard")
     p.barrows = data.get("barrows", [])
     p.barrows_loots = data.get("barrows_loots", 0)
     p.actions = data.get("actions", 0)
@@ -5230,6 +5269,10 @@ def deserialize(data):
     if p.quests.get("fenkenstrain") == "creature" and \
             "the experiment" not in ROOMS["fenkenstrain_castle"]["monsters"]:
         ROOMS["fenkenstrain_castle"]["monsters"].append("the experiment")
+    if p.quests.get("desert_treasure") == "diamonds":
+        for _g, (_gem, _room, _s) in _DT_GUARDIANS.items():
+            if not p.has(_gem) and _g not in ROOMS[_room]["monsters"]:
+                ROOMS[_room]["monsters"].append(_g)
     return p
 
 
@@ -5490,7 +5533,9 @@ def cmd_devmax(p, arg):
     if p.style == "ranged" and p.equipment.get("ammo"):
         p.add(p.equipment["ammo"], 100000)          # a full quiver
     if p.style == "magic":
-        combat = [s for s, d in SPELLS.items() if d.get("type") == "combat"]
+        book = getattr(p, "spellbook", "standard")
+        combat = [s for s, d in SPELLS.items() if d.get("type") == "combat"
+                  and d.get("book", "standard") == book]
         if combat:
             p.autocast = max(combat, key=lambda s: SPELLS[s]["max"])
     banner("DEV MODE", color="bmagenta", line_color="purple")
@@ -11830,6 +11875,263 @@ ROOMS["slayer_tower_3"]["desc"] += (" A rift hums in the far wall "
 REGIONS.update({"kraken_cove": "Kandarin", "cerberus_lair": "Asgarnia",
                 "smoke_dungeon": "AlKharid", "abyssal_nexus": "Morytania",
                 "tower_roof": "Morytania"})
+
+
+# ===========================================================================
+#  DESERT DEEP  (Sophanem, Pyramid Plunder, Desert Treasure -> ANCIENTS)
+# ===========================================================================
+# South of Nardah the desert ends in Sophanem, city of the dead. Its great
+# pyramid is a thieving playground of eight ever-richer rooms — and an
+# archaeologist's dig points to four diamonds, four guardians, and the
+# pyramid of Jaldraocht, where Azzanadra's ANCIENT MAGICKS wait.
+
+# --- pyramid plunder ---------------------------------------------------------
+add_item("pharaoh's sceptre", 250000, members=True,
+         equip={"slot": "weapon", "amagic": 5, "dmagic": 3})
+EFFECT_NOTES["pharaoh's sceptre"] = ("the golden prize of Pyramid Plunder "
+                                     "— proof you robbed the dead blind")
+PLUNDER_TIERS = [(21, 60), (31, 90), (41, 125), (51, 165),
+                 (61, 215), (71, 275), (81, 350), (91, 450)]
+
+
+def cmd_plunder(p, arg):
+    if p.location != "plunder_pyramid":
+        say("The Sophanem pyramid is where the plundering happens.",
+            "grey")
+        return
+    if p.lvl("thieving") < 21:
+        say("You need thieving level 21 for even the first room.")
+        return None
+    tier = min(getattr(p, "plunder_tier", 0) + 1, len(PLUNDER_TIERS))
+    while tier > 1 and p.lvl("thieving") < PLUNDER_TIERS[tier - 1][0]:
+        tier -= 1
+    p.plunder_tier = tier
+    req, xp = PLUNDER_TIERS[tier - 1]
+    say(f"— Room {tier} of 8 —", "byellow", "bold")
+    if random.random() < 0.25:
+        dmg = min(random.randint(2, 6), max(0, p.hp - 1))
+        p.hp -= dmg
+        say(f"A snake strikes from an urn — it bites you for {dmg}!",
+            "green")
+    coins = random.randint(20 * tier, 90 * tier)
+    p.add("coins", coins)
+    say(f"You rifle the urns for {coins} coins.")
+    if random.random() < 0.10:
+        gem = random.choices(list(GEM_CUT), weights=[8, 5, 2, 1])[0]
+        p.add(gem)
+        say(f"Something glitters in the dust — an {gem}!", "bcyan")
+    if tier == len(PLUNDER_TIERS) and random.random() < 0.04:
+        p.add("pharaoh's sceptre")
+        say("Inside the golden sarcophagus lies the PHARAOH'S SCEPTRE!",
+            "gold", "bold")
+    p.gain_xp("thieving", xp)
+    return True
+
+
+HANDLERS["plunder"] = cmd_plunder
+BATCHABLE.add("plunder")
+
+# --- ancient magicks -----------------------------------------------------------
+def _anc_ice(p, m, dmg):
+    if not m.get("boss") or random.random() < 0.5:
+        m["stunned"] = True
+        print("  " + paint("Ice locks its limbs — FROZEN for a turn!",
+                           "bcyan"))
+
+
+def _anc_blood(p, m, dmg):
+    heal = max(1, dmg // 4)
+    p.hp = min(p.max_hp, p.hp + heal)
+    print("  " + paint(f"Blood magic feeds you. (+{heal} hp)", "bred"))
+
+
+def _anc_shadow(p, m, dmg):
+    if m["attack"] > 10:
+        m["attack"] = max(10, m["attack"] - 3)
+        print("  " + paint("Shadow saps its aim. (-3 attack)", "purple"))
+
+
+def _anc_smoke(p, m, dmg):
+    if m["cur"] > 1:
+        extra = min(random.randint(1, 4), m["cur"] - 1)
+        m["cur"] -= extra
+        print("  " + paint(f"The smoke chokes it for {extra} more.",
+                           "grey"))
+
+
+SPELLS.update({
+    "smoke rush":  {"type": "combat", "max": 13, "lvl": 50, "xp": 30,
+                    "book": "ancient", "effect": _anc_smoke,
+                    "runes": {"fire rune": 1, "air rune": 1,
+                              "chaos rune": 2, "death rune": 2}},
+    "shadow rush": {"type": "combat", "max": 14, "lvl": 52, "xp": 31,
+                    "book": "ancient", "effect": _anc_shadow,
+                    "runes": {"earth rune": 1, "chaos rune": 2,
+                              "death rune": 2}},
+    "blood rush":  {"type": "combat", "max": 15, "lvl": 56, "xp": 33,
+                    "book": "ancient", "effect": _anc_blood,
+                    "runes": {"chaos rune": 2, "death rune": 2,
+                              "blood rune": 1}},
+    "ice rush":    {"type": "combat", "max": 16, "lvl": 58, "xp": 34,
+                    "book": "ancient", "effect": _anc_ice,
+                    "runes": {"water rune": 2, "chaos rune": 2,
+                              "death rune": 2}},
+    "smoke blitz": {"type": "combat", "max": 23, "lvl": 74, "xp": 42,
+                    "book": "ancient", "effect": _anc_smoke,
+                    "runes": {"fire rune": 2, "air rune": 2,
+                              "death rune": 2, "blood rune": 2}},
+    "shadow blitz": {"type": "combat", "max": 24, "lvl": 76, "xp": 43,
+                     "book": "ancient", "effect": _anc_shadow,
+                     "runes": {"earth rune": 2, "death rune": 2,
+                               "blood rune": 2}},
+    "blood blitz": {"type": "combat", "max": 25, "lvl": 80, "xp": 45,
+                    "book": "ancient", "effect": _anc_blood,
+                    "runes": {"death rune": 2, "blood rune": 4}},
+    "ice blitz":   {"type": "combat", "max": 26, "lvl": 82, "xp": 46,
+                    "book": "ancient", "effect": _anc_ice,
+                    "runes": {"water rune": 3, "death rune": 2,
+                              "blood rune": 2}},
+})
+
+
+def _jaldraocht_altar(p):
+    stage = _q(p, "desert_treasure")
+    if stage == "pyramid":
+        _complete_banner("Desert Treasure")
+        say("You set the four diamonds in the altar's carvings. The "
+            "pyramid HUMS — and knowledge older than the gods floods "
+            "your mind. ANCIENT MAGICKS unlocked: smoke, shadow, blood "
+            "and ICE. ('autocast ice blitz' — the altar swaps your "
+            "spellbook any time)", "bmagenta", "bold")
+        for gem in ("smoke diamond", "shadow diamond", "blood diamond",
+                    "ice diamond"):
+            if p.has(gem):
+                p.take(gem)
+        p.quests["desert_treasure"] = "complete"
+        p.spellbook = "ancient"
+        p.gain_xp("magic", 20000)
+    elif stage == "complete":
+        p.spellbook = "ancient" if getattr(p, "spellbook", "standard") \
+            == "standard" else "standard"
+        say(f"The altar turns its pages through your mind — spellbook "
+            f"swapped to {p.spellbook.upper()}.", "bmagenta", "bold")
+    else:
+        say("The altar's carvings show four empty settings, cut for "
+            "diamonds. (Quest: Desert Treasure — the archaeologist at "
+            "Sophanem)", "grey")
+
+
+# --- the four guardians -----------------------------------------------------------
+_DT_GUARDIANS = {
+    "dessous": ("blood diamond", "mort_myre",
+        {"abonus": 30, "atktype": ["slash", "magic"], "att": 120,
+         "cb": 139, "dstab": 45, "dslash": 45, "dcrush": 40, "dmagic": 50,
+         "drange": 45, "def": 70, "hp": 105, "maxhit": 13, "str": 115,
+         "weak": "crush"}),
+    "kamil": ("ice diamond", "white_wolf_mountain",
+        {"abonus": 32, "atktype": ["magic"], "att": 125, "cb": 154,
+         "dstab": 50, "dslash": 50, "dcrush": 45, "dmagic": 55,
+         "drange": 50, "def": 75, "hp": 110, "maxhit": 14, "str": 120,
+         "weak": "slash"}),
+    "fareed": ("smoke diamond", "smoke_dungeon",
+        {"abonus": 34, "atktype": ["magic", "crush"], "att": 130,
+         "cb": 167, "dstab": 55, "dslash": 55, "dcrush": 50, "dmagic": 55,
+         "drange": 55, "def": 78, "hp": 115, "maxhit": 15, "str": 125,
+         "weak": "crush"}),
+    "damis": ("shadow diamond", "varrock_sewers",
+        {"abonus": 36, "atktype": ["crush"], "att": 135, "cb": 174,
+         "dstab": 55, "dslash": 55, "dcrush": 50, "dmagic": 60,
+         "drange": 55, "def": 80, "hp": 120, "maxhit": 15, "str": 130,
+         "weak": "crush"}),
+}
+for _g, (_gem, _room, _st) in _DT_GUARDIANS.items():
+    add_item(_gem, 5000, members=True)
+    _add_mob(_g, _st, [("coins", 500, 2000, 1.0)], members=True,
+             rank="elite")
+    MONSTERS[_g]["boss"] = True
+    MONSTERS[_g]["rank"] = "boss"
+    _BOSSES.add(_g)
+
+# --- the region --------------------------------------------------------------------
+ROOMS.update({
+    "sophanem": dict(name="Sophanem",
+        desc="The city of the dead, half-swallowed by sand. Priests "
+             "whisper behind cat-masks, the great plunder pyramid stands "
+             "open ('pyramid'), and an ARCHAEOLOGIST waves you over, "
+             "dusty with excitement. Jaldraocht rises west ('west').",
+        exits={"north": "nardah", "pyramid": "plunder_pyramid",
+               "west": "jaldraocht"},
+        npc="desert_treasure", desert=True, members=True),
+    "plunder_pyramid": dict(name="The Plunder Pyramid",
+        desc="Eight chambers of urns, snakes and sarcophagi, each richer "
+             "and meaner than the last. ('plunder' — batch it if you "
+             "dare; leaving resets your depth)",
+        exits={"out": "sophanem"},
+        desert=True, members=True),
+    "jaldraocht": dict(name="Pyramid of Jaldraocht",
+        desc="A black pyramid the sand refuses to touch. At its heart "
+             "stands Azzanadra's altar, carved with four empty settings "
+             "('pray altar').",
+        exits={"east": "sophanem"},
+        prayer_altar=True, desert=True, members=True),
+})
+ROOMS["nardah"]["exits"]["south"] = "sophanem"
+ROOMS["nardah"]["desc"] += (" South, the road dies at Sophanem, city of "
+                            "the dead.")
+REGIONS.update({"sophanem": "AlKharid", "plunder_pyramid": "AlKharid",
+                "jaldraocht": "AlKharid"})
+
+# --- Desert Treasure (3 QP) --------------------------------------------------------
+ALL_QUESTS["desert_treasure"] = "Desert Treasure"
+ALL_QUESTS["dragon_slayer"] = ALL_QUESTS.pop("dragon_slayer")  # capstone last
+QUEST_POINTS["desert_treasure"] = 3
+NPC_NAMES["desert_treasure"] = "The Archaeologist"
+QUEST_STARTS["desert_treasure"] = "the Archaeologist, Sophanem (south of " \
+                                  "Nardah)"
+QUEST_HINTS["desert_treasure"] = {
+    "diamonds": "slay the four guardians: Dessous (Mort Myre), Kamil "
+                "(White Wolf Mtn), Fareed (the smoke dungeon), Damis "
+                "(Varrock sewers)",
+    "pyramid": "carry the four diamonds to Jaldraocht and 'pray altar'",
+}
+
+
+def talk_archaeologist(p):
+    stage = _q(p, "desert_treasure")
+    if stage == "not_started":
+        banner("Quest Start: Desert Treasure", color="purple",
+               line_color="bmagenta")
+        say("The Archaeologist: \"Four DIAMONDS — blood, ice, smoke, "
+            "shadow — each guarded by something that should be dead. "
+            "Bring all four to the black pyramid west of here, and the "
+            "magic sealed inside is yours. I'd do it myself, but I've "
+            "got a trowel.\"")
+        p.quests["desert_treasure"] = "diamonds"
+        for g, (gem, room, _s) in _DT_GUARDIANS.items():
+            if g not in ROOMS[room]["monsters"]:
+                ROOMS[room]["monsters"].append(g)
+    elif stage == "diamonds":
+        have = [g for g, (gem, _r, _s) in _DT_GUARDIANS.items()
+                if p.has(gem)]
+        if len(have) == 4:
+            p.quests["desert_treasure"] = "pyramid"
+            say("The Archaeologist goes pale: \"All FOUR? Then go — "
+                "Jaldraocht, west of the city. Pray at the altar and "
+                "take what Azzanadra left.\"", "byellow")
+        else:
+            say(f"The Archaeologist: \"{len(have)}/4 diamonds. Dessous "
+                "haunts Mort Myre, Kamil the white peaks, Fareed the "
+                "smoke below Pollnivneach, Damis the sewers of "
+                "Varrock.\"")
+    elif stage == "pyramid":
+        say("The Archaeologist: \"Jaldraocht! West! Pray at the "
+            "altar!\"")
+    elif stage == "complete":
+        say("The Archaeologist: \"Careful with those spells — the last "
+            "owner is still technically alive.\"")
+
+
+QUEST_TALK["desert_treasure"] = talk_archaeologist
 
 
 # ===========================================================================
