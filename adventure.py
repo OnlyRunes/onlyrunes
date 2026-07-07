@@ -3173,6 +3173,14 @@ def cmd_go(p, arg):
     if ql and _q(p, ql[0]) not in ql[1]:
         say(ql[2], "byellow")
         return
+    sl = ROOMS[dest].get("stat_lock")   # guild doors weigh your levels
+    if sl:
+        skills, need, msg = sl
+        have = sum(p.lvl(s) for s in skills)
+        if have < need:
+            say(msg, "byellow")
+            say(f"  ({' + '.join(skills)} = {have}, needs {need}.)", "grey")
+            return
     gl = ROOMS[dest].get("gear_lock")   # some doors demand a disguise
     if gl:
         worn = set(filter(None, p.equipment.values()))
@@ -4744,6 +4752,17 @@ def _quest_on_kill(p, target):
             ROOMS["rock_crab_coast"]["monsters"].remove("the draugen")
         say("The Draugen unravels into cold sea-mist. Brundt will want to "
             "hear of this!", "bgreen")
+    if target == "dad" and _q(p, "troll_stronghold") == "started":
+        p.quests["troll_stronghold"] = "dad"
+        say("DAD crashes down and the gate-hall stands open. Somewhere "
+            "deeper, chains rattle — find Godric! ('talk godric')",
+            "bgreen")
+    if target == "cyclops" and random.random() < 0.20:
+        nxt = _best_defender(p) + 1     # each tier you hold earns the next
+        if nxt < len(DEFENDER_ORDER):
+            p.add(DEFENDER_ORDER[nxt])
+            say(f"The cyclops was guarding a {DEFENDER_ORDER[nxt].upper()}!",
+                "gold", "bold")
     _cave_on_kill(p, target)            # Fight Caves wave progression
     _barrows_on_kill(p, target)         # Barrows brothers put to rest
     duel = getattr(p, "duel", None)
@@ -5670,6 +5689,11 @@ def _next_goal(p):
     if cb < 70:
         return ("Push toward combat 70 — green dragons in the Wilderness "
                 "and the Giant Mole under Falador Park are worthy prey.")
+    if p.lvl("attack") + p.lvl("strength") >= 130 and \
+            not any(p.has(d) or d in p.equipment.values()
+                    or d in getattr(p, "bank", {}) for d in DEFENDER_ORDER):
+        return ("The Warriors' Guild in Burthorpe will weigh your arm now "
+                "— its cyclopes yield DEFENDERS, tier by tier up to rune.")
     if "obor" not in getattr(p, "bosses", []):
         return ("A giant key sometimes drops from hill giants — Obor waits "
                 "behind the locked door in Edgeville Dungeon.")
@@ -10010,6 +10034,243 @@ def talk_olaf(p):
 
 QUEST_TALK["fremennik_trials"] = talk_brundt
 QUEST_TALK["olaf"] = talk_olaf
+
+
+# ===========================================================================
+#  TROLL COUNTRY  (Burthorpe, the Warriors' Guild, and the Troll Stronghold)
+# ===========================================================================
+# Burthorpe sits north of Taverley. The Warriors' Guild weighs your arm at
+# the door (attack + strength 130) and its cyclopes yield DEFENDERS tier by
+# tier; Death Plateau climbs to the Troll Stronghold and the peak of
+# Trollheim — where a crack in the mountain drops into the God Wars.
+
+# --- defenders: off-hand weapons, earned in order ---------------------------
+_DEFENDER_TIERS = [("bronze", 3, 1, 300), ("iron", 5, 2, 700),
+                   ("steel", 8, 3, 1500), ("black", 11, 4, 3000),
+                   ("mithril", 14, 5, 6000), ("adamant", 17, 5, 12000),
+                   ("rune", 20, 6, 35000)]
+DEFENDER_ORDER = [f"{n} defender" for n, _a, _s, _v in _DEFENDER_TIERS]
+for _dn, _da, _ds, _dv in _DEFENDER_TIERS:
+    add_item(f"{_dn} defender", _dv, members=True,
+             equip={"slot": "shield", "astab": _da, "aslash": _da,
+                    "acrush": _da, "dstab": _da, "dslash": _da,
+                    "dcrush": _da, "str": _ds})
+EFFECT_NOTES["rune defender"] = ("an off-hand blade — attack bonuses in the "
+                                 "shield slot; guild cyclopes award each "
+                                 "tier in order")
+
+
+def _best_defender(p):
+    """Index of the best defender the player owns anywhere, or -1."""
+    best = -1
+    for i, d in enumerate(DEFENDER_ORDER):
+        if p.has(d) or d in p.equipment.values() \
+                or d in getattr(p, "bank", {}):
+            best = i
+    return best
+
+
+# --- creatures ---------------------------------------------------------------
+_add_mob("cyclops",
+    {"abonus": 15, "atktype": ["crush"], "att": 50, "cb": 56, "dstab": 25,
+     "dslash": 25, "dcrush": 25, "dmagic": 10, "drange": 25, "def": 45,
+     "hp": 60, "maxhit": 7, "str": 50, "weak": "stab"},
+    [("big bones", 1, 1, 1.0), ("coins", 20, 120, 0.7)],
+    members=True, rank="hard")
+_add_mob("mountain troll",
+    {"abonus": 20, "atktype": ["crush"], "att": 60, "cb": 69, "dstab": 40,
+     "dslash": 40, "dcrush": 30, "dmagic": 20, "drange": 40, "def": 55,
+     "hp": 60, "maxhit": 8, "str": 65, "weak": "slash"},
+    [("big bones", 1, 1, 1.0), ("coins", 20, 150, 0.7),
+     ("earth rune", 5, 20, 0.3), ("grimy ranarr", 1, 1, 0.04)],
+    members=True, rank="hard")
+_add_mob("thrower troll",
+    {"abonus": 25, "atktype": ["ranged"], "att": 65, "cb": 76, "dstab": 40,
+     "dslash": 40, "dcrush": 35, "dmagic": 25, "drange": 45, "def": 60,
+     "hp": 64, "maxhit": 9, "str": 70, "weak": "slash"},
+    [("big bones", 1, 1, 1.0), ("coins", 30, 180, 0.7),
+     ("law rune", 1, 4, 0.15)],
+    members=True, rank="hard")
+_add_mob("troll general",
+    {"abonus": 30, "atktype": ["crush"], "att": 90, "cb": 91, "dstab": 55,
+     "dslash": 55, "dcrush": 45, "dmagic": 30, "drange": 55, "def": 75,
+     "hp": 90, "maxhit": 11, "str": 90, "weak": "slash"},
+    [("big bones", 1, 1, 1.0), ("coins", 100, 500, 0.9),
+     ("nature rune", 5, 15, 0.3), ("grimy ranarr", 1, 2, 0.08)],
+    members=True, rank="elite")
+
+# --- DAD, the gatekeeper ------------------------------------------------------
+DAD_ART = r"""
+        ______
+     .-'      '-.
+    /  O      O  \
+   |      __      |
+   |  \________/  |
+    \   ______   /
+   .-'-.|      |.-'-.
+  /     '------'     \
+"""
+
+
+def _dad_intro(name):
+    return [_tint(DAD_ART, "grey"), _tint(DAD_ART, "byellow", "bold")]
+
+
+def _dad_death(name):
+    return [_tint(DAD_ART, "byellow"), _tint(DAD_ART, "grey", "dim")]
+
+
+def _dad_stagger(p, m, dmg):
+    p.stat_drain["defence"] = p.stat_drain.get("defence", 0) + 2
+    print("  " + paint("The slam rattles your bones! (-2 defence)", "bblue"))
+
+
+DAD_ATTACKS = [
+    {"label": "a haymaker like a falling pine", "verb": "swings",
+     "color": ("byellow", "bold"),
+     "builder": lambda: [_tint(DAD_ART, "byellow", "bold")],
+     "mult": 1.3, "w": 3, "atype": "crush"},
+    {"label": "a boulder the size of a cartwheel", "verb": "hurls",
+     "color": ("grey", "bold"),
+     "builder": lambda: [_tint(DAD_ART, "grey", "bold")],
+     "mult": 1.0, "w": 2, "atype": "ranged"},
+    {"label": "a ground-slam", "verb": "drops into",
+     "color": ("brown",),
+     "builder": lambda: [_tint(DAD_ART, "brown")],
+     "mult": 0.8, "w": 2, "atype": "crush", "effect": _dad_stagger},
+]
+
+_add_mob("dad",
+    {"abonus": 35, "atktype": ["crush", "ranged"], "att": 100, "cb": 101,
+     "dstab": 60, "dslash": 60, "dcrush": 50, "dmagic": 35, "drange": 60,
+     "def": 80, "hp": 120, "maxhit": 13, "str": 100, "weak": "slash"},
+    [("big bones", 1, 1, 1.0), ("coins", 300, 1200, 1.0),
+     ("law rune", 2, 8, 0.4)], members=True)
+MONSTERS["dad"]["boss"] = True
+MONSTERS["dad"]["rank"] = "boss"
+_BOSSES.add("dad")
+BOSS_TURN["dad"] = lambda p, m: _boss_take_turn(p, m, DAD_ATTACKS)
+BOSS_INTRO["dad"] = _dad_intro
+BOSS_DEATH["dad"] = _dad_death
+MONSTER_ART["dad"] = DAD_ART
+
+# --- the region ----------------------------------------------------------------
+ROOMS.update({
+    "burthorpe": dict(name="Burthorpe",
+        desc="A garrison town under the mountains, all drill-yards and "
+             "watchfires. Denulth of the Imperial Guard frets over his "
+             "maps, the Warriors' Guild stands open to proven arms "
+             "('guild'), and Death Plateau looms above ('plateau').",
+        exits={"south": "taverley", "guild": "warriors_guild",
+               "plateau": "death_plateau"},
+        bank=True, npc="troll_stronghold", members=True),
+    "warriors_guild": dict(name="Warriors' Guild",
+        desc="Ghommal's hall of clashing steel. In the cyclops pen, "
+             "one-eyed giants guard the armoury's DEFENDERS — hold your "
+             "best and slay for the next tier.",
+        exits={"out": "burthorpe"},
+        monsters=["cyclops"], members=True,
+        stat_lock=(["attack", "strength"], 130,
+                   "Ghommal bars the door: 'Da Warriors' Guild is for "
+                   "WARRIORS. Come back wiv attack an' strength what add "
+                   "to 130.'")),
+    "death_plateau": dict(name="Death Plateau",
+        desc="A wind-scoured shelf of scree where trolls squat among the "
+             "boulders — some of the boulders squat back. The stronghold "
+             "gate is carved into the cliff above ('up').",
+        exits={"down": "burthorpe", "up": "troll_stronghold"},
+        monsters=["mountain troll", "thrower troll"], hostile=True,
+        members=True),
+    "troll_stronghold": dict(name="Troll Stronghold",
+        desc="A reeking warren of tunnels behind a gate of lashed pines. "
+             "DAD fills the gate-hall, and somewhere deeper a prisoner "
+             "rattles his chains.",
+        exits={"out": "death_plateau", "peak": "trollheim"},
+        monsters=["dad", "troll general"], hostile=True, members=True,
+        npc="godric",
+        qlock=("troll_stronghold",
+               ("started", "dad", "freed", "complete"),
+               "The stronghold gate is barred from within. (Quest: Troll "
+               "Stronghold — speak to Denulth in Burthorpe)")),
+    "trollheim": dict(name="Trollheim",
+        desc="The roof of Troll Country. From the summit you can see half "
+             "of Gielinor — and a crack in the mountainside that breathes "
+             "frost, descending into the God Wars ('chasm').",
+        exits={"down": "troll_stronghold", "chasm": "gwd_entrance"},
+        members=True),
+})
+ROOMS["taverley"]["exits"]["north"] = "burthorpe"
+ROOMS["taverley"]["desc"] += " Burthorpe's watchfires glow to the north."
+ROOMS["gwd_entrance"]["exits"]["climb"] = "trollheim"
+REGIONS.update({"burthorpe": "Asgarnia", "warriors_guild": "Asgarnia",
+                "death_plateau": "Trollheim", "troll_stronghold": "Trollheim",
+                "trollheim": "Trollheim"})
+TRAVEL_HUBS["burthorpe"] = "burthorpe"
+TRAVEL_NAMES.append("Burthorpe")
+REGION_AMBIENT["Trollheim"] = [
+    "Wind screams over the scree.",
+    "Somewhere above, rock grinds on rock — or a troll laughs.",
+    "Loose stones clatter away down the mountainside.",
+]
+
+# --- Troll Stronghold (1 QP) ---------------------------------------------------
+ALL_QUESTS["troll_stronghold"] = "Troll Stronghold"
+ALL_QUESTS["dragon_slayer"] = ALL_QUESTS.pop("dragon_slayer")  # capstone last
+QUEST_POINTS["troll_stronghold"] = 1
+NPC_NAMES["troll_stronghold"] = "Denulth"
+NPC_NAMES["godric"] = "Godric"
+QUEST_STARTS["troll_stronghold"] = "Denulth, Burthorpe"
+QUEST_HINTS["troll_stronghold"] = {
+    "started": "climb Death Plateau and breach the Troll Stronghold ('up')",
+    "dad": "DAD is beaten — find Godric in the stronghold and set him free",
+    "freed": "return to Denulth in Burthorpe",
+}
+
+
+def talk_denulth(p):
+    stage = _q(p, "troll_stronghold")
+    if stage == "not_started":
+        banner("Quest Start: Troll Stronghold", color="purple",
+               line_color="bmagenta")
+        say("Denulth: \"The trolls have taken GODRIC of the Imperial Guard "
+            "and dragged him to their stronghold above Death Plateau. "
+            "Their gatekeeper is a brute they call DAD. Beat the troll, "
+            "breach the gate, bring our man home.\"")
+        p.quests["troll_stronghold"] = "started"
+    elif stage in ("started", "dad"):
+        say("Denulth: \"The stronghold is up the plateau — beat DAD at the "
+            "gate and find Godric!\"")
+    elif stage == "freed":
+        _complete_banner("Troll Stronghold")
+        say("Godric limps into the drill-yard behind you and the garrison "
+            "erupts. Denulth: \"The Guard owes you a debt.\" 8,000 "
+            "agility and strength xp awarded!", "gold", "bold")
+        p.gain_xp("agility", 8000)
+        p.gain_xp("strength", 8000)
+        p.quests["troll_stronghold"] = "complete"
+    elif stage == "complete":
+        say("Denulth: \"Burthorpe sleeps easier with you on the wall, "
+            "friend.\"")
+
+
+def talk_godric(p):
+    stage = _q(p, "troll_stronghold")
+    if stage == "dad":
+        say("You snap the crude troll chains. Godric: \"Thought I was "
+            "stew, friend. Let's get off this mountain — Denulth will "
+            "want to see us both.\"", "bgreen")
+        p.quests["troll_stronghold"] = "freed"
+    elif stage == "started":
+        say("Godric (from the shadows): \"The gatekeeper! Deal with DAD "
+            "first or we'll never walk out — 'fight dad'!\"")
+    elif stage in ("freed", "complete"):
+        say("The empty chains rattle in the draught.")
+    else:
+        say("A prisoner's voice echoes somewhere deeper in the warren.")
+
+
+QUEST_TALK["troll_stronghold"] = talk_denulth
+QUEST_TALK["godric"] = talk_godric
 
 
 # ===========================================================================

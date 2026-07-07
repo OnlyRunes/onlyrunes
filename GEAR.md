@@ -80,11 +80,18 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Bronze Kiteshield | · | · | · | -8 | -3 | +5 | +7 | +6 | -1 | +6 | · | · | · | · | defence 1 | 60 |  |  |
 | Iron Kiteshield | · | · | · | -8 | -3 | +8 | +10 | +9 | -1 | +9 | · | · | · | · | defence 1 | 120 |  |  |
 | Steel Kiteshield | · | · | · | -8 | -3 | +13 | +15 | +14 | -1 | +14 | · | · | · | · | defence 5 | 240 |  |  |
+| Bronze Defender | +3 | +3 | +3 | · | · | +3 | +3 | +3 | · | · | +1 | · | · | · | · | 300 | M |  |
 | Black Kiteshield | · | · | · | -8 | -3 | +17 | +19 | +18 | -1 | +18 | · | · | · | · | defence 10 | 420 |  |  |
+| Iron Defender | +5 | +5 | +5 | · | · | +5 | +5 | +5 | · | · | +2 | · | · | · | · | 700 | M |  |
 | Mithril Kiteshield | · | · | · | -8 | -3 | +18 | +22 | +20 | -1 | +20 | · | · | · | · | defence 20 | 720 |  |  |
 | Adamant Kiteshield | · | · | · | -8 | -3 | +27 | +31 | +29 | -1 | +29 | · | · | · | · | defence 30 | 1500 |  |  |
+| Steel Defender | +8 | +8 | +8 | · | · | +8 | +8 | +8 | · | · | +3 | · | · | · | · | 1500 | M |  |
+| Black Defender | +11 | +11 | +11 | · | · | +11 | +11 | +11 | · | · | +4 | · | · | · | · | 3000 | M |  |
 | Rune Kiteshield | · | · | · | -8 | -3 | +44 | +48 | +46 | -1 | +46 | · | · | · | · | defence 40 | 3600 |  |  |
 | Mirror Shield | · | · | · | · | · | +20 | +22 | +20 | +25 | +22 | · | · | · | · | defence 20 | 5000 | M |  |
+| Mithril Defender | +14 | +14 | +14 | · | · | +14 | +14 | +14 | · | · | +5 | · | · | · | · | 6000 | M |  |
+| Adamant Defender | +17 | +17 | +17 | · | · | +17 | +17 | +17 | · | · | +5 | · | · | · | · | 12000 | M |  |
+| Rune Defender | +20 | +20 | +20 | · | · | +20 | +20 | +20 | · | · | +6 | · | · | · | · | 35000 | M |  |
 | Dragon Kiteshield | · | · | · | -8 | -3 | +56 | +60 | +58 | -1 | +58 | · | · | · | · | defence 60 | 1600000 | M |  |
 
 ## Head
