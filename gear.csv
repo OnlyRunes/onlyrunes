@@ -56,7 +56,9 @@ weapon,dragon axe,0,38,32,0,0,0,0,0,0,0,42,0,0,0,woodcutting,61,,,61000,yes
 weapon,dragon scimitar,8,67,-2,0,0,0,1,0,0,0,66,0,0,0,attack,60,,,100000,yes
 weapon,dragon longsword,58,69,-2,0,0,0,3,2,0,0,71,0,0,0,attack,60,,,100000,yes
 weapon,abyssal whip,0,82,0,0,0,0,0,0,0,0,82,0,0,0,attack,70,,,120001,yes
+weapon,smoke battlestaff,0,0,0,15,0,0,0,0,3,0,0,0,5,0,magic,60,,,300000,yes
 weapon,nightmare staff,0,0,25,16,0,0,0,0,5,0,30,0,15,0,magic,65,,,350000,yes
+weapon,granite hammer,0,0,57,0,0,0,0,0,0,0,56,0,0,0,attack,50,,,400000,yes
 weapon,ahrim's staff,0,0,0,25,0,0,0,0,15,0,0,0,5,0,magic,70,,,700000,yes
 weapon,karil's crossbow,0,0,0,0,94,0,0,0,0,0,0,0,0,0,ranged,70,,yes,700000,yes
 weapon,torag's hammers,0,0,90,0,0,0,0,0,0,0,90,0,0,0,attack,70,,yes,700000,yes
@@ -65,7 +67,10 @@ weapon,verac's flail,70,0,88,0,0,0,0,0,0,0,84,0,0,3,attack,70,,yes,750000,yes
 weapon,dharok's greataxe,0,90,70,0,0,0,0,0,0,0,105,0,0,0,attack,70,,yes,800000,yes
 weapon,dragon pickaxe,28,0,22,0,0,0,0,0,0,0,30,0,0,0,attack,60,,,900000,yes
 weapon,saradomin sword,0,82,60,0,0,0,0,0,0,0,82,0,0,1,attack,70,,yes,1200000,yes
+weapon,trident of the seas,0,0,0,25,0,0,0,0,3,0,0,0,0,0,magic,75,,,1200000,yes
+weapon,abyssal dagger,75,40,0,0,0,0,0,0,0,0,75,0,0,0,attack,70,,,1500000,yes
 weapon,zamorakian spear,85,65,65,0,0,0,0,0,0,0,75,0,0,2,attack,70,,yes,2000000,yes
+weapon,abyssal bludgeon,0,0,102,0,0,0,0,0,0,0,85,0,0,0,strength,70,,yes,2000000,yes
 weapon,bandos godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,yes,3000000,yes
 weapon,armadyl godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,yes,3000000,yes
 weapon,zamorak godsword,0,95,80,0,0,0,0,0,0,0,110,0,0,0,attack,75,,yes,3000000,yes
@@ -213,15 +218,20 @@ amulet,amulet of strength,0,0,0,0,0,0,0,0,0,0,10,0,0,0,,,,,1800,no
 amulet,ruby amulet,4,4,4,0,0,0,0,0,0,0,2,0,0,0,,,,,2000,no
 amulet,diamond amulet,6,6,6,3,3,0,0,0,0,0,3,0,0,0,,,,,3500,no
 amulet,amulet of glory,10,10,10,10,10,3,3,3,3,3,6,0,0,3,,,,,17625,yes
+amulet,occult necklace,0,0,0,12,0,0,0,0,0,0,0,0,10,0,magic,70,,,800000,yes
 gloves,leather gloves,0,0,0,0,0,0,1,2,0,0,0,0,0,0,,,,,12,no
 gloves,hardleather gloves,1,1,1,1,1,1,1,1,1,1,1,0,0,0,,,,,30,no
 gloves,green d'hide vambraces,0,0,0,-10,8,1,2,2,2,0,0,0,0,0,ranged,40,,,2500,no
 gloves,red d'hide vambraces,0,0,0,-6,9,3,3,3,0,0,0,0,0,0,ranged,60,,,3500,yes
 gloves,mystic gloves,0,0,0,3,0,0,0,0,3,0,0,0,0,0,magic,40,,,10000,yes
+gloves,granite gloves,0,0,0,0,0,8,8,8,0,0,2,0,0,0,defence,50,,,120000,yes
 boots,leather boots,0,0,0,0,0,0,1,1,0,0,0,0,0,0,,,,,12,no
 boots,climbing boots,0,0,0,0,0,0,2,2,0,0,2,0,0,0,,,,,120,yes
 boots,mystic boots,0,0,0,3,0,0,0,0,3,0,0,0,0,0,magic,40,,,10000,yes
 boots,dragon boots,0,0,0,-3,-1,16,17,18,0,0,4,0,0,0,defence,60,,,20000,yes
+boots,eternal boots,0,0,0,8,0,5,5,0,8,0,0,0,0,0,magic,75,,,700000,yes
+boots,pegasian boots,0,0,0,0,12,5,5,0,0,12,0,0,0,0,ranged,75,,,800000,yes
+boots,primordial boots,0,0,0,0,0,12,12,12,0,0,5,0,0,0,defence,75,,,900000,yes
 ring,gold ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,315,no
 ring,ring of recoil,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,900,no
 ring,sapphire ring,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,900,no
@@ -236,6 +246,7 @@ ring,warrior ring,0,4,0,0,0,0,4,0,0,0,0,0,0,0,,,,,30000,yes
 ring,seers ring,0,0,0,6,0,0,0,0,6,0,0,0,0,0,,,,,38000,yes
 ring,archers ring,0,0,0,0,4,0,0,0,0,4,0,0,0,0,,,,,42000,yes
 ring,berserker ring,0,0,0,0,0,4,4,4,0,0,4,0,0,0,,,,,45000,yes
+ring,granite ring,0,0,0,0,0,4,0,8,0,0,2,0,0,0,,,,,150000,yes
 ring,tyrannical ring,0,0,4,0,0,0,0,8,0,0,0,0,0,0,,,,,400000,yes
 ring,treasonous ring,4,0,0,0,0,8,0,0,0,0,0,0,0,0,,,,,400000,yes
 ring,ring of the gods,0,0,0,0,0,2,2,2,0,0,0,0,0,4,,,,,500000,yes

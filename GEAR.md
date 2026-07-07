@@ -63,7 +63,9 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100000 | M |  |
 | Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100000 | M |  |
 | Abyssal Whip | · | +82 | · | · | · | · | · | · | · | · | +82 | · | · | · | attack 70 | 120001 | M |  |
+| Smoke Battlestaff | · | · | · | +15 | · | · | · | · | +3 | · | · | · | +5 | · | magic 60 | 300000 | M |  |
 | Nightmare Staff | · | · | +25 | +16 | · | · | · | · | +5 | · | +30 | · | +15 | · | magic 65 | 350000 | M |  |
+| Granite Hammer | · | · | +57 | · | · | · | · | · | · | · | +56 | · | · | · | attack 50 | 400000 | M |  |
 | Ahrim'S Staff | · | · | · | +25 | · | · | · | · | +15 | · | · | · | +5 | · | magic 70 | 700000 | M |  |
 | Karil'S Crossbow | · | · | · | · | +94 | · | · | · | · | · | · | · | · | · | ranged 70 | 700000 | M |  |
 | Torag'S Hammers | · | · | +90 | · | · | · | · | · | · | · | +90 | · | · | · | attack 70 | 700000 | M |  |
@@ -72,7 +74,10 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Dharok'S Greataxe | · | +90 | +70 | · | · | · | · | · | · | · | +105 | · | · | · | attack 70 | 800000 | M |  |
 | Dragon Pickaxe | +28 | · | +22 | · | · | · | · | · | · | · | +30 | · | · | · | attack 60 | 900000 | M |  |
 | Saradomin Sword | · | +82 | +60 | · | · | · | · | · | · | · | +82 | · | · | +1 | attack 70 | 1200000 | M |  |
+| Trident Of The Seas | · | · | · | +25 | · | · | · | · | +3 | · | · | · | · | · | magic 75 | 1200000 | M |  |
+| Abyssal Dagger | +75 | +40 | · | · | · | · | · | · | · | · | +75 | · | · | · | attack 70 | 1500000 | M |  |
 | Zamorakian Spear | +85 | +65 | +65 | · | · | · | · | · | · | · | +75 | · | · | +2 | attack 70 | 2000000 | M |  |
+| Abyssal Bludgeon | · | · | +102 | · | · | · | · | · | · | · | +85 | · | · | · | strength 70 | 2000000 | M |  |
 | Bandos Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
 | Armadyl Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
 | Zamorak Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
@@ -255,6 +260,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Ruby Amulet | +4 | +4 | +4 | · | · | · | · | · | · | · | +2 | · | · | · | · | 2000 |  |  |
 | Diamond Amulet | +6 | +6 | +6 | +3 | +3 | · | · | · | · | · | +3 | · | · | · | · | 3500 |  |  |
 | Amulet Of Glory | +10 | +10 | +10 | +10 | +10 | +3 | +3 | +3 | +3 | +3 | +6 | · | · | +3 | · | 17625 | M |  |
+| Occult Necklace | · | · | · | +12 | · | · | · | · | · | · | · | · | +10 | · | magic 70 | 800000 | M |  |
 
 ## Gloves
 
@@ -265,6 +271,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Green D'Hide Vambraces | · | · | · | -10 | +8 | +1 | +2 | +2 | +2 | · | · | · | · | · | ranged 40 | 2500 |  |  |
 | Red D'Hide Vambraces | · | · | · | -6 | +9 | +3 | +3 | +3 | · | · | · | · | · | · | ranged 60 | 3500 | M |  |
 | Mystic Gloves | · | · | · | +3 | · | · | · | · | +3 | · | · | · | · | · | magic 40 | 10000 | M |  |
+| Granite Gloves | · | · | · | · | · | +8 | +8 | +8 | · | · | +2 | · | · | · | defence 50 | 120000 | M |  |
 
 ## Boots
 
@@ -274,6 +281,9 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Climbing Boots | · | · | · | · | · | · | +2 | +2 | · | · | +2 | · | · | · | · | 120 | M |  |
 | Mystic Boots | · | · | · | +3 | · | · | · | · | +3 | · | · | · | · | · | magic 40 | 10000 | M |  |
 | Dragon Boots | · | · | · | -3 | -1 | +16 | +17 | +18 | · | · | +4 | · | · | · | defence 60 | 20000 | M |  |
+| Eternal Boots | · | · | · | +8 | · | +5 | +5 | · | +8 | · | · | · | · | · | magic 75 | 700000 | M |  |
+| Pegasian Boots | · | · | · | · | +12 | +5 | +5 | · | · | +12 | · | · | · | · | ranged 75 | 800000 | M |  |
+| Primordial Boots | · | · | · | · | · | +12 | +12 | +12 | · | · | +5 | · | · | · | defence 75 | 900000 | M |  |
 
 ## Ring
 
@@ -293,6 +303,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Seers Ring | · | · | · | +6 | · | · | · | · | +6 | · | · | · | · | · | · | 38000 | M |  |
 | Archers Ring | · | · | · | · | +4 | · | · | · | · | +4 | · | · | · | · | · | 42000 | M |  |
 | Berserker Ring | · | · | · | · | · | +4 | +4 | +4 | · | · | +4 | · | · | · | · | 45000 | M |  |
+| Granite Ring | · | · | · | · | · | +4 | · | +8 | · | · | +2 | · | · | · | · | 150000 | M |  |
 | Tyrannical Ring | · | · | +4 | · | · | · | · | +8 | · | · | · | · | · | · | · | 400000 | M |  |
 | Treasonous Ring | +4 | · | · | · | · | +8 | · | · | · | · | · | · | · | · | · | 400000 | M |  |
 | Ring Of The Gods | · | · | · | · | · | +2 | +2 | +2 | · | · | · | · | · | +4 | · | 500000 | M |  |
