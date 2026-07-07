@@ -8,6 +8,7 @@ weapon,bronze scimitar,1,7,-2,0,0,0,1,0,0,0,6,0,0,0,attack,1,,,40,no
 weapon,iron pickaxe,5,-2,3,0,0,0,1,0,0,0,7,0,0,0,attack,1,,,40,no
 weapon,steel dagger,8,4,-4,0,0,0,0,0,0,0,7,0,0,0,attack,5,,,40,no
 weapon,oak shortbow,0,0,0,0,14,0,0,0,0,0,0,0,0,0,ranged,5,,yes,40,no
+weapon,machete,0,7,0,0,0,0,0,0,0,0,6,0,0,0,,,,,40,yes
 weapon,iron sword,6,4,-2,0,0,0,2,1,0,0,7,0,0,0,attack,1,,,60,no
 weapon,black dagger,10,5,-4,0,0,0,0,0,0,0,7,0,0,0,attack,10,,,70,no
 weapon,willow shortbow,0,0,0,0,20,0,0,0,0,0,0,0,0,0,ranged,20,,yes,70,no
@@ -46,6 +47,7 @@ weapon,rune scimitar,7,45,-2,0,0,0,1,0,0,0,44,0,0,0,attack,40,,,2400,no
 weapon,rune crossbow,0,0,0,0,90,0,0,0,0,0,0,0,0,0,ranged,61,,,16200,yes
 weapon,excalibur,20,29,0,0,0,0,0,0,0,0,25,0,0,0,attack,30,Merlin's Crystal,,20000,yes
 weapon,dragon dagger,40,25,-4,1,0,0,0,0,1,0,40,0,0,0,attack,60,,,30000,yes
+weapon,toktz-xil-ak,47,40,0,0,0,0,0,0,0,0,49,0,0,0,attack,60,,,40000,yes
 weapon,hill giant club,-4,50,65,-4,0,0,0,0,0,-1,70,0,0,0,attack,40,,yes,45000,no
 weapon,dragon mace,40,-2,60,0,0,0,0,0,0,0,55,0,0,5,attack,60,,,50000,yes
 weapon,granite maul,0,0,81,0,0,0,0,0,0,0,79,0,0,0,attack,50,,yes,50000,yes
@@ -81,6 +83,7 @@ shield,mirror shield,0,0,0,0,0,20,22,20,25,22,0,0,0,0,defence,20,,,5000,yes
 shield,mithril defender,14,14,14,0,0,14,14,14,0,0,5,0,0,0,,,,,6000,yes
 shield,adamant defender,17,17,17,0,0,17,17,17,0,0,5,0,0,0,,,,,12000,yes
 shield,rune defender,20,20,20,0,0,20,20,20,0,0,6,0,0,0,,,,,35000,yes
+shield,toktz-ket-xil,0,0,0,0,0,40,42,38,0,42,5,0,0,0,defence,60,,,35000,yes
 shield,dragon kiteshield,0,0,0,-8,-3,56,60,58,-1,58,0,0,0,0,defence,60,,,1600000,yes
 head,chef's hat,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,1,no
 head,bronze med helm,0,0,0,0,0,3,4,3,-1,3,0,0,0,0,defence,1,,,18,no
@@ -123,6 +126,7 @@ body,adamant platebody,0,0,0,-30,-15,65,63,55,-6,63,0,0,0,0,defence,30,,,2500,no
 body,rune chainbody,0,0,0,0,0,37,53,61,0,37,0,0,0,0,defence,40,,,4500,no
 body,rune platebody,0,0,0,-30,-15,82,80,72,-6,80,0,0,0,0,defence,40,Dragon Slayer,,6000,no
 body,green d'hide body,0,0,0,-15,15,18,27,24,20,35,0,0,0,0,ranged,40,Dragon Slayer,,7800,no
+body,red d'hide body,0,0,0,-15,20,24,33,30,26,41,0,0,0,0,ranged,60,,,15000,yes
 body,mystic robe top,0,0,0,20,0,0,0,0,20,0,0,0,0,0,magic,40,,,120000,yes
 body,dragon chainbody,0,0,0,-15,0,81,93,98,-3,82,0,0,0,0,defence,60,,,250000,yes
 body,ahrim's robetop,0,0,0,22,0,35,30,40,60,0,0,0,0,0,magic,70,,,700000,yes
@@ -132,7 +136,7 @@ body,guthan's platebody,0,0,0,0,0,88,86,83,-5,88,0,0,0,0,defence,70,,,750000,yes
 body,verac's brassard,0,0,0,0,0,85,83,84,0,85,0,0,0,3,defence,70,,,750000,yes
 body,dharok's platebody,0,0,0,0,0,90,88,85,-5,90,0,0,0,0,defence,70,,,800000,yes
 body,bandos chestplate,0,0,0,0,0,92,90,88,-5,92,4,0,0,0,defence,65,,,2500000,yes
-body,armadyl chestplate,0,0,0,0,12,55,55,55,50,90,0,0,0,0,ranged,70,,,2500000,yes
+body,armadyl chestplate,0,0,0,0,33,55,55,55,50,90,0,0,0,0,ranged,70,,,2500000,yes
 legs,bronze platelegs,0,0,0,-21,-11,8,7,6,-4,7,0,0,0,0,defence,1,,,70,no
 legs,iron platelegs,0,0,0,-21,-11,11,10,10,-4,10,0,0,0,0,defence,1,,,140,no
 legs,steel platelegs,0,0,0,-21,-11,17,16,15,-4,16,0,0,0,0,defence,5,,,280,no
@@ -141,10 +145,11 @@ legs,mithril platelegs,0,0,0,-21,-11,24,22,20,-4,22,0,0,0,0,defence,20,,,840,no
 legs,adamant platelegs,0,0,0,-21,-11,33,31,29,-4,31,0,0,0,0,defence,30,,,1750,no
 legs,green d'hide chaps,0,0,0,-10,8,12,15,18,8,17,0,0,0,0,ranged,40,,,3900,no
 legs,rune platelegs,0,0,0,-21,-11,51,49,47,-4,49,0,0,0,0,defence,40,,,4200,no
+legs,red d'hide chaps,0,0,0,-8,10,12,15,14,12,20,0,0,0,0,ranged,60,,,7000,yes
 legs,mystic robe bottom,0,0,0,15,0,0,0,0,15,0,0,0,0,0,magic,40,,,80000,yes
 legs,dragon platelegs,0,0,0,-21,-11,68,66,63,-4,65,0,0,0,0,defence,60,,,270000,yes
 legs,bandos tassets,0,0,0,0,0,85,82,80,-5,85,2,0,0,0,defence,65,,,2000000,yes
-legs,armadyl chainskirt,0,0,0,0,8,50,50,50,45,85,0,0,0,0,ranged,70,,,2000000,yes
+legs,armadyl chainskirt,0,0,0,0,20,50,50,50,45,85,0,0,0,0,ranged,70,,,2000000,yes
 ammo,bronze arrow,0,0,0,0,0,0,0,0,0,0,0,7,0,0,,,,,2,no
 ammo,iron arrow,0,0,0,0,0,0,0,0,0,0,0,10,0,0,,,,,5,no
 ammo,steel arrow,0,0,0,0,0,0,0,0,0,0,0,16,0,0,,,,,8,no
@@ -161,6 +166,7 @@ cape,yellow cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,,,20,no
 cape,purple cape,0,0,0,0,0,0,1,1,0,2,0,0,0,0,,,,,20,no
 cape,team cape,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,50,no
 cape,cape of legends,0,0,0,0,0,7,7,7,7,7,1,0,0,0,,,,,1200,yes
+cape,obsidian cape,0,0,0,0,0,9,9,9,9,9,0,0,0,0,,,,,25000,yes
 cape,fire cape,1,1,1,1,1,11,11,11,11,11,4,0,0,2,,,,,50000,yes
 cape,attack cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,attack,99,,,99000,no
 cape,strength cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,strength,99,,,99000,no
@@ -185,6 +191,7 @@ cape,fletching cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,fletching,99,,,99000,no
 cape,farming cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,farming,99,,,99000,no
 cape,construction cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,construction,99,,,99000,no
 cape,hunter cape,0,0,0,0,0,9,9,9,9,9,0,0,0,1,hunter,99,,,99000,no
+cape,infernal cape,4,4,4,4,4,12,12,12,12,12,6,0,0,2,,,,,200000,yes
 amulet,gold amulet,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,,,350,no
 amulet,amulet of accuracy,4,4,4,4,4,0,0,0,0,0,0,0,0,0,,,,,500,no
 amulet,amulet of defence,0,0,0,0,0,7,7,7,7,7,0,0,0,0,,,,,600,no
@@ -200,6 +207,7 @@ amulet,amulet of glory,10,10,10,10,10,3,3,3,3,3,6,0,0,3,,,,,17625,yes
 gloves,leather gloves,0,0,0,0,0,0,1,2,0,0,0,0,0,0,,,,,12,no
 gloves,hardleather gloves,1,1,1,1,1,1,1,1,1,1,1,0,0,0,,,,,30,no
 gloves,green d'hide vambraces,0,0,0,-10,8,1,2,2,2,0,0,0,0,0,ranged,40,,,2500,no
+gloves,red d'hide vambraces,0,0,0,-6,9,3,3,3,0,0,0,0,0,0,ranged,60,,,3500,yes
 gloves,mystic gloves,0,0,0,3,0,0,0,0,3,0,0,0,0,0,magic,40,,,10000,yes
 boots,leather boots,0,0,0,0,0,0,1,1,0,0,0,0,0,0,,,,,12,no
 boots,climbing boots,0,0,0,0,0,0,2,2,0,0,2,0,0,0,,,,,120,yes

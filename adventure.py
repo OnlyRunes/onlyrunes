@@ -1708,6 +1708,7 @@ class Player:
         self.run_energy = 100     # 0-100; spent travelling, regained by acting
         self.spec_energy = 100    # 0-100; spent on special attacks
         self.cave_wave = 0        # Fight Caves progress (0 = no active run)
+        self.inferno_wave = 0     # Inferno progress (0 = no active run)
         self.barrows = []         # brothers slain this Barrows run
         self.barrows_loots = 0    # chests looted lifetime
         self.actions = 0          # lifetime action clock (crops grow on it)
@@ -2339,6 +2340,14 @@ def _resolve_monster_hit(p, m):
         handler = BOSS_TURN.get(m["name"])
         if handler:
             return handler(p, m)        # varied boss attacks (e.g. KBD breaths)
+    if m.get("dragonfire") and random.random() < 0.30:
+        say(f"The {m['name']} rears back and BREATHES FIRE!", "orange", "bold")
+        dmg = _dragonfire_adjust(p, random.randint(5, 18))
+        p.hp -= dmg
+        print("  " + paint(f"The flames wash over you for {dmg}.", "bred")
+              + "  " + paint("HP ", "white")
+              + bar_meter(max(p.hp, 0), p.max_hp, 18))
+        return "died" if p.hp <= 0 else None
     atype = _monster_atk_type(m)
     m_att_roll = (m["attack"] + 9) * (m.get("abonus", 0) + 64)
     p_def_roll = _player_def_roll(p, atype)
@@ -3049,6 +3058,9 @@ def cmd_travel(p, arg):
     if p.location == "fight_caves" and getattr(p, "cave_wave", 0):
         p.cave_wave = 0
         say("You leave the Fight Caves — your run is abandoned.", "byellow")
+    if ROOMS[p.location].get("inferno") and getattr(p, "inferno_wave", 0):
+        p.inferno_wave = 0
+        say("You leave the Inferno — your run is abandoned.", "byellow")
     # use a teleport spell if you can (runes + magic level) — no energy cost
     tp = _teleport_for(room)
     if tp:
@@ -3184,9 +3196,12 @@ def cmd_go(p, arg):
     gl = ROOMS[dest].get("gear_lock")   # some doors demand a disguise
     if gl:
         worn = set(filter(None, p.equipment.values()))
-        if any(i not in worn for i in gl[0]):
+        # each entry may offer alternatives: "fire cape|infernal cape"
+        if any(not any(alt in worn for alt in i.split("|")) for i in gl[0]):
             say(gl[1], "byellow")
-            say("  (You must be wearing: " + ", ".join(gl[0]) + ".)", "grey")
+            say("  (You must be wearing: "
+                + ", ".join(i.replace("|", " or ") for i in gl[0]) + ".)",
+                "grey")
             return
     kcl = ROOMS[dest].get("kc_lock")    # god doors drink kill count
     if kcl:
@@ -3207,9 +3222,21 @@ def cmd_go(p, arg):
             return
         p.take(key)
         say(f"You unlock the door with the {key}.", "bgreen")
+    fee = ROOMS[dest].get("fee")        # some doors charge admission
+    if fee:
+        cost, msg = fee
+        if not p.has("coins", cost):
+            say(msg, "byellow")
+            say(f"  (Entry costs {cost} coins — you can't pay.)", "grey")
+            return
+        p.take("coins", cost)
+        say(f"You pay the {cost} coin entry fee.", "grey")
     if p.location == "fight_caves" and getattr(p, "cave_wave", 0):
         p.cave_wave = 0             # walking out abandons the run
         say("You leave the Fight Caves — your run is abandoned.", "byellow")
+    if ROOMS[p.location].get("inferno") and getattr(p, "inferno_wave", 0):
+        p.inferno_wave = 0
+        say("You leave the Inferno — your run is abandoned.", "byellow")
     if ROOMS[p.location].get("toll") and dest == "al_kharid_square":
         if _q(p, "prince_ali") == "complete":       # Prince Ali Rescue reward
             say("The gate guards recognise the prince's rescuer and wave you "
@@ -3462,6 +3489,8 @@ def cmd_mine(p, arg):
         return
     say(f"You swing your pickaxe at the {rock} rock...")
     if random.random() < gather_chance(p.lvl("mining"), req):
+        if rock == "gem rock":              # Shilo's mine: every strike a gem
+            product = random.choices(list(GEM_CUT), weights=[8, 5, 2, 1])[0]
         p.add(product)
         say(f"You manage to mine some {product}.")
         p.gain_xp("mining", xp)
@@ -4168,6 +4197,9 @@ def _handle_death(p):
     if getattr(p, "cave_wave", 0):
         p.cave_wave = 0
         say("Your Fight Caves run is over.", "byellow")
+    if getattr(p, "inferno_wave", 0):
+        p.inferno_wave = 0
+        say("Your Inferno run ends in the flames.", "byellow")
     p.hp = p.max_hp
     p.location = "lumbridge_castle"
 
@@ -4764,6 +4796,7 @@ def _quest_on_kill(p, target):
             say(f"The cyclops was guarding a {DEFENDER_ORDER[nxt].upper()}!",
                 "gold", "bold")
     _cave_on_kill(p, target)            # Fight Caves wave progression
+    _inferno_on_kill(p, target)         # Inferno wave progression
     _barrows_on_kill(p, target)         # Barrows brothers put to rest
     duel = getattr(p, "duel", None)
     if duel and target == "arena duelist":
@@ -4866,6 +4899,8 @@ ACHIEVEMENTS = {
     "hive_slayer": ("Hive Slayer", "Defeat both bodies of the Kalphite "
                     "Queen."),
     "king_slayer": ("Kingsbane", "Defeat all three Dagannoth Kings."),
+    "infernal": ("The Infernal", "Defeat TzKal-Zuk at the bottom of the "
+                 "Inferno."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4915,6 +4950,8 @@ def _earned_achievements(p):
     if all(k in bosses for k in ("dagannoth rex", "dagannoth prime",
                                  "dagannoth supreme")):
         got.add("king_slayer")
+    if "tzkal-zuk" in bosses:
+        got.add("infernal")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -5074,6 +5111,7 @@ def serialize(p):
             "prayer_points": p.prayer_points, "equipped_prayers": p.active_prayers,
             "run_energy": p.run_energy, "spec_energy": getattr(p, "spec_energy", 100),
             "cave_wave": getattr(p, "cave_wave", 0),
+            "inferno_wave": getattr(p, "inferno_wave", 0),
             "barrows": list(getattr(p, "barrows", [])),
             "barrows_loots": getattr(p, "barrows_loots", 0),
             "actions": getattr(p, "actions", 0),
@@ -5115,6 +5153,7 @@ def deserialize(data):
     p.run_energy = data.get("run_energy", 100)
     p.spec_energy = data.get("spec_energy", 100)
     p.cave_wave = data.get("cave_wave", 0)
+    p.inferno_wave = data.get("inferno_wave", 0)
     p.barrows = data.get("barrows", [])
     p.barrows_loots = data.get("barrows_loots", 0)
     p.actions = data.get("actions", 0)
@@ -5756,6 +5795,10 @@ def _next_goal(p):
                 "fells Rex, arrows fell Prime, steel fells Supreme, and "
                 "their rings have no equal. (Fremennik Trials first \u2014 "
                 "Rellekka, north of Seers')")
+    if "tzkal-zuk" not in getattr(p, "bosses", []):
+        return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
+                "volcano) \u2014 wear your fire cape in, survive eight waves, "
+                "and TzKal-Zuk guards the infernal cape at the bottom.")
     if not any(p.base_lvl(s) >= 99 for s in SKILLS):
         return ("Chase your first level 99 — the Wise Old Man in Draynor "
                 "sells the cape to prove it.")
@@ -5984,6 +6027,14 @@ def web_room_actions(player):
                         "actions": [{"label": "Next wave", "cmd": "next"}]})
         else:
             out.append({"name": "the Fight Caves", "kind": "monster",
+                        "actions": [{"label": "Challenge", "cmd": "challenge"}]})
+    if r.get("inferno"):
+        if getattr(player, "inferno_wave", 0):
+            out.append({"name": f"wave {player.inferno_wave}",
+                        "kind": "monster",
+                        "actions": [{"label": "Next wave", "cmd": "next"}]})
+        else:
+            out.append({"name": "the Inferno", "kind": "monster",
                         "actions": [{"label": "Challenge", "cmd": "challenge"}]})
     if r.get("barrows"):
         slain = set(getattr(player, "barrows", []))
@@ -7123,7 +7174,8 @@ def _jad_take_turn(p, m):
     if style:
         animate([_tint(JAD_ART, "orange", "bold"), _tint(JAD_ART, "bred", "bold")],
                 delay=0.12, center=True)
-        say(f"TzTok-Jad unleashes his {style} attack!", "orange", "bold")
+        say(f"{m['name'].title()} unleashes his {style} attack!",
+            "orange", "bold")
         if p.prayer_protects(style):
             print("  " + paint("Your prayer holds — the attack breaks "
                                "harmlessly over you!", "bcyan"))
@@ -7134,8 +7186,8 @@ def _jad_take_turn(p, m):
                                "bred") + "  " + paint("HP ", "white")
                   + bar_meter(max(p.hp, 0), p.max_hp, 18))
     else:
-        say("TzTok-Jad sizes you up, embers dripping from his jaws...",
-            "orange")
+        say(f"{m['name'].title()} sizes you up, embers dripping from his "
+            "jaws...", "orange")
     nxt = random.choice(["magic", "ranged", "melee"])
     m["jad_next"] = nxt
     print("  " + paint(JAD_CUES[nxt], "byellow"))
@@ -7195,6 +7247,8 @@ def _cave_start_wave(p):
 
 
 def cmd_challenge(p, _a):
+    if ROOMS[p.location].get("inferno"):
+        return _inferno_challenge(p)
     if p.location != "fight_caves":
         say("There's nothing to challenge here.", "grey")
         return
@@ -7210,6 +7264,8 @@ def cmd_challenge(p, _a):
 
 
 def cmd_next(p, _a):
+    if ROOMS[p.location].get("inferno") and getattr(p, "inferno_wave", 0):
+        return _inferno_start_wave(p)
     if p.location != "fight_caves" or not getattr(p, "cave_wave", 0):
         say("Nothing to continue. (In the Fight Caves, 'challenge' starts "
             "a run.)", "grey")
@@ -8947,10 +9003,10 @@ add_item("bandos tassets", 2000000, members=True, equip={
     "dstab": 85, "dslash": 82, "dcrush": 80, "dmagic": -5, "drange": 85,
     "str": 2, "slot": "legs", "req": {"defence": 65}})
 add_item("armadyl chestplate", 2500000, members=True, equip={
-    "arange": 12, "dstab": 55, "dslash": 55, "dcrush": 55, "dmagic": 50,
+    "arange": 33, "dstab": 55, "dslash": 55, "dcrush": 55, "dmagic": 50,
     "drange": 90, "slot": "body", "req": {"ranged": 70}})
 add_item("armadyl chainskirt", 2000000, members=True, equip={
-    "arange": 8, "dstab": 50, "dslash": 50, "dcrush": 50, "dmagic": 45,
+    "arange": 20, "dstab": 50, "dslash": 50, "dcrush": 50, "dmagic": 45,
     "drange": 85, "slot": "legs", "req": {"ranged": 70}})
 add_item("zamorakian spear", 2000000, members=True, equip={
     "astab": 85, "aslash": 65, "acrush": 65, "str": 75, "prayer": 2,
@@ -10533,6 +10589,375 @@ ROOMS["camelot"]["npc"] = "merlins_crystal"
 ROOMS["catherby"]["npc"] = "lady_lake"
 ROOMS["catherby"]["desc"] += (" A woman stands at the water's edge, "
                               "watching the lake.")
+
+
+# ===========================================================================
+#  KARAMJA COMPLETION  (the deep jungle, dragon dungeon, and THE INFERNO)
+# ===========================================================================
+# South of Brimhaven the jungle swallows the road: Tai Bwo Wannai's
+# tribesmen poison their spears, Shilo Village mines nothing but gems, and
+# Saniboch charges admission to a dungeon full of dragons. Inside the
+# volcano, the TzHaar city Mor Ul Rek trades in tokkul — and beneath it
+# the INFERNO burns: eight waves, then TzKal-Zuk, then the infernal cape.
+
+# --- red dragonhide line (ranged tier above green) ---------------------------
+add_item("red dragonhide", 160, members=True)
+add_item("red dragon leather", 200, members=True)
+add_item("red d'hide body", 15000, members=True,
+         equip={"amagic": -15, "arange": 20, "dstab": 24, "dslash": 33,
+                "dcrush": 30, "dmagic": 26, "drange": 41, "slot": "body",
+                "req": {"ranged": 60, "defence": 40}})
+add_item("red d'hide chaps", 7000, members=True,
+         equip={"amagic": -8, "arange": 10, "dstab": 12, "dslash": 15,
+                "dcrush": 14, "dmagic": 12, "drange": 20, "slot": "legs",
+                "req": {"ranged": 60}})
+add_item("red d'hide vambraces", 3500, members=True,
+         equip={"amagic": -6, "arange": 9, "dstab": 3, "dslash": 3,
+                "dcrush": 3, "slot": "gloves", "req": {"ranged": 60}})
+TAN_HIDES["red dragonhide"] = ("red dragon leather", 40)
+CRAFT_RECIPES.update({
+    "red d'hide vambraces": ("red dragon leather", 1, 73, 156),
+    "red d'hide chaps": ("red dragon leather", 2, 75, 312),
+    "red d'hide body": ("red dragon leather", 3, 77, 468),
+})
+
+# --- obsidian gear (tokkul-priced in Mor Ul Rek) ------------------------------
+add_item("obsidian cape", 25000, members=True,
+         equip={"dstab": 9, "dslash": 9, "dcrush": 9, "dmagic": 9,
+                "drange": 9, "slot": "cape"})
+add_item("toktz-xil-ak", 40000, members=True,
+         equip={"slot": "weapon", "astab": 47, "aslash": 40, "str": 49,
+                "req": {"attack": 60}})
+add_item("toktz-ket-xil", 35000, members=True,
+         equip={"slot": "shield", "dstab": 40, "dslash": 42, "dcrush": 38,
+                "drange": 42, "str": 5, "req": {"defence": 60}})
+add_item("infernal cape", 200000, members=True,
+         equip={"astab": 4, "aslash": 4, "acrush": 4, "amagic": 4,
+                "arange": 4, "dstab": 12, "dslash": 12, "dcrush": 12,
+                "dmagic": 12, "drange": 12, "str": 6, "prayer": 2,
+                "slot": "cape"})
+EFFECT_NOTES["infernal cape"] = ("the greatest cape in Gielinor, quenched "
+                                 "in TzKal-Zuk's own fire")
+TOKKUL_SHOP = {"obsidian cape": 9000, "toktz-ket-xil": 12000,
+               "toktz-xil-ak": 15000}
+
+
+def cmd_redeem(p, arg):
+    if p.location != "mor_ul_rek":
+        say("Only the TzHaar of Mor Ul Rek trade in tokkul.", "grey")
+        return
+    want = arg.strip().lower()
+    if not want:
+        say("The TzHaar armoury (pay in tokkul — 'redeem <item>'):",
+            "orange", "bold")
+        for it, cost in TOKKUL_SHOP.items():
+            say(f"  {it:<16} {cost:,} tokkul", "grey")
+        say(f"  (You carry {p.count('tokkul'):,} tokkul.)", "grey")
+        return
+    match = next((it for it in TOKKUL_SHOP if want in it), None)
+    if not match:
+        say("The TzHaar shrugs: no such ware. ('redeem' lists the "
+            "armoury.)")
+        return
+    cost = TOKKUL_SHOP[match]
+    if p.count("tokkul") < cost:
+        say(f"TzHaar-Hur: \"{cost:,} tokkul. You carry "
+            f"{p.count('tokkul'):,}. Go fight, JalYt.\"", "byellow")
+        return
+    p.take("tokkul", cost)
+    p.add(match)
+    say(f"You trade {cost:,} tokkul for the {match.upper()}.", "bgreen",
+        "bold")
+    return True
+
+
+HANDLERS["redeem"] = cmd_redeem
+HANDLERS["exchange"] = cmd_redeem
+
+# --- jungle creatures + dragons -----------------------------------------------
+def _tribes_poison(p, m, dmg):
+    if dmg > 0 and not getattr(p, "poison", 0) and random.random() < 0.4:
+        p.poison = 2
+        print("  " + paint("The spear's coating burns — you are POISONED!",
+                           "green"))
+
+
+_add_mob("tribesman",
+    {"abonus": 10, "atktype": ["stab"], "att": 30, "cb": 32, "dstab": 15,
+     "dslash": 15, "dcrush": 15, "dmagic": 5, "drange": 15, "def": 25,
+     "hp": 32, "maxhit": 4, "str": 30, "weak": "slash"},
+    [("bones", 1, 1, 1.0), ("coins", 5, 60, 0.6),
+     ("grimy harralander", 1, 1, 0.15)],
+    members=True, rank="medium")
+MONSTER_EFFECTS["tribesman"] = _tribes_poison
+
+_DRAGON_KIN = {
+    "red dragon": (
+        {"abonus": 30, "atktype": ["slash"], "att": 90, "cb": 152,
+         "dstab": 50, "dslash": 50, "dcrush": 50, "dmagic": 60,
+         "drange": 55, "def": 90, "hp": 140, "maxhit": 13, "str": 95,
+         "weak": "stab"},
+        [("dragon bones", 1, 1, 1.0), ("red dragonhide", 2, 3, 1.0),
+         ("coins", 100, 500, 0.8), ("fire rune", 10, 30, 0.4)]),
+    "bronze dragon": (
+        {"abonus": 35, "atktype": ["slash"], "att": 100, "cb": 131,
+         "dstab": 70, "dslash": 70, "dcrush": 60, "dmagic": 30,
+         "drange": 80, "def": 100, "hp": 122, "maxhit": 13, "str": 100,
+         "weak": "magic"},
+        [("dragon bones", 1, 1, 1.0), ("bronze bar", 2, 4, 1.0),
+         ("coins", 200, 800, 0.8), ("adamantite ore", 1, 2, 0.2)]),
+    "iron dragon": (
+        {"abonus": 40, "atktype": ["slash"], "att": 120, "cb": 189,
+         "dstab": 85, "dslash": 85, "dcrush": 70, "dmagic": 35,
+         "drange": 95, "def": 110, "hp": 165, "maxhit": 15, "str": 120,
+         "weak": "magic"},
+        [("dragon bones", 1, 1, 1.0), ("iron bar", 3, 5, 1.0),
+         ("coins", 300, 1200, 0.9), ("dragon med helm", 1, 1, 0.015)]),
+    "steel dragon": (
+        {"abonus": 45, "atktype": ["slash"], "att": 140, "cb": 246,
+         "dstab": 100, "dslash": 100, "dcrush": 80, "dmagic": 40,
+         "drange": 110, "def": 120, "hp": 190, "maxhit": 17, "str": 140,
+         "weak": "magic"},
+        [("dragon bones", 1, 1, 1.0), ("steel bar", 3, 6, 1.0),
+         ("coins", 500, 2000, 1.0), ("dragon platelegs", 1, 1, 0.012),
+         ("dragon dagger", 1, 1, 0.02)]),
+}
+for _dk, (_st, _drops) in _DRAGON_KIN.items():
+    _add_mob(_dk, _st, _drops, members=True, rank="elite")
+    MONSTERS[_dk]["dragonfire"] = True
+DURADEL_TARGETS.extend(["fire giant", "steel dragon"])
+
+# --- the Inferno roster ---------------------------------------------------------
+_INFERNO_MOBS = {
+    "jal-nib": ({"abonus": 5, "atktype": ["crush"], "att": 15, "cb": 32,
+                 "dstab": 5, "dslash": 5, "dcrush": 5, "dmagic": 5,
+                 "drange": 5, "def": 10, "hp": 10, "maxhit": 2, "str": 15,
+                 "weak": "crush"},
+                [("tokkul", 10, 30, 1.0)], "easy"),
+    "jal-mejrah": ({"abonus": 20, "atktype": ["ranged"], "att": 60,
+                    "cb": 85, "dstab": 30, "dslash": 30, "dcrush": 30,
+                    "dmagic": 30, "drange": 30, "def": 55, "hp": 40,
+                    "maxhit": 7, "str": 60, "weak": "crush"},
+                   [("tokkul", 20, 60, 1.0)], "hard"),
+    "jal-ak": ({"abonus": 30, "atktype": ["magic", "ranged"], "att": 90,
+                "cb": 165, "dstab": 45, "dslash": 45, "dcrush": 45,
+                "dmagic": 45, "drange": 45, "def": 70, "hp": 70,
+                "maxhit": 10, "str": 90, "weak": "crush"},
+               [("tokkul", 40, 100, 1.0)], "elite"),
+    "jal-imkot": ({"abonus": 40, "atktype": ["crush"], "att": 120,
+                   "cb": 240, "dstab": 60, "dslash": 60, "dcrush": 60,
+                   "dmagic": 50, "drange": 60, "def": 85, "hp": 100,
+                   "maxhit": 14, "str": 130, "weak": "slash"},
+                  [("tokkul", 60, 140, 1.0)], "elite"),
+    "jal-xil": ({"abonus": 45, "atktype": ["ranged"], "att": 140,
+                 "cb": 370, "dstab": 65, "dslash": 65, "dcrush": 65,
+                 "dmagic": 55, "drange": 70, "def": 90, "hp": 125,
+                 "maxhit": 16, "str": 140, "weak": "crush"},
+                [("tokkul", 80, 180, 1.0)], "elite"),
+    "jal-zek": ({"abonus": 50, "atktype": ["magic"], "att": 160,
+                 "cb": 490, "dstab": 70, "dslash": 70, "dcrush": 70,
+                 "dmagic": 70, "drange": 75, "def": 95, "hp": 150,
+                 "maxhit": 18, "str": 160, "weak": "crush"},
+                [("tokkul", 100, 220, 1.0)], "elite"),
+}
+for _im, (_st, _drops, _rank) in _INFERNO_MOBS.items():
+    _add_mob(_im, _st, _drops, members=True, rank=_rank)
+MONSTER_EFFECTS["jal-mejrah"] = MONSTER_EFFECTS["tz-kih"]   # prayer-eater
+
+_add_mob("jaltok-jad",
+    {"abonus": 60, "atktype": ["magic", "ranged", "crush"], "att": 200,
+     "cb": 900, "dstab": 65, "dslash": 65, "dcrush": 65, "dmagic": 65,
+     "drange": 65, "def": 100, "hp": 250, "maxhit": 30, "str": 200,
+     "weak": "crush"},
+    [("tokkul", 300, 800, 1.0)], members=True)
+MONSTERS["jaltok-jad"]["boss"] = True
+MONSTERS["jaltok-jad"]["rank"] = "boss"
+_BOSSES.add("jaltok-jad")
+BOSS_TURN["jaltok-jad"] = _jad_take_turn      # telegraphs like his little kin
+BOSS_INTRO["jaltok-jad"] = BOSS_INTRO.get("tztok-jad")
+BOSS_DEATH["jaltok-jad"] = BOSS_DEATH.get("tztok-jad")
+
+ZUK_ART = r"""
+       \\  |  //        \\  |  //
+    ====[#######]====[#######]====
+      .-'  ___________________ '-.
+     /    /  \   _______   /  \   \
+    |    | () |  \     /  | () |   |
+     \    \__/    \   /    \__/   /
+      '-.          \ /         .-'
+         '========= V ========='
+"""
+
+
+def _zuk_intro(name):
+    return [_tint(ZUK_ART, "grey"), _tint(ZUK_ART, "orange", "bold"),
+            _tint(ZUK_ART, "bred", "bold")]
+
+
+def _zuk_death(name):
+    return [_tint(ZUK_ART, "bred"), _tint(ZUK_ART, "grey", "dim")]
+
+
+def _zuk_take_turn(p, m):
+    """Zuk's barrage burns through prayer; every third turn the obsidian
+    shield glides between you and the fire."""
+    cyc = m.get("zuk_cycle", 0)
+    m["zuk_cycle"] = cyc + 1
+    if cyc % 3 == 2:
+        say("The obsidian shield glides across — you shelter in its "
+            "shadow. TzKal-Zuk's fire breaks around you!", "bcyan")
+    else:
+        style = "magic" if cyc % 2 else "ranged"
+        say(f"TzKal-Zuk hurls a wall of burning {style}!", "bred", "bold")
+        dmg = random.randint(10, m["max_hit"])
+        if p.prayer_protects(style):
+            dmg = int(dmg * 0.85)
+            print("  " + paint("Zuk's fury burns THROUGH your prayer — it "
+                               "barely softens the blow.", "bmagenta"))
+        p.hp -= dmg
+        print("  " + paint(f"The fire takes {dmg} from you.", "bred")
+              + "  " + paint("HP ", "white")
+              + bar_meter(max(p.hp, 0), p.max_hp, 18))
+    if p.active_prayers:
+        p.prayer_points -= p.prayer_drain()
+        if p.prayer_points <= 0:
+            p.prayer_points = 0
+            p.active_prayers = []
+            print("  " + paint("Your prayers flicker out (no prayer "
+                               "points).", "bmagenta"))
+    return "died" if p.hp <= 0 else None
+
+
+_add_mob("tzkal-zuk",
+    {"abonus": 70, "atktype": ["ranged", "magic"], "att": 260, "cb": 1400,
+     "dstab": 250, "dslash": 250, "dcrush": 250, "dmagic": 60,
+     "drange": 80, "def": 100, "hp": 300, "maxhit": 26, "str": 260,
+     "weak": "ranged"},
+    [("tokkul", 1000, 3000, 1.0), ("uncut diamond", 1, 3, 0.5)],
+    members=True)
+MONSTERS["tzkal-zuk"]["boss"] = True
+MONSTERS["tzkal-zuk"]["rank"] = "boss"
+_BOSSES.add("tzkal-zuk")
+BOSS_TURN["tzkal-zuk"] = _zuk_take_turn
+BOSS_INTRO["tzkal-zuk"] = _zuk_intro
+BOSS_DEATH["tzkal-zuk"] = _zuk_death
+MONSTER_ART["tzkal-zuk"] = ZUK_ART
+
+# --- the Inferno machinery -------------------------------------------------------
+INFERNO_WAVES = ["jal-nib", "jal-mejrah", "jal-ak", "jal-imkot", "jal-xil",
+                 "jal-zek", "jaltok-jad", "tzkal-zuk"]
+
+
+def _inferno_start_wave(p):
+    mon = INFERNO_WAVES[p.inferno_wave - 1]
+    say(f"— Inferno wave {p.inferno_wave} of {len(INFERNO_WAVES)} —",
+        "bred", "bold")
+    _start_combat(p, mon)
+
+
+def _inferno_challenge(p):
+    if getattr(p, "inferno_wave", 0):
+        say(f"You're mid-run — wave {p.inferno_wave}/{len(INFERNO_WAVES)}. "
+            "Type 'next' to continue.", "byellow")
+        return
+    banner("THE INFERNO", color="bred", line_color="red")
+    say("TzHaar-Ket-Keh: \"The Fight Caves was the door, JalYt. This is "
+        "the furnace. Eight waves. ZUK waits at the bottom.\"",
+        "orange", "bold")
+    p.inferno_wave = 1
+    _inferno_start_wave(p)
+
+
+def _inferno_on_kill(p, target):
+    """Advance the Inferno after each wave kill; forge the champion."""
+    wave = getattr(p, "inferno_wave", 0)
+    if not wave or not ROOMS[p.location].get("inferno") \
+            or target != INFERNO_WAVES[wave - 1]:
+        return
+    if wave < len(INFERNO_WAVES):
+        p.inferno_wave += 1
+        nxt = INFERNO_WAVES[p.inferno_wave - 1]
+        say(f"Wave {wave} survived! Breathe, eat, rethink — then 'next' "
+            f"(wave {p.inferno_wave}/{len(INFERNO_WAVES)}: {nxt}).",
+            "byellow", "bold")
+    else:
+        p.inferno_wave = 0
+        show_art(ART_QUEST, "gold", center=True)
+        banner("THE INFERNO — EXTINGUISHED", color="bred", line_color="red")
+        p.add("infernal cape")
+        say("TzHaar-Ket-Keh stares into the cooling dark: \"...Zuk is "
+            "beaten. Take the cape, JalYt. It is quenched in his fire.\"",
+            "orange", "bold")
+        say("You receive the INFERNAL CAPE! ('equip infernal cape')",
+            "bgreen", "bold")
+
+
+# --- the region --------------------------------------------------------------------
+ROOMS.update({
+    "tai_bwo_wannai": dict(name="Tai Bwo Wannai",
+        desc="A machete-hacked clearing where the Wannai tribe drums "
+             "against the jungle dark. The spears here weep green at the "
+             "tip — mind the TRIBESMEN. Shilo's gem road runs south.",
+        exits={"north": "brimhaven", "south": "shilo_village"},
+        monsters=["tribesman"], shop="tai_bwo", hostile=True,
+        members=True),
+    "shilo_village": dict(name="Shilo Village",
+        desc="A stockaded mining town on the Shilo river. The famous GEM "
+             "MINE glitters even in torchlight ('mine gem rock'), and "
+             "fly-fishers work the rapids.",
+        exits={"north": "tai_bwo_wannai"},
+        bank=True, rocks=["gem rock"], fish_tools=["fly", "rod"],
+        members=True),
+    "brimhaven_dungeon": dict(name="Brimhaven Dungeon",
+        desc="Saniboch's damp stairwell opens into a cavern of red "
+             "scales and old gold. RED DRAGONS nest here, and an iron "
+             "door glows at the deep end ('deeper').",
+        exits={"out": "brimhaven", "deeper": "dragon_forge"},
+        monsters=["red dragon", "moss giant"], hostile=True, members=True,
+        fee=(875, "Saniboch grins: 'The dungeon eats adventurers, "
+                  "friend. 875 coins to feed it you.'")),
+    "dragon_forge": dict(name="The Dragon Forge",
+        desc="A vault of ancient dwarven fire where METAL DRAGONS pace "
+             "on iron claws — bronze, iron, steel. Bring an anti-dragon "
+             "shield or bring a will.",
+        exits={"back": "brimhaven_dungeon"},
+        monsters=["bronze dragon", "iron dragon", "steel dragon"],
+        hostile=True, members=True),
+    "mor_ul_rek": dict(name="Mor Ul Rek",
+        desc="The obsidian city of the TzHaar, lit by lava-light. "
+             "TzHaar-Hur traders take TOKKUL for obsidian ('redeem'), "
+             "and a sealed crack in the floor breathes white heat "
+             "('inferno').",
+        exits={"out": "karamja_volcano", "inferno": "the_inferno"},
+        members=True),
+    "the_inferno": dict(name="The Inferno",
+        desc="The bottom of the world. Everything here is fire that "
+             "learned to want things. ('challenge' — eight waves, then "
+             "ZUK)",
+        exits={"out": "mor_ul_rek"},
+        inferno=True, members=True,
+        gear_lock=(["fire cape|infernal cape"],
+                   "TzHaar-Ket-Keh bars the crack: 'The furnace is for "
+                   "PROVEN JalYt. Wear your fire cape.'")),
+})
+SHOPS["tai_bwo"] = {"antipoison": 120, "machete": 40, "banana": 3}
+add_item("machete", 40, members=True,
+         equip={"slot": "weapon", "aslash": 7, "str": 6})
+ROOMS["brimhaven"]["exits"]["south"] = "tai_bwo_wannai"
+ROOMS["brimhaven"]["exits"]["dungeon"] = "brimhaven_dungeon"
+ROOMS["brimhaven"]["desc"] += (" A jungle track vanishes south toward "
+                               "Tai Bwo Wannai, and Saniboch loiters by "
+                               "a dungeon mouth ('dungeon').")
+ROOMS["karamja_volcano"]["exits"]["city"] = "mor_ul_rek"
+ROOMS["karamja_volcano"]["desc"] += (" Deeper in the rock, lava-light "
+                                     "marks the TzHaar city of Mor Ul Rek "
+                                     "('city').")
+ROCKS["gem rock"] = ("uncut sapphire", 40, 65)
+for _rm in ("tai_bwo_wannai", "shilo_village", "brimhaven_dungeon",
+            "dragon_forge", "mor_ul_rek", "the_inferno"):
+    REGIONS[_rm] = "Karamja"
+TRAVEL_HUBS["shilo"] = "shilo_village"
+TRAVEL_NAMES.append("Shilo")
 
 
 # ===========================================================================

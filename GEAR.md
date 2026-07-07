@@ -15,6 +15,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Iron Pickaxe | +5 | -2 | +3 | · | · | · | +1 | · | · | · | +7 | · | · | · | attack 1 | 40 |  |  |
 | Steel Dagger | +8 | +4 | -4 | · | · | · | · | · | · | · | +7 | · | · | · | attack 5 | 40 |  |  |
 | Oak Shortbow | · | · | · | · | +14 | · | · | · | · | · | · | · | · | · | ranged 5 | 40 |  |  |
+| Machete | · | +7 | · | · | · | · | · | · | · | · | +6 | · | · | · | · | 40 | M |  |
 | Iron Sword | +6 | +4 | -2 | · | · | · | +2 | +1 | · | · | +7 | · | · | · | attack 1 | 60 |  |  |
 | Black Dagger | +10 | +5 | -4 | · | · | · | · | · | · | · | +7 | · | · | · | attack 10 | 70 |  |  |
 | Willow Shortbow | · | · | · | · | +20 | · | · | · | · | · | · | · | · | · | ranged 20 | 70 |  |  |
@@ -53,6 +54,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Rune Crossbow | · | · | · | · | +90 | · | · | · | · | · | · | · | · | · | ranged 61 | 16200 | M |  |
 | Excalibur | +20 | +29 | · | · | · | · | · | · | · | · | +25 | · | · | · | attack 30 | 20000 | M | Q |
 | Dragon Dagger | +40 | +25 | -4 | +1 | · | · | · | · | +1 | · | +40 | · | · | · | attack 60 | 30000 | M |  |
+| Toktz-Xil-Ak | +47 | +40 | · | · | · | · | · | · | · | · | +49 | · | · | · | attack 60 | 40000 | M |  |
 | Hill Giant Club | -4 | +50 | +65 | -4 | · | · | · | · | · | -1 | +70 | · | · | · | attack 40 | 45000 |  |  |
 | Dragon Mace | +40 | -2 | +60 | · | · | · | · | · | · | · | +55 | · | · | +5 | attack 60 | 50000 | M |  |
 | Granite Maul | · | · | +81 | · | · | · | · | · | · | · | +79 | · | · | · | attack 50 | 50000 | M |  |
@@ -93,6 +95,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Mithril Defender | +14 | +14 | +14 | · | · | +14 | +14 | +14 | · | · | +5 | · | · | · | · | 6000 | M |  |
 | Adamant Defender | +17 | +17 | +17 | · | · | +17 | +17 | +17 | · | · | +5 | · | · | · | · | 12000 | M |  |
 | Rune Defender | +20 | +20 | +20 | · | · | +20 | +20 | +20 | · | · | +6 | · | · | · | · | 35000 | M |  |
+| Toktz-Ket-Xil | · | · | · | · | · | +40 | +42 | +38 | · | +42 | +5 | · | · | · | defence 60 | 35000 | M |  |
 | Dragon Kiteshield | · | · | · | -8 | -3 | +56 | +60 | +58 | -1 | +58 | · | · | · | · | defence 60 | 1600000 | M |  |
 
 ## Head
@@ -145,6 +148,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Rune Chainbody | · | · | · | · | · | +37 | +53 | +61 | · | +37 | · | · | · | · | defence 40 | 4500 |  |  |
 | Rune Platebody | · | · | · | -30 | -15 | +82 | +80 | +72 | -6 | +80 | · | · | · | · | defence 40 | 6000 |  | Q |
 | Green D'Hide Body | · | · | · | -15 | +15 | +18 | +27 | +24 | +20 | +35 | · | · | · | · | ranged 40 | 7800 |  | Q |
+| Red D'Hide Body | · | · | · | -15 | +20 | +24 | +33 | +30 | +26 | +41 | · | · | · | · | ranged 60 | 15000 | M |  |
 | Mystic Robe Top | · | · | · | +20 | · | · | · | · | +20 | · | · | · | · | · | magic 40 | 120000 | M |  |
 | Dragon Chainbody | · | · | · | -15 | · | +81 | +93 | +98 | -3 | +82 | · | · | · | · | defence 60 | 250000 | M |  |
 | Ahrim'S Robetop | · | · | · | +22 | · | +35 | +30 | +40 | +60 | · | · | · | · | · | magic 70 | 700000 | M |  |
@@ -154,7 +158,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Verac'S Brassard | · | · | · | · | · | +85 | +83 | +84 | · | +85 | · | · | · | +3 | defence 70 | 750000 | M |  |
 | Dharok'S Platebody | · | · | · | · | · | +90 | +88 | +85 | -5 | +90 | · | · | · | · | defence 70 | 800000 | M |  |
 | Bandos Chestplate | · | · | · | · | · | +92 | +90 | +88 | -5 | +92 | +4 | · | · | · | defence 65 | 2500000 | M |  |
-| Armadyl Chestplate | · | · | · | · | +12 | +55 | +55 | +55 | +50 | +90 | · | · | · | · | ranged 70 | 2500000 | M |  |
+| Armadyl Chestplate | · | · | · | · | +33 | +55 | +55 | +55 | +50 | +90 | · | · | · | · | ranged 70 | 2500000 | M |  |
 
 ## Legs
 
@@ -168,10 +172,11 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Adamant Platelegs | · | · | · | -21 | -11 | +33 | +31 | +29 | -4 | +31 | · | · | · | · | defence 30 | 1750 |  |  |
 | Green D'Hide Chaps | · | · | · | -10 | +8 | +12 | +15 | +18 | +8 | +17 | · | · | · | · | ranged 40 | 3900 |  |  |
 | Rune Platelegs | · | · | · | -21 | -11 | +51 | +49 | +47 | -4 | +49 | · | · | · | · | defence 40 | 4200 |  |  |
+| Red D'Hide Chaps | · | · | · | -8 | +10 | +12 | +15 | +14 | +12 | +20 | · | · | · | · | ranged 60 | 7000 | M |  |
 | Mystic Robe Bottom | · | · | · | +15 | · | · | · | · | +15 | · | · | · | · | · | magic 40 | 80000 | M |  |
 | Dragon Platelegs | · | · | · | -21 | -11 | +68 | +66 | +63 | -4 | +65 | · | · | · | · | defence 60 | 270000 | M |  |
 | Bandos Tassets | · | · | · | · | · | +85 | +82 | +80 | -5 | +85 | +2 | · | · | · | defence 65 | 2000000 | M |  |
-| Armadyl Chainskirt | · | · | · | · | +8 | +50 | +50 | +50 | +45 | +85 | · | · | · | · | ranged 70 | 2000000 | M |  |
+| Armadyl Chainskirt | · | · | · | · | +20 | +50 | +50 | +50 | +45 | +85 | · | · | · | · | ranged 70 | 2000000 | M |  |
 
 ## Ammo
 
@@ -198,6 +203,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Purple Cape | · | · | · | · | · | · | +1 | +1 | · | +2 | · | · | · | · | · | 20 |  |  |
 | Team Cape | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 50 |  |  |
 | Cape Of Legends | · | · | · | · | · | +7 | +7 | +7 | +7 | +7 | +1 | · | · | · | · | 1200 | M |  |
+| Obsidian Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | · | · | 25000 | M |  |
 | Fire Cape | +1 | +1 | +1 | +1 | +1 | +11 | +11 | +11 | +11 | +11 | +4 | · | · | +2 | · | 50000 | M |  |
 | Attack Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | attack 99 | 99000 |  |  |
 | Strength Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | strength 99 | 99000 |  |  |
@@ -222,6 +228,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Farming Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | farming 99 | 99000 |  |  |
 | Construction Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | construction 99 | 99000 |  |  |
 | Hunter Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | hunter 99 | 99000 |  |  |
+| Infernal Cape | +4 | +4 | +4 | +4 | +4 | +12 | +12 | +12 | +12 | +12 | +6 | · | · | +2 | · | 200000 | M |  |
 
 ## Amulet
 
@@ -247,6 +254,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Leather Gloves | · | · | · | · | · | · | +1 | +2 | · | · | · | · | · | · | · | 12 |  |  |
 | Hardleather Gloves | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | · | · | · | · | 30 |  |  |
 | Green D'Hide Vambraces | · | · | · | -10 | +8 | +1 | +2 | +2 | +2 | · | · | · | · | · | ranged 40 | 2500 |  |  |
+| Red D'Hide Vambraces | · | · | · | -6 | +9 | +3 | +3 | +3 | · | · | · | · | · | · | ranged 60 | 3500 | M |  |
 | Mystic Gloves | · | · | · | +3 | · | · | · | · | +3 | · | · | · | · | · | magic 40 | 10000 | M |  |
 
 ## Boots
