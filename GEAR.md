@@ -79,10 +79,12 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Abyssal Dagger | +75 | +40 | · | · | · | · | · | · | · | · | +75 | · | · | · | attack 70 | 1500000 | M |  |
 | Zamorakian Spear | +85 | +65 | +65 | · | · | · | · | · | · | · | +75 | · | · | +2 | attack 70 | 2000000 | M |  |
 | Abyssal Bludgeon | · | · | +102 | · | · | · | · | · | · | · | +85 | · | · | · | strength 70 | 2000000 | M |  |
+| Toxic Blowpipe | · | · | · | · | +60 | · | · | · | · | · | · | +40 | · | · | ranged 75 | 2500000 | M |  |
 | Bandos Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
 | Armadyl Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
 | Zamorak Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
 | Saradomin Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
+| Trident Of The Swamp | · | · | · | +28 | · | · | · | · | +3 | · | · | · | · | · | magic 78 | 3000000 | M |  |
 
 ## Shield
 
@@ -139,6 +141,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Dragon Med Helm | · | · | · | -3 | · | +33 | +35 | +32 | -1 | +34 | · | · | · | · | defence 60 | 60000 | M |  |
 | Berserker Helm | · | · | · | -5 | -5 | +31 | +29 | +33 | · | +30 | +3 | · | · | · | defence 45 | 60000 | M |  |
 | Black Mask | +1 | +1 | +1 | · | · | +6 | +6 | +6 | · | +5 | · | · | · | · | defence 10 | 800000 | M |  |
+| Serpentine Helm | · | · | · | · | · | +30 | +32 | +34 | +10 | +30 | +3 | · | · | · | defence 75 | 1800000 | M |  |
 
 ## Body
 

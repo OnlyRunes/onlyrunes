@@ -9,5 +9,5 @@ for t in test_*.py; do
     *) echo "FAIL  $t: $r"; fails=1 ;;
   esac
 done
-PYTHONPATH=.. python3 audit.py 2>&1 | tail -1
+PYTHONPATH=.. python3 audit.py 2>&1 | grep "AUDIT"
 exit $fails

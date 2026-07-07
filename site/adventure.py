@@ -1952,7 +1952,8 @@ def _player_attack(p, m):
         if not bow or "arange" not in ITEMS[bow].get("equip", {}):
             say("You need a bow equipped to use ranged.")
             return None
-        if not ammo or p.count_ammo() <= 0:
+        self_ammo = ITEMS[bow].get("equip", {}).get("self_ammo")
+        if not self_ammo and (not ammo or p.count_ammo() <= 0):
             say("You're out of arrows!")
             return None
         acc = p.equip_bonus("arange")
@@ -1960,9 +1961,10 @@ def _player_attack(p, m):
         eff = p.lvl("ranged") + 9
         att_roll = eff * (acc + 64)
         max_hit = int(0.5 + eff * (rstr + 64) / 640)
-        p.take(ammo)  # consume one arrow
-        if p.count(ammo) == 0:
-            p.equipment["ammo"] = None
+        if not self_ammo:               # the blowpipe feeds itself
+            p.take(ammo)  # consume one arrow
+            if p.count(ammo) == 0:
+                p.equipment["ammo"] = None
         return ("ranged", "ranged", att_roll, max_hit)
     if p.style == "magic":
         wpn = p.equipment.get("weapon")
@@ -2204,6 +2206,11 @@ def _clear_status(p):
 def _tick_poison(p):
     """Apply one tick of poison at the start of the player's turn."""
     if getattr(p, "poison", 0) <= 0:
+        return
+    if p.equipment.get("head") == "serpentine helm":
+        p.poison = 0
+        print("  " + paint("Your serpentine helm drinks the venom "
+                           "harmlessly.", "green"))
         return
     dmg = 3
     p.poison -= 1
@@ -3822,6 +3829,21 @@ CRAFT_RECIPES = {
 def cmd_craft(p, arg):
     name = arg.strip().lower()
     name = {"body": "leather body", "leather": "leather body"}.get(name, name)
+    if name == "trident of the swamp":  # magic fang + trident of the seas
+        if not (p.has("magic fang") and p.has("trident of the seas")):
+            say("The swamp trident takes a magic fang AND a trident of "
+                "the seas.")
+            return
+        if p.lvl("crafting") < 59:
+            say("You need crafting level 59 to set the fang.")
+            return
+        p.take("magic fang")
+        p.take("trident of the seas")
+        p.add("trident of the swamp")
+        p.gain_xp("crafting", 300)
+        say("You seat the magic fang in the trident's head — TRIDENT OF "
+            "THE SWAMP.", "bgreen", "bold")
+        return True
     if name in JEWELLERY:
         return _craft_jewellery(p, name)
     rec = CRAFT_RECIPES.get(name)
@@ -4975,6 +4997,8 @@ ACHIEVEMENTS = {
                 "Vet'ion and the Corporeal Beast."),
     "apex_slayer": ("Apex Predator", "Defeat all five slayer "
                     "superbosses."),
+    "snake_charmer": ("Snake Charmer", "Defeat Zulrah, the serpent of "
+                      "Zul-Andra."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -5035,6 +5059,8 @@ def _earned_achievements(p):
                                  "grotesque guardians",
                                  "thermonuclear smoke devil")):
         got.add("apex_slayer")
+    if "zulrah" in bosses:
+        got.add("snake_charmer")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -12132,6 +12158,164 @@ def talk_archaeologist(p):
 
 
 QUEST_TALK["desert_treasure"] = talk_archaeologist
+
+
+# ===========================================================================
+#  ZULRAH  (the toxic serpent of Zul-Andra, and the gear it bleeds)
+# ===========================================================================
+# Up the jungle river from Shilo, the snake-priests of Zul-Andra feed
+# their god. ZULRAH rotates through three forms mid-fight — green, red,
+# blue — each attacking differently and each soft to a different style.
+# Its fangs and scales build the toxic arsenal: blowpipe, serpentine
+# helm, swamp trident.
+
+# --- the toxic arsenal --------------------------------------------------------
+add_item("tanzanite fang", 800000, members=True)
+add_item("magic fang", 800000, members=True)
+add_item("serpentine visage", 800000, members=True)
+add_item("toxic blowpipe", 2500000, members=True, equip={
+    "slot": "weapon", "arange": 60, "rstr": 40, "self_ammo": True,
+    "req": {"ranged": 75}})
+EFFECT_NOTES["toxic blowpipe"] = ("chews its own scales for darts — "
+                                  "ranged with no ammo needed")
+add_item("serpentine helm", 1800000, members=True, equip={
+    "slot": "head", "dstab": 30, "dslash": 32, "dcrush": 34, "dmagic": 10,
+    "drange": 30, "str": 3, "req": {"defence": 75}})
+EFFECT_NOTES["serpentine helm"] = ("venom cannot touch you while it "
+                                   "watches from your brow")
+add_item("trident of the swamp", 3000000, members=True, equip={
+    "slot": "weapon", "amagic": 28, "dmagic": 3, "powered": 25,
+    "req": {"magic": 78}})
+EFFECT_NOTES["trident of the swamp"] = ("the sea trident, envenomed — "
+                                        "runeless magic, max 25")
+CRAFT_RECIPES.update({
+    "toxic blowpipe": ("tanzanite fang", 1, 73, 500),
+    "serpentine helm": ("serpentine visage", 1, 52, 400),
+})
+
+# --- the serpent ----------------------------------------------------------------
+ZULRAH_ART = r"""
+              ______
+           .-'      '-.
+          /   .-""-.   \
+         |   /  @@  \   |
+          \  \ vvvv /  /
+        ~~~\  '----' /~~~
+      ~~~~  '-.____.-'  ~~~~
+"""
+
+_ZULRAH_FORMS = {
+    "green": {"atype": "ranged", "weak": "magic",
+              "dbonus": {"stab": 120, "slash": 120, "crush": 120,
+                         "magic": 10, "ranged": 120},
+              "cry": "ZULRAH surfaces GREEN — scales rattle and venom "
+                     "spines fan wide! (magic bites deepest now)"},
+    "red": {"atype": "crush", "weak": "slash",
+            "dbonus": {"stab": 10, "slash": 10, "crush": 10,
+                       "magic": 120, "ranged": 120},
+            "cry": "ZULRAH surfaces CRIMSON — it rears to strike with "
+                   "its whole body! (steel bites deepest now)"},
+    "blue": {"atype": "magic", "weak": "ranged",
+             "dbonus": {"stab": 120, "slash": 120, "crush": 120,
+                        "magic": 120, "ranged": 10},
+             "cry": "ZULRAH surfaces BLUE — sea-magic crackles along "
+                    "its hood! (arrows bite deepest now)"},
+}
+_ZULRAH_ORDER = ["green", "red", "blue"]
+
+
+def _zulrah_poison(p, m, dmg):
+    if dmg > 0 and not getattr(p, "poison", 0) and random.random() < 0.4:
+        p.poison = 3
+        print("  " + paint("Zulrah's venom takes hold — POISONED!",
+                           "green"))
+
+
+def _zulrah_take_turn(p, m):
+    turn = m.get("zul_turn", 0)
+    m["zul_turn"] = turn + 1
+    if turn % 3 == 0:                    # a new form every three turns
+        form = _ZULRAH_ORDER[(turn // 3) % 3]
+        f = _ZULRAH_FORMS[form]
+        m["zul_form"] = form
+        m["dbonus"] = dict(f["dbonus"])
+        m["weakness"] = f["weak"]
+        say(f["cry"], {"green": "bgreen", "red": "bred",
+                       "blue": "bblue"}[form], "bold")
+    f = _ZULRAH_FORMS[m.get("zul_form", "green")]
+    atype = f["atype"]
+    m_att_roll = (m["attack"] + 9) * (m.get("abonus", 0) + 64)
+    p_def_roll = _player_def_roll(p, atype)
+    if random.random() < _accuracy(m_att_roll, p_def_roll):
+        dmg = random.randint(0, m["max_hit"])
+        prot = "magic" if atype == "magic" else \
+            ("ranged" if atype == "ranged" else "melee")
+        if p.prayer_protects(prot):
+            dmg = int(dmg * 0.5)
+        p.hp -= dmg
+        print("  " + paint(f"Zulrah strikes for {dmg}.", "bred")
+              + "  " + paint("HP ", "white")
+              + bar_meter(max(p.hp, 0), p.max_hp, 18))
+        if dmg > 0 and p.hp > 0:
+            _zulrah_poison(p, m, dmg)
+    else:
+        print("  " + paint("You slip aside from the strike.", "grey"))
+    if p.active_prayers:
+        p.prayer_points -= p.prayer_drain()
+        if p.prayer_points <= 0:
+            p.prayer_points = 0
+            p.active_prayers = []
+            print("  " + paint("Your prayers flicker out (no prayer "
+                               "points).", "bmagenta"))
+    return "died" if p.hp <= 0 else None
+
+
+def _zulrah_intro(name):
+    return [_tint(ZULRAH_ART, "grey"), _tint(ZULRAH_ART, "bgreen", "bold")]
+
+
+def _zulrah_death(name):
+    return [_tint(ZULRAH_ART, "bgreen"), _tint(ZULRAH_ART, "grey", "dim")]
+
+
+_add_mob("zulrah",
+    {"abonus": 50, "atktype": ["ranged", "magic"], "att": 190, "cb": 725,
+     "dstab": 120, "dslash": 120, "dcrush": 120, "dmagic": 10,
+     "drange": 120, "def": 100, "hp": 300, "maxhit": 21, "str": 190,
+     "weak": "magic"},
+    [("tanzanite fang", 1, 1, 0.03), ("magic fang", 1, 1, 0.03),
+     ("serpentine visage", 1, 1, 0.03), ("coins", 8000, 25000, 1.0),
+     ("raw shark", 4, 10, 0.8), ("grimy ranarr", 3, 8, 0.5),
+     ("antipoison", 2, 4, 0.6)], members=True)
+MONSTERS["zulrah"]["boss"] = True
+MONSTERS["zulrah"]["rank"] = "boss"
+_BOSSES.add("zulrah")
+BOSS_TURN["zulrah"] = _zulrah_take_turn
+BOSS_INTRO["zulrah"] = _zulrah_intro
+BOSS_DEATH["zulrah"] = _zulrah_death
+MONSTER_ART["zulrah"] = ZULRAH_ART
+
+# --- zul-andra --------------------------------------------------------------------
+ROOMS.update({
+    "zul_andra": dict(name="Zul-Andra",
+        desc="A stilt-village where the jungle river meets the sea. "
+             "Snake-priests chant over a sacrificial pool that breathes "
+             "green mist — ZULRAH waits below ('pool').",
+        exits={"river": "shilo_village", "pool": "zulrah_shrine"},
+        members=True),
+    "zulrah_shrine": dict(name="Zulrah's Shrine",
+        desc="A drowned altar ringed by offerings. The water heaves — "
+             "and the serpent god rises, form flowing into form.",
+        exits={"out": "zul_andra"},
+        monsters=["zulrah"], members=True),
+})
+ROOMS["shilo_village"]["exits"]["river"] = "zul_andra"
+ROOMS["shilo_village"]["desc"] += (" A reed boat waits on the river, "
+                                   "poled by a silent snake-priest "
+                                   "('river').")
+REGIONS.update({"zul_andra": "Karamja", "zulrah_shrine": "Karamja"})
+TRAVEL_HUBS["zul-andra"] = "zul_andra"
+TRAVEL_NAMES.append("Zul-Andra")
 
 
 # ===========================================================================
