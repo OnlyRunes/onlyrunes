@@ -58,6 +58,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Hill Giant Club | -4 | +50 | +65 | -4 | · | · | · | · | · | -1 | +70 | · | · | · | attack 40 | 45000 |  |  |
 | Dragon Mace | +40 | -2 | +60 | · | · | · | · | · | · | · | +55 | · | · | +5 | attack 60 | 50000 | M |  |
 | Granite Maul | · | · | +81 | · | · | · | · | · | · | · | +79 | · | · | · | attack 50 | 50000 | M |  |
+| God Staff | · | · | · | +6 | · | · | · | · | +2 | · | · | · | · | · | magic 60 | 60000 | M |  |
 | Dragon Axe | · | +38 | +32 | · | · | · | · | · | · | · | +42 | · | · | · | woodcutting 61 | 61000 | M |  |
 | Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100000 | M |  |
 | Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100000 | M |  |
@@ -69,6 +70,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Guthan'S Warspear | +85 | +70 | +70 | · | · | · | · | · | · | · | +85 | · | · | · | attack 70 | 750000 | M |  |
 | Verac'S Flail | +70 | · | +88 | · | · | · | · | · | · | · | +84 | · | · | +3 | attack 70 | 750000 | M |  |
 | Dharok'S Greataxe | · | +90 | +70 | · | · | · | · | · | · | · | +105 | · | · | · | attack 70 | 800000 | M |  |
+| Dragon Pickaxe | +28 | · | +22 | · | · | · | · | · | · | · | +30 | · | · | · | attack 60 | 900000 | M |  |
 | Saradomin Sword | · | +82 | +60 | · | · | · | · | · | · | · | +82 | · | · | +1 | attack 70 | 1200000 | M |  |
 | Zamorakian Spear | +85 | +65 | +65 | · | · | · | · | · | · | · | +75 | · | · | +2 | attack 70 | 2000000 | M |  |
 | Bandos Godsword | · | +95 | +80 | · | · | · | · | · | · | · | +110 | · | · | · | attack 75 | 3000000 | M |  |
@@ -97,6 +99,10 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Adamant Defender | +17 | +17 | +17 | · | · | +17 | +17 | +17 | · | · | +5 | · | · | · | · | 12000 | M |  |
 | Rune Defender | +20 | +20 | +20 | · | · | +20 | +20 | +20 | · | · | +6 | · | · | · | · | 35000 | M |  |
 | Toktz-Ket-Xil | · | · | · | · | · | +40 | +42 | +38 | · | +42 | +5 | · | · | · | defence 60 | 35000 | M |  |
+| Spirit Shield | · | · | · | · | · | +30 | +30 | +30 | +30 | +30 | · | · | · | · | defence 65 | 150000 | M |  |
+| Odium Ward | · | · | · | · | +12 | +20 | +20 | +20 | · | +30 | · | · | · | · | defence 60 | 220000 | M |  |
+| Malediction Ward | · | · | · | +12 | · | +20 | +20 | +20 | +30 | · | · | · | · | · | defence 60 | 220000 | M |  |
+| Blessed Spirit Shield | · | · | · | · | · | +45 | +45 | +45 | +45 | +45 | · | · | · | +3 | defence 70 | 600000 | M |  |
 | Dragon Kiteshield | · | · | · | -8 | -3 | +56 | +60 | +58 | -1 | +58 | · | · | · | · | defence 60 | 1600000 | M |  |
 
 ## Head
@@ -207,6 +213,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Cape Of Legends | · | · | · | · | · | +7 | +7 | +7 | +7 | +7 | +1 | · | · | · | · | 1200 | M |  |
 | Obsidian Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | · | · | 25000 | M |  |
 | Fire Cape | +1 | +1 | +1 | +1 | +1 | +11 | +11 | +11 | +11 | +11 | +4 | · | · | +2 | · | 50000 | M |  |
+| God Cape | · | · | · | +10 | · | · | · | · | +10 | · | · | · | · | · | · | 80000 | M |  |
 | Attack Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | attack 99 | 99000 |  |  |
 | Strength Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | strength 99 | 99000 |  |  |
 | Defence Cape | · | · | · | · | · | +9 | +9 | +9 | +9 | +9 | · | · | · | +1 | defence 99 | 99000 |  |  |
@@ -286,3 +293,6 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Seers Ring | · | · | · | +6 | · | · | · | · | +6 | · | · | · | · | · | · | 38000 | M |  |
 | Archers Ring | · | · | · | · | +4 | · | · | · | · | +4 | · | · | · | · | · | 42000 | M |  |
 | Berserker Ring | · | · | · | · | · | +4 | +4 | +4 | · | · | +4 | · | · | · | · | 45000 | M |  |
+| Tyrannical Ring | · | · | +4 | · | · | · | · | +8 | · | · | · | · | · | · | · | 400000 | M |  |
+| Treasonous Ring | +4 | · | · | · | · | +8 | · | · | · | · | · | · | · | · | · | 400000 | M |  |
+| Ring Of The Gods | · | · | · | · | · | +2 | +2 | +2 | · | · | · | · | · | +4 | · | 500000 | M |  |

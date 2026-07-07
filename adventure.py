@@ -2038,12 +2038,25 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
             m["cur"] += dmg              # give back the halved portion
             print("  " + paint("Her carapace turns the blow — only CRUSH "
                                "bites deep!", "byellow"))
+        if m.get("corporeal") and dmg > 1 \
+                and "spear" not in (p.equipment.get("weapon") or ""):
+            m["cur"] += dmg - max(1, dmg // 2)
+            dmg = max(1, dmg // 2)
+            print("  " + paint("Its hide swallows the blow — only SPEARS "
+                               "pierce the Corporeal Beast!", "byellow"))
+        if m.get("mage_only") and kind != "magic" and dmg > 0:
+            m["cur"] += dmg
+            dmg = 0
+            print("  " + paint("Kolodion swats it aside: \"MAGIC, in MY "
+                               "arena!\"", "bmagenta"))
         if m["cur"] <= 0 and m.get("transform") and not m.get("phase2"):
             m["phase2"] = True
             m["cur"] = m["hp"]
-            m["flying"] = True
-            say("The carapace SPLITS — the Kalphite Queen sheds her shell "
-                "and takes wing, reborn!", "bmagenta", "bold")
+            if m.get("transform_flies"):
+                m["flying"] = True
+            say(m.get("transform_msg",
+                      "The carapace SPLITS — the Kalphite Queen sheds her "
+                      "shell and takes wing, reborn!"), "bmagenta", "bold")
         if m["cur"] <= 0 and m.get("finisher") and not p.has(m["finisher"]):
             m["cur"] = max(1, int(m["hp"] * 0.3))
             print("  " + paint(f"The {m['name']} starts to crumble \u2014 "
@@ -3490,7 +3503,11 @@ def cmd_mine(p, arg):
         say(f"You need mining level {req} to mine {rock}.")
         return
     say(f"You swing your pickaxe at the {rock} rock...")
-    if random.random() < gather_chance(p.lvl("mining"), req):
+    eff = p.lvl("mining")
+    if "dragon pickaxe" in p.inventory \
+            or p.equipment.get("weapon") == "dragon pickaxe":
+        eff += 3                        # the dragon pickaxe bites deeper
+    if random.random() < gather_chance(eff, req):
         if rock == "gem rock":              # Shilo's mine: every strike a gem
             product = random.choices(list(GEM_CUT), weights=[8, 5, 2, 1])[0]
         p.add(product)
@@ -4910,6 +4927,8 @@ ACHIEVEMENTS = {
     "infernal": ("The Infernal", "Defeat TzKal-Zuk at the bottom of the "
                  "Inferno."),
     "dreamless": ("Dreamless", "Wake Slepe: defeat the Nightmare."),
+    "warlord": ("Lord of the Wastes", "Defeat Callisto, Venenatis, "
+                "Vet'ion and the Corporeal Beast."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4963,6 +4982,9 @@ def _earned_achievements(p):
         got.add("infernal")
     if "the nightmare" in bosses:
         got.add("dreamless")
+    if all(w in bosses for w in ("callisto", "venenatis", "vet'ion",
+                                 "corporeal beast")):
+        got.add("warlord")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -5813,6 +5835,11 @@ def _next_goal(p):
         return ("Slepe has stopped waking \u2014 beneath its cathedral THE "
                 "NIGHTMARE drinks the town's dreams. Crush weapons bite "
                 "deepest. (east of Canifis, then south)")
+    if not all(w in getattr(p, "bosses", []) for w in
+               ("callisto", "venenatis", "vet'ion", "corporeal beast")):
+        return ("The WARLORDS of the western Wilderness hold rings, wards "
+                "and the dragon pickaxe \u2014 and the Corporeal Beast falls "
+                "only to SPEARS. ('wastes' off the deep Wilderness)")
     if "tzkal-zuk" not in getattr(p, "bosses", []):
         return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
                 "volcano) \u2014 wear your fire cape in, survive eight waves, "
@@ -9285,6 +9312,7 @@ MONSTERS["kalphite queen"]["boss"] = True
 MONSTERS["kalphite queen"]["rank"] = "boss"
 MONSTERS["kalphite queen"]["carapace"] = True
 MONSTERS["kalphite queen"]["transform"] = True
+MONSTERS["kalphite queen"]["transform_flies"] = True
 _BOSSES.add("kalphite queen")
 BOSS_INTRO["kalphite queen"] = _kq_intro
 BOSS_DEATH["kalphite queen"] = _kq_death
@@ -11247,6 +11275,279 @@ QUEST_TALK["fenkenstrain"] = talk_fenkenstrain
 
 
 # ===========================================================================
+#  WILDERNESS WARLORDS  (the boss trio, Scorpia, Chaos Ele, Kolodion, CORP)
+# ===========================================================================
+# West of the deep Wilderness the wastes belong to monsters with names:
+# Callisto the bear, Venenatis the weaver, Vet'ion the twice-buried,
+# Scorpia in her pit, the Chaos Elemental over the mud — Kolodion's Mage
+# Arena where only magic counts — and in a cave of old dark, the
+# CORPOREAL BEAST, whose hide only spears pierce.
+
+# --- items -----------------------------------------------------------------
+add_item("tyrannical ring", 400000, members=True,
+         equip={"slot": "ring", "acrush": 4, "dcrush": 8})
+add_item("treasonous ring", 400000, members=True,
+         equip={"slot": "ring", "astab": 4, "dstab": 8})
+add_item("ring of the gods", 500000, members=True,
+         equip={"slot": "ring", "prayer": 4, "dstab": 2, "dslash": 2,
+                "dcrush": 2})
+add_item("dragon pickaxe", 900000, members=True, tool="pickaxe", tier=7,
+         equip={"slot": "weapon", "astab": 28, "acrush": 22, "str": 30,
+                "req": {"attack": 60, "mining": 61}})
+EFFECT_NOTES["dragon pickaxe"] = ("the miner's dream — its point counts "
+                                  "as +3 mining levels while you dig")
+add_item("odium shard", 60000, members=True)
+add_item("malediction shard", 60000, members=True)
+add_item("odium ward", 220000, members=True,
+         equip={"slot": "shield", "arange": 12, "drange": 30, "dstab": 20,
+                "dslash": 20, "dcrush": 20, "req": {"defence": 60}})
+add_item("malediction ward", 220000, members=True,
+         equip={"slot": "shield", "amagic": 12, "dmagic": 30, "dstab": 20,
+                "dslash": 20, "dcrush": 20, "req": {"defence": 60}})
+CRAFT_RECIPES.update({
+    "odium ward": ("odium shard", 3, 75, 300),
+    "malediction ward": ("malediction shard", 3, 75, 300),
+})
+add_item("spirit shield", 150000, members=True,
+         equip={"slot": "shield", "dstab": 30, "dslash": 30, "dcrush": 30,
+                "dmagic": 30, "drange": 30, "req": {"defence": 65}})
+add_item("holy elixir", 100000, members=True)
+add_item("blessed spirit shield", 600000, members=True,
+         equip={"slot": "shield", "dstab": 45, "dslash": 45, "dcrush": 45,
+                "dmagic": 45, "drange": 45, "prayer": 3,
+                "req": {"defence": 70, "prayer": 60}})
+add_item("god cape", 80000, members=True,
+         equip={"slot": "cape", "amagic": 10, "dmagic": 10})
+EFFECT_NOTES["god cape"] = ("imbued at the Mage Arena by the god you "
+                            "chose — the mage's cape")
+add_item("god staff", 60000, members=True,
+         equip={"slot": "weapon", "amagic": 6, "dmagic": 2,
+                "req": {"magic": 60}})
+
+
+def cmd_bless(p, arg):
+    """Spirit shield + holy elixir at an altar -> blessed spirit shield."""
+    if not ROOMS[p.location].get("prayer_altar"):
+        say("You need an altar to bless anything.")
+        return
+    if not (p.has("spirit shield") and p.has("holy elixir")):
+        say("Blessing takes a spirit shield and a holy elixir — the "
+            "Corporeal Beast guards both.")
+        return
+    if p.lvl("prayer") < 85:
+        say("You need prayer level 85 to channel the blessing.")
+        return
+    p.take("spirit shield")
+    p.take("holy elixir")
+    p.add("blessed spirit shield")
+    p.gain_xp("prayer", 1500)
+    say("Light pools in the shield's heart — you raise a BLESSED SPIRIT "
+        "SHIELD.", "gold", "bold")
+    return True
+
+
+HANDLERS["bless"] = cmd_bless
+
+# --- the warlords ---------------------------------------------------------------
+def _chaos_disrobe(p, m, dmg):
+    slots = [s for s, it in p.equipment.items() if it and s != "weapon"]
+    if slots and random.random() < 0.4:
+        s = random.choice(slots)
+        it = p.equipment[s]
+        p.equipment[s] = None
+        p.add(it)
+        print("  " + paint(f"A tendril flicks your {it} into the mud! "
+                           "(re-equip it)", "bmagenta"))
+
+
+def _scorpia_sting(p, m, dmg):
+    if dmg > 0 and not getattr(p, "poison", 0) and random.random() < 0.5:
+        p.poison = 3
+        print("  " + paint("Scorpia's sting pumps venom into you — "
+                           "POISONED!", "green"))
+
+
+def _venenatis_web(p, m, dmg):
+    if dmg > 0 and random.random() < 0.3:
+        p.run_energy = max(0, getattr(p, "run_energy", 100) - 20)
+        print("  " + paint("Sticky silk tangles your legs. (-20 run "
+                           "energy)", "grey"))
+
+
+_WARLORDS = {
+    "callisto": (
+        {"abonus": 45, "atktype": ["crush"], "att": 180, "cb": 470,
+         "dstab": 40, "dslash": 75, "dcrush": 75, "dmagic": 70,
+         "drange": 75, "def": 95, "hp": 255, "maxhit": 25, "str": 190,
+         "weak": "stab"},
+        [("big bones", 1, 1, 1.0), ("coins", 3000, 15000, 1.0),
+         ("tyrannical ring", 1, 1, 0.04), ("dragon pickaxe", 1, 1, 0.03),
+         ("grimy ranarr", 2, 5, 0.4)],
+        [{"label": "a mauling charge", "verb": "barrels in with",
+          "color": ("bred", "bold"), "builder": lambda: [],
+          "mult": 1.2, "w": 3, "atype": "crush"},
+         {"label": "a ground-shaking roar", "verb": "erupts with",
+          "color": ("orange",), "builder": lambda: [],
+          "mult": 0.9, "w": 2, "atype": "crush"}]),
+    "venenatis": (
+        {"abonus": 40, "atktype": ["magic"], "att": 170, "cb": 464,
+         "dstab": 70, "dslash": 70, "dcrush": 40, "dmagic": 70,
+         "drange": 70, "def": 90, "hp": 255, "maxhit": 23, "str": 160,
+         "weak": "crush"},
+        [("big bones", 1, 1, 1.0), ("coins", 3000, 15000, 1.0),
+         ("treasonous ring", 1, 1, 0.04), ("dragon pickaxe", 1, 1, 0.03),
+         ("grimy ranarr", 2, 5, 0.4)],
+        [{"label": "a bolt of woven lightning", "verb": "spits",
+          "color": ("bmagenta", "bold"), "builder": lambda: [],
+          "mult": 1.1, "w": 3, "atype": "magic"},
+         {"label": "a cast of clinging web", "verb": "throws",
+          "color": ("grey",), "builder": lambda: [],
+          "mult": 0.8, "w": 2, "atype": "ranged",
+          "effect": _venenatis_web}]),
+    "vet'ion": (
+        {"abonus": 45, "atktype": ["crush"], "att": 175, "cb": 454,
+         "dstab": 70, "dslash": 70, "dcrush": 45, "dmagic": 65,
+         "drange": 70, "def": 90, "hp": 220, "maxhit": 24, "str": 180,
+         "weak": "crush"},
+        [("big bones", 1, 1, 1.0), ("coins", 3000, 15000, 1.0),
+         ("ring of the gods", 1, 1, 0.04), ("dragon pickaxe", 1, 1, 0.03),
+         ("grimy ranarr", 2, 5, 0.4)],
+        [{"label": "a sledge of grave-iron", "verb": "swings",
+          "color": ("purple", "bold"), "builder": lambda: [],
+          "mult": 1.15, "w": 3, "atype": "crush"},
+         {"label": "a crackle of earth-lightning", "verb": "calls down",
+          "color": ("bmagenta",), "builder": lambda: [],
+          "mult": 1.0, "w": 2, "atype": "magic"}]),
+    "scorpia": (
+        {"abonus": 35, "atktype": ["stab"], "att": 140, "cb": 225,
+         "dstab": 60, "dslash": 60, "dcrush": 40, "dmagic": 55,
+         "drange": 60, "def": 80, "hp": 200, "maxhit": 16, "str": 140,
+         "weak": "crush"},
+        [("big bones", 1, 1, 1.0), ("coins", 2000, 9000, 1.0),
+         ("odium shard", 1, 1, 0.2), ("malediction shard", 1, 1, 0.2),
+         ("antipoison", 1, 2, 0.4)],
+        [{"label": "her barbed tail", "verb": "whips over with",
+          "color": ("green", "bold"), "builder": lambda: [],
+          "mult": 1.1, "w": 3, "atype": "stab", "effect": _scorpia_sting},
+         {"label": "a crushing pincer", "verb": "snaps",
+          "color": ("byellow",), "builder": lambda: [],
+          "mult": 1.0, "w": 2, "atype": "crush"}]),
+    "chaos elemental": (
+        {"abonus": 40, "atktype": ["magic", "ranged", "crush"], "att": 160,
+         "cb": 305, "dstab": 65, "dslash": 45, "dcrush": 65, "dmagic": 65,
+         "drange": 65, "def": 90, "hp": 250, "maxhit": 21, "str": 150,
+         "weak": "slash"},
+        [("coins", 3000, 12000, 1.0), ("dragon pickaxe", 1, 1, 0.03),
+         ("uncut ruby", 1, 3, 0.4), ("blood rune", 5, 20, 0.5)],
+        [{"label": "a lash of raw chaos", "verb": "whips out",
+          "color": ("bmagenta", "bold"), "builder": lambda: [],
+          "mult": 1.1, "w": 3, "atype": "magic"},
+         {"label": "a discombobulating tendril", "verb": "flicks",
+          "color": ("purple",), "builder": lambda: [],
+          "mult": 0.7, "w": 2, "atype": "ranged",
+          "effect": _chaos_disrobe}]),
+    "kolodion": (
+        {"abonus": 45, "atktype": ["magic"], "att": 150, "cb": 204,
+         "dstab": 80, "dslash": 80, "dcrush": 80, "dmagic": 60,
+         "drange": 80, "def": 85, "hp": 170, "maxhit": 18, "str": 140,
+         "weak": "magic"},
+        [("god cape", 1, 1, 1.0), ("god staff", 1, 1, 1.0),
+         ("blood rune", 10, 30, 1.0), ("coins", 1000, 5000, 1.0)],
+        [{"label": "a searing bolt of pure magic", "verb": "hurls",
+          "color": ("bblue", "bold"), "builder": lambda: [],
+          "mult": 1.1, "w": 3, "atype": "magic"},
+         {"label": "a shapeshifted maul-swing", "verb": "morphs into",
+          "color": ("purple",), "builder": lambda: [],
+          "mult": 0.9, "w": 2, "atype": "crush"}]),
+    "corporeal beast": (
+        {"abonus": 50, "atktype": ["magic", "stab"], "att": 220, "cb": 785,
+         "dstab": 65, "dslash": 90, "dcrush": 90, "dmagic": 80,
+         "drange": 90, "def": 110, "hp": 320, "maxhit": 26, "str": 220,
+         "weak": "stab"},
+        [("big bones", 1, 1, 1.0), ("coins", 8000, 25000, 1.0),
+         ("spirit shield", 1, 1, 0.06), ("holy elixir", 1, 1, 0.03),
+         ("uncut diamond", 2, 4, 0.5)],
+        [{"label": "a gore of black horn", "verb": "lowers into",
+          "color": ("grey", "bold"), "builder": lambda: [],
+          "mult": 1.15, "w": 3, "atype": "stab"},
+         {"label": "a scything blast of dark energy", "verb": "exhales",
+          "color": ("bmagenta", "bold"), "builder": lambda: [],
+          "mult": 1.05, "w": 3, "atype": "magic"}]),
+}
+for _w, (_st, _drops, _atk) in _WARLORDS.items():
+    _add_mob(_w, _st, _drops, members=True)
+    MONSTERS[_w]["boss"] = True
+    MONSTERS[_w]["rank"] = "boss"
+    _BOSSES.add(_w)
+    BOSS_TURN[_w] = (lambda atk: (lambda p, m: _boss_take_turn(p, m, atk)))(_atk)
+MONSTERS["vet'ion"]["transform"] = True
+MONSTERS["vet'ion"]["transform_msg"] = ("VET'ION collapses — and claws "
+                                        "straight back out of the mud, "
+                                        "wreathed in purple flame. "
+                                        "TWICE-BURIED, TWICE-RISEN!")
+MONSTERS["kolodion"]["mage_only"] = True
+MONSTERS["corporeal beast"]["corporeal"] = True
+
+# --- the wastes -------------------------------------------------------------------
+ROOMS.update({
+    "wilderness_wastes": dict(name="Western Wastes",
+        desc="A mud-flat of old battlefields under a bruised sky. Lairs "
+             "pock the wastes: a bear-den ('bear'), a web-choked hollow "
+             "('spider'), a burial rift ('skeleton'), a scorpion pit "
+             "('scorpion'), churned ground where the air argues with "
+             "itself ('chaos'), Kolodion's arena ('arena') and a cave "
+             "mouth of utter dark ('beast').",
+        exits={"east": "deep_wilderness", "bear": "callisto_den",
+               "spider": "venenatis_lair", "skeleton": "vetion_rift",
+               "scorpion": "scorpia_pit", "chaos": "chaos_ele_lair",
+               "arena": "mage_arena", "beast": "corp_cave"},
+        monsters=["dark warrior", "green dragon"], hostile=True,
+        members=True),
+    "callisto_den": dict(name="Callisto's Den",
+        desc="Bones of every size carpet the clearing. CALLISTO rises on "
+             "his hind legs — a bear the size of a barn, and angrier.",
+        exits={"out": "wilderness_wastes"},
+        monsters=["callisto"], members=True),
+    "venenatis_lair": dict(name="Venenatis' Hollow",
+        desc="Webs thick as ship-rope sag between dead trees. VENENATIS "
+             "descends slowly, tasting the air with her forelegs.",
+        exits={"out": "wilderness_wastes"},
+        monsters=["venenatis"], members=True),
+    "vetion_rift": dict(name="Vet'ion's Rift",
+        desc="A grave that wouldn't stay shut. VET'ION stands in the "
+             "broken earth, purple fire in his empty eyes.",
+        exits={"out": "wilderness_wastes"},
+        monsters=["vet'ion"], members=True),
+    "scorpia_pit": dict(name="Scorpia's Pit",
+        desc="A chalk-white pit that clicks and rustles. SCORPIA scuttles "
+             "up from the dark, tail curling overhead.",
+        exits={"out": "wilderness_wastes"},
+        monsters=["scorpia"], members=True),
+    "chaos_ele_lair": dict(name="The Churned Ground",
+        desc="The mud here is wrong — it flows uphill. THE CHAOS "
+             "ELEMENTAL drifts over it, a storm with opinions.",
+        exits={"out": "wilderness_wastes"},
+        monsters=["chaos elemental"], members=True),
+    "mage_arena": dict(name="The Mage Arena",
+        desc="A ring of scorched obsidian in the wastes. KOLODION grins: "
+             "'Rules are rules — MAGIC ONLY. Beat me and choose your "
+             "god.' (his prize: a god cape and staff)",
+        exits={"out": "wilderness_wastes"},
+        monsters=["kolodion"], members=True),
+    "corp_cave": dict(name="Cave of the Corporeal Beast",
+        desc="Dark that eats your torchlight. THE CORPOREAL BEAST fills "
+             "the cavern wall to wall — bring a SPEAR, or bring regret.",
+        exits={"out": "wilderness_wastes"},
+        monsters=["corporeal beast"], members=True),
+})
+ROOMS["deep_wilderness"]["exits"]["wastes"] = "wilderness_wastes"
+for _rm in ("wilderness_wastes", "callisto_den", "venenatis_lair",
+            "vetion_rift", "scorpia_pit", "chaos_ele_lair", "mage_arena",
+            "corp_cave"):
+    REGIONS[_rm] = "Wilderness"
+
+
+# ===========================================================================
 #  TWO-HANDED WEAPONS  (both hands or none — no shield alongside these)
 # ===========================================================================
 _TWO_HANDED = [
@@ -11318,8 +11619,9 @@ for _room, _desc in {
         "The lawless wastes stretch to the horizon. Dark warriors, giants "
         "and green dragons roam the blasted ground, an agility course "
         "sways over a ravine ('course'), the Chaos Temple squats to the "
-        "north ('temple') — and a frozen chasm yawns where the God Wars "
-        "rage below ('chasm')."),
+        "north ('temple'), a frozen chasm yawns where the God Wars rage "
+        "below ('chasm') — and west, the warlords keep their lairs "
+        "('wastes')."),
     "ardougne": (
         "A grand split city. Market stalls line the square — baked goods, "
         "silk, glittering gems — pickpockets work the crowds, and paladins "
