@@ -1972,7 +1972,9 @@ def _player_attack(p, m):
             say(f"You don't have the runes for {p.autocast}.")
             return None
         att_roll = (p.lvl("magic") + 9) * (p.equip_bonus("amagic") + 64)
-        return ("magic", "magic", att_roll, spell["max"])
+        # magic-damage gear (ahrim's, nightmare staff) raises the spell cap
+        max_hit = int(spell["max"] * (1 + p.equip_bonus("mdmg") / 100))
+        return ("magic", "magic", att_roll, max_hit)
     # melee: accuracy uses the chosen attack type; damage uses strength bonus
     atype = getattr(p, "attack_type", "slash")
     if atype not in ("stab", "slash", "crush"):
@@ -2014,9 +2016,9 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
     barrows = _barrows_set(p)
     if barrows == "dharok" and p.max_hp:      # the lower your hp, the harder you hit
         max_hit = int(max_hit * (1 + (1 - p.hp / p.max_hp)))
-    task = getattr(p, "slayer_task", None)    # slayer helmet: on-task ferocity
+    task = getattr(p, "slayer_task", None)    # slayer helm/black mask ferocity
     if task and task.get("remaining", 0) > 0 and m["name"] == task.get("monster") \
-            and p.equipment.get("head") == "slayer helmet":
+            and p.equipment.get("head") in ("slayer helmet", "black mask"):
         att_roll = int(att_roll * 1.15)
         max_hit = max(1, int(max_hit * 1.15))
     if m.get("flying") and kind == "melee":   # airborne foes shrug off melee
@@ -4789,6 +4791,12 @@ def _quest_on_kill(p, target):
         say("DAD crashes down and the gate-hall stands open. Somewhere "
             "deeper, chains rattle — find Godric! ('talk godric')",
             "bgreen")
+    if target == "the experiment" and _q(p, "fenkenstrain") == "creature":
+        p.quests["fenkenstrain"] = "loose"
+        if "the experiment" in ROOMS["fenkenstrain_castle"]["monsters"]:
+            ROOMS["fenkenstrain_castle"]["monsters"].remove("the experiment")
+        say("The creature slumps, contained at last. The doctor will want "
+            "a word.", "bgreen")
     if target == "cyclops" and random.random() < 0.20:
         nxt = _best_defender(p) + 1     # each tier you hold earns the next
         if nxt < len(DEFENDER_ORDER):
@@ -4901,6 +4909,7 @@ ACHIEVEMENTS = {
     "king_slayer": ("Kingsbane", "Defeat all three Dagannoth Kings."),
     "infernal": ("The Infernal", "Defeat TzKal-Zuk at the bottom of the "
                  "Inferno."),
+    "dreamless": ("Dreamless", "Wake Slepe: defeat the Nightmare."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -4952,6 +4961,8 @@ def _earned_achievements(p):
         got.add("king_slayer")
     if "tzkal-zuk" in bosses:
         got.add("infernal")
+    if "the nightmare" in bosses:
+        got.add("dreamless")
     if p.coins >= 100000:
         got.add("rich")
     return got
@@ -5181,6 +5192,9 @@ def deserialize(data):
     if p.quests.get("fremennik_trials") == "hunt" and \
             "the draugen" not in ROOMS["rock_crab_coast"]["monsters"]:
         ROOMS["rock_crab_coast"]["monsters"].append("the draugen")
+    if p.quests.get("fenkenstrain") == "creature" and \
+            "the experiment" not in ROOMS["fenkenstrain_castle"]["monsters"]:
+        ROOMS["fenkenstrain_castle"]["monsters"].append("the experiment")
     return p
 
 
@@ -5528,7 +5542,7 @@ def _backup_nudge(p):
 
 # skilling verbs that accept a count: 'mine iron 10', 'cook all', 'bury 5'
 BATCHABLE = {"chop", "cut", "mine", "fish", "cook", "smelt", "bury",
-             "clean", "tan", "spin"}
+             "clean", "tan", "spin", "worship"}
 BATCH_CAP = 28      # one inventory's worth, like a proper JalYt
 
 
@@ -5795,6 +5809,10 @@ def _next_goal(p):
                 "fells Rex, arrows fell Prime, steel fells Supreme, and "
                 "their rings have no equal. (Fremennik Trials first \u2014 "
                 "Rellekka, north of Seers')")
+    if "the nightmare" not in getattr(p, "bosses", []):
+        return ("Slepe has stopped waking \u2014 beneath its cathedral THE "
+                "NIGHTMARE drinks the town's dreams. Crush weapons bite "
+                "deepest. (east of Canifis, then south)")
     if "tzkal-zuk" not in getattr(p, "bosses", []):
         return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
                 "volcano) \u2014 wear your fire cape in, survive eight waves, "
@@ -10958,6 +10976,274 @@ for _rm in ("tai_bwo_wannai", "shilo_village", "brimhaven_dungeon",
     REGIONS[_rm] = "Karamja"
 TRAVEL_HUBS["shilo"] = "shilo_village"
 TRAVEL_NAMES.append("Shilo")
+
+
+# ===========================================================================
+#  MORYTANIA COMPLETION  (Phasmatys, Fenkenstrain, Mos Le'Harmless, SLEPE)
+# ===========================================================================
+# East of Canifis the dead do business: Port Phasmatys banks in silence
+# and grinds bones at the Ectofuntus, Dr Fenkenstrain stitches in his
+# castle, pirates drink off Mos Le'Harmless while CAVE HORRORS wear the
+# dark below — and in plague-hushed Slepe, THE NIGHTMARE feeds on sleep.
+
+# --- items -------------------------------------------------------------------
+add_item("black mask", 800000, members=True, equip={
+    "astab": 1, "aslash": 1, "acrush": 1, "dstab": 6, "dslash": 6,
+    "dcrush": 6, "drange": 5, "slot": "head", "req": {"defence": 10}})
+EFFECT_NOTES["black mask"] = ("+15% accuracy and damage against your "
+                              "slayer task (the slayer helmet's dark "
+                              "heart)")
+add_item("bottle of rum", 30, heal=5, members=True)
+add_item("ring of charos", 1200, members=True,
+         equip={"slot": "ring", "dmagic": 2})
+EFFECT_NOTES["ring of charos"] = ("Fenkenstrain's payment — a charming "
+                                  "little thing")
+add_item("nightmare staff", 350000, members=True, equip={
+    "amagic": 16, "dmagic": 5, "mdmg": 15, "acrush": 25, "str": 30,
+    "slot": "weapon", "req": {"magic": 65, "hitpoints": 50}})
+EFFECT_NOTES["nightmare staff"] = ("dreams given heft: +15% magic damage "
+                                   "raises your spell cap")
+SHOPS["pirate"] = {"bottle of rum": 30, "harpoon": 5, "bread": 10}
+
+# --- ectofuntus ----------------------------------------------------------------
+def cmd_worship(p, arg):
+    if not ROOMS[p.location].get("ectofuntus"):
+        say("There's no Ectofuntus here — the ghosts grind bones at Port "
+            "Phasmatys.", "grey")
+        return
+    bone = arg.strip().lower()
+    if not bone:
+        bone = next((b for b in ("dragon bones", "dagannoth bones",
+                                 "big bones", "bones") if p.has(b)), "")
+    if not bone or bone not in ITEMS or "bury" not in ITEMS.get(bone, {}):
+        say("Bring bones to grind — the Ectofuntus takes any of them.")
+        return None
+    if not p.has(bone):
+        say(f"You have no {bone}.")
+        return None
+    p.take(bone)
+    skill, xp = ITEMS[bone]["bury"]
+    xp = int(xp * 2.5)                  # slime + bonemeal beats a hole
+    say(f"You grind the {bone}, add ectoplasm, and pour the mix into the "
+        "Ectofuntus. Green fire answers.")
+    p.gain_xp(skill, xp)
+    return True
+
+
+HANDLERS["worship"] = cmd_worship
+
+# --- creatures ------------------------------------------------------------------
+_add_mob("experiment",
+    {"abonus": 0, "atktype": ["crush"], "att": 10, "cb": 25, "dstab": 5,
+     "dslash": 5, "dcrush": 5, "dmagic": 5, "drange": 5, "def": 10,
+     "hp": 100, "maxhit": 3, "str": 20, "weak": "crush"},
+    [("big bones", 1, 1, 1.0), ("coins", 1, 20, 0.3)],
+    members=True, rank="easy")
+_add_mob("the experiment",
+    {"abonus": 15, "atktype": ["crush"], "att": 45, "cb": 51, "dstab": 25,
+     "dslash": 25, "dcrush": 20, "dmagic": 15, "drange": 25, "def": 40,
+     "hp": 80, "maxhit": 6, "str": 50, "weak": "crush"},
+    [("big bones", 1, 1, 1.0)], members=True, rank="hard")
+_add_mob("pirate",
+    {"abonus": 12, "atktype": ["slash"], "att": 50, "cb": 57, "dstab": 25,
+     "dslash": 25, "dcrush": 25, "dmagic": 10, "drange": 25, "def": 45,
+     "hp": 60, "maxhit": 7, "str": 52, "weak": "stab"},
+    [("bones", 1, 1, 1.0), ("coins", 20, 200, 0.9),
+     ("bottle of rum", 1, 1, 0.3)], members=True, rank="hard")
+_add_mob("cave horror",
+    {"abonus": 25, "atktype": ["crush"], "att": 70, "cb": 80, "dstab": 40,
+     "dslash": 40, "dcrush": 35, "dmagic": 30, "drange": 40, "def": 60,
+     "hp": 55, "maxhit": 8, "str": 75, "weak": "crush"},
+    [("big bones", 1, 1, 1.0), ("coins", 40, 250, 0.7),
+     ("black mask", 1, 1, 0.01), ("grimy ranarr", 1, 1, 0.08),
+     ("grimy harralander", 1, 2, 0.2)], members=True, rank="elite")
+MONSTERS["cave horror"]["slayer_req"] = 58
+DURADEL_TARGETS.append("cave horror")
+
+# --- THE NIGHTMARE ----------------------------------------------------------------
+NIGHTMARE_ART = r"""
+        .-.      _______      .-.
+       (   `-._.'       `._.-'   )
+        )    ___    _    ___    (
+       (    ( o )  (_)  ( o )    )
+        )    `-'  _____  `-'    (
+       (         (     )        )
+        `-.___.-' `---' `-.___.-'
+             )_____________(
+"""
+
+
+def _nightmare_intro(name):
+    return [_tint(NIGHTMARE_ART, "grey", "dim"),
+            _tint(NIGHTMARE_ART, "purple", "bold"),
+            _tint(NIGHTMARE_ART, "bmagenta", "bold")]
+
+
+def _nightmare_death(name):
+    return [_tint(NIGHTMARE_ART, "bmagenta"),
+            _tint(NIGHTMARE_ART, "grey", "dim")]
+
+
+def _nightmare_spores(p, m, dmg):
+    if random.random() < 0.35 and not p.frozen:
+        p.frozen = True
+        print("  " + paint("Numbing spores burst around you — your next "
+                           "attack will falter! (sleep)", "bmagenta"))
+
+
+NIGHTMARE_ATTACKS = [
+    {"label": "a husk-handed swipe", "verb": "lashes out with",
+     "color": ("purple", "bold"),
+     "builder": lambda: [_tint(NIGHTMARE_ART, "purple", "bold")],
+     "mult": 1.2, "w": 3, "atype": "crush"},
+    {"label": "a surge of drowning shadow", "verb": "wills forth",
+     "color": ("bmagenta", "bold"),
+     "builder": lambda: [_tint(NIGHTMARE_ART, "bmagenta", "bold")],
+     "mult": 1.1, "w": 3, "atype": "magic"},
+    {"label": "a cloud of grave-spores", "verb": "exhales",
+     "color": ("green",),
+     "builder": lambda: [_tint(NIGHTMARE_ART, "green")],
+     "mult": 0.8, "w": 2, "atype": "magic", "effect": _nightmare_spores},
+]
+
+
+def _nightmare_take_turn(p, m):
+    for thr, flag in ((200, "night_p2"), (100, "night_p3")):
+        if m["cur"] <= thr and not m.get(flag):
+            m[flag] = True
+            m["cur"] = min(m["hp"], m["cur"] + 40)
+            say("Sleepwalkers shamble from the dark and the Nightmare "
+                "DRINKS their dreams — her wounds knit closed! (+40)",
+                "bmagenta", "bold")
+            return None
+    return _boss_take_turn(p, m, NIGHTMARE_ATTACKS)
+
+
+_add_mob("the nightmare",
+    {"abonus": 45, "atktype": ["crush", "magic"], "att": 180, "cb": 814,
+     "dstab": 70, "dslash": 70, "dcrush": 55, "dmagic": 70, "drange": 70,
+     "def": 100, "hp": 300, "maxhit": 20, "str": 170, "weak": "crush"},
+    [("big bones", 1, 1, 1.0), ("coins", 5000, 20000, 1.0),
+     ("nightmare staff", 1, 1, 0.01), ("grimy ranarr", 2, 5, 0.4),
+     ("uncut diamond", 1, 2, 0.25)], members=True)
+MONSTERS["the nightmare"]["boss"] = True
+MONSTERS["the nightmare"]["rank"] = "boss"
+_BOSSES.add("the nightmare")
+BOSS_TURN["the nightmare"] = _nightmare_take_turn
+BOSS_INTRO["the nightmare"] = _nightmare_intro
+BOSS_DEATH["the nightmare"] = _nightmare_death
+MONSTER_ART["the nightmare"] = NIGHTMARE_ART
+
+# --- the region --------------------------------------------------------------------
+ROOMS.update({
+    "port_phasmatys": dict(name="Port Phasmatys",
+        desc="A harbour town of the polite dead: ghost bankers, ghost "
+             "dockers, ghost queues. The ECTOFUNTUS burns green over the "
+             "town ('worship' your bones for rich prayer xp), and a "
+             "charter ship rocks at the quay ('sail').",
+        exits={"west": "canifis", "sail": "mos_le_harmless",
+               "south": "slepe"},
+        bank=True, ectofuntus=True, members=True),
+    "fenkenstrain_castle": dict(name="Fenkenstrain's Castle",
+        desc="A lightning-rodded pile above a graveyard that won't stay "
+             "filled. Dr Fenkenstrain needs a steady hand, and his "
+             "escaped EXPERIMENTS lumber harmlessly about — tough as "
+             "walls, slow as grief.",
+        exits={"south": "canifis"},
+        npc="fenkenstrain", monsters=["experiment"], members=True),
+    "mos_le_harmless": dict(name="Mos Le'Harmless",
+        desc="A pirate haven of rum, dice and regret. The tavern never "
+             "shuts, and a cave mouth in the cliffs breathes cold air "
+             "('caves').",
+        exits={"sail": "port_phasmatys", "caves": "harmless_caves"},
+        bank=True, shop="pirate", monsters=["pirate"], members=True),
+    "harmless_caves": dict(name="Mos Le'Harmless Caves",
+        desc="Wet black tunnels where the dark itself grows faces. CAVE "
+             "HORRORS stalk between the stalagmites — slayers prize the "
+             "masks they wear.",
+        exits={"out": "mos_le_harmless"},
+        monsters=["cave horror"], hostile=True, members=True),
+    "slepe": dict(name="Slepe",
+        desc="A town asleep on its feet: doors ajar, hearths cold, "
+             "townsfolk curled where they fell. Something in the "
+             "cathedral is EATING their dreams ('cathedral').",
+        exits={"north": "port_phasmatys", "cathedral": "nightmare_arena"},
+        members=True),
+    "nightmare_arena": dict(name="The Sisterhood Sanctuary",
+        desc="Beneath Slepe's cathedral, sleepers ring a pit of violet "
+             "mist. THE NIGHTMARE hangs in the air above them, vast and "
+             "wrong, drinking sleep.",
+        exits={"out": "slepe"},
+        monsters=["the nightmare"], members=True),
+})
+ROOMS["canifis"]["exits"]["east"] = "port_phasmatys"
+ROOMS["canifis"]["exits"]["north"] = "fenkenstrain_castle"
+ROOMS["canifis"]["desc"] += (" The road east runs for Port Phasmatys, and "
+                             "Fenkenstrain's castle broods north.")
+for _rm in ("port_phasmatys", "fenkenstrain_castle", "mos_le_harmless",
+            "harmless_caves", "slepe", "nightmare_arena"):
+    REGIONS[_rm] = "Morytania"
+TRAVEL_HUBS["phasmatys"] = "port_phasmatys"
+TRAVEL_NAMES.append("Phasmatys")
+
+# --- Creature of Fenkenstrain (1 QP) ---------------------------------------------
+ALL_QUESTS["fenkenstrain"] = "Creature of Fenkenstrain"
+ALL_QUESTS["dragon_slayer"] = ALL_QUESTS.pop("dragon_slayer")  # capstone last
+QUEST_POINTS["fenkenstrain"] = 1
+NPC_NAMES["fenkenstrain"] = "Dr Fenkenstrain"
+QUEST_STARTS["fenkenstrain"] = "Dr Fenkenstrain, his castle north of Canifis"
+QUEST_HINTS["fenkenstrain"] = {
+    "parts": "bring the doctor 5 big bones, a needle and thread",
+    "creature": "his creature broke loose — 'fight the experiment'!",
+    "loose": "report the escape to Dr Fenkenstrain",
+}
+
+
+def talk_fenkenstrain(p):
+    stage = _q(p, "fenkenstrain")
+    if stage == "not_started":
+        banner("Quest Start: Creature of Fenkenstrain", color="purple",
+               line_color="bmagenta")
+        say("Dr Fenkenstrain: \"Science requires MATERIALS. Bring me five "
+            "big bones, a needle and thread, and together we shall give "
+            "death a stern talking-to.\"")
+        p.quests["fenkenstrain"] = "parts"
+    elif stage == "parts":
+        if p.count("big bones") >= 5 and p.has("needle") and p.has("thread"):
+            p.take("big bones", 5)
+            p.take("needle")
+            p.take("thread")
+            p.quests["fenkenstrain"] = "creature"
+            if "the experiment" not in \
+                    ROOMS["fenkenstrain_castle"]["monsters"]:
+                ROOMS["fenkenstrain_castle"]["monsters"].append(
+                    "the experiment")
+            say("The doctor stitches, hums, and throws the great switch. "
+                "LIGHTNING — and the thing on the slab sits up, looks at "
+                "you both... and goes BERSERK! \"Contain it! CONTAIN "
+                "IT!\"", "bmagenta", "bold")
+        else:
+            say("Dr Fenkenstrain: \"Five big bones, a needle, thread! "
+                "Graveyards are FULL of donors, none of them using their "
+                "bones.\"")
+    elif stage == "creature":
+        say("Dr Fenkenstrain (from behind a cabinet): \"CONTAIN IT! "
+            "'fight the experiment'!\"")
+    elif stage == "loose":
+        _complete_banner("Creature of Fenkenstrain")
+        say("Dr Fenkenstrain mops his brow: \"Science thanks you. Take "
+            "this ring — I shan't be needing charm where I'm hiding.\" "
+            "4,000 crafting and prayer xp awarded!", "gold", "bold")
+        p.add("ring of charos")
+        p.gain_xp("crafting", 4000)
+        p.gain_xp("prayer", 4000)
+        p.quests["fenkenstrain"] = "complete"
+    elif stage == "complete":
+        say("Dr Fenkenstrain: \"The experiments outside? Harmless. "
+            "Mostly. Splendid training, actually.\"")
+
+
+QUEST_TALK["fenkenstrain"] = talk_fenkenstrain
 
 
 # ===========================================================================

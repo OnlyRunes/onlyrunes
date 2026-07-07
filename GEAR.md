@@ -62,6 +62,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Dragon Scimitar | +8 | +67 | -2 | · | · | · | +1 | · | · | · | +66 | · | · | · | attack 60 | 100000 | M |  |
 | Dragon Longsword | +58 | +69 | -2 | · | · | · | +3 | +2 | · | · | +71 | · | · | · | attack 60 | 100000 | M |  |
 | Abyssal Whip | · | +82 | · | · | · | · | · | · | · | · | +82 | · | · | · | attack 70 | 120001 | M |  |
+| Nightmare Staff | · | · | +25 | +16 | · | · | · | · | +5 | · | +30 | · | +15 | · | magic 65 | 350000 | M |  |
 | Ahrim'S Staff | · | · | · | +25 | · | · | · | · | +15 | · | · | · | +5 | · | magic 70 | 700000 | M |  |
 | Karil'S Crossbow | · | · | · | · | +94 | · | · | · | · | · | · | · | · | · | ranged 70 | 700000 | M |  |
 | Torag'S Hammers | · | · | +90 | · | · | · | · | · | · | · | +90 | · | · | · | attack 70 | 700000 | M |  |
@@ -125,6 +126,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Helm Of Neitiznot | · | · | · | · | · | +31 | +29 | +34 | +3 | +30 | +3 | · | · | +3 | · | 55000 | M | Q |
 | Dragon Med Helm | · | · | · | -3 | · | +33 | +35 | +32 | -1 | +34 | · | · | · | · | defence 60 | 60000 | M |  |
 | Berserker Helm | · | · | · | -5 | -5 | +31 | +29 | +33 | · | +30 | +3 | · | · | · | defence 45 | 60000 | M |  |
+| Black Mask | +1 | +1 | +1 | · | · | +6 | +6 | +6 | · | +5 | · | · | · | · | defence 10 | 800000 | M |  |
 
 ## Body
 
@@ -274,6 +276,7 @@ _Auto-generated from `adventure.py` by `make_gear_docs.py`. `M`=members, `Q`=que
 | Ring Of Recoil | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 900 |  |  |
 | Sapphire Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 900 |  |  |
 | Ring Of Life | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 1200 |  |  |
+| Ring Of Charos | · | · | · | · | · | · | · | · | +2 | · | · | · | · | · | · | 1200 | M |  |
 | Emerald Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 1275 |  |  |
 | Ruby Ring | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 2025 |  |  |
 | Ring Of Forging | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | 2100 |  |  |
