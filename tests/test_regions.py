@@ -99,7 +99,8 @@ check("chaos temple reachable", p.location == "chaos_temple", out)
 p.add("big bones")
 xp0 = p.skills["prayer"]
 out = run(a.cmd_bury, p, "big bones")
-check("chaos altar +50%", p.skills["prayer"] - xp0 == int(15 * 1.5) * 2,
+check("chaos altar +50%",
+      p.skills["prayer"] - xp0 == int(15 * 1.5) * a.XP_RATE,
       f"gained {p.skills['prayer'] - xp0}")
 check("green dragons in deep wild",
       "green dragon" in a.ROOMS["deep_wilderness"]["monsters"])

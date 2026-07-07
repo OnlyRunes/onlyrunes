@@ -79,7 +79,8 @@ run(a.cmd_slayerbuy, p, "helmet")
 check("helmet bought", p.has("slayer helmet") and p.slayer_points == 40)
 xp0 = p.skills["slayer"]
 run(a.cmd_slayerbuy, p, "tome")
-check("tome grants xp", p.skills["slayer"] - xp0 == 5000)
+check("tome grants xp",
+      p.skills["slayer"] - xp0 == 2500 * a.XP_RATE)
 p.slayer_task = {"monster": "cow", "amount": 10, "remaining": 10}
 run(a.cmd_slayerbuy, p, "skip")
 check("skip clears task", p.slayer_task is None)

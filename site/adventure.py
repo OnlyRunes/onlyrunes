@@ -45,7 +45,7 @@ def _supports_color():
 COLOR = _supports_color()
 WEB = False          # set by enable_web() when running in the browser (Pyodide)
 BETA = False         # set by enable_beta(); gates dev/test-only commands
-XP_RATE = 2          # global XP multiplier (2x) — faster progression
+XP_RATE = 5          # global XP multiplier (5x) — faster progression
 
 # Style/colour codes
 _CODES = {
@@ -814,7 +814,7 @@ for burnt in ["burnt shrimp", "burnt fish", "burnt chicken", "burnt meat"]:
 add_item("vial of water", 2)
 # grimy herb -> (clean herb, herblore level to clean, clean xp)
 HERBS = {
-    "grimy guam":        ("guam leaf", 3, 2),
+    "grimy guam":        ("guam leaf", 1, 2),
     "grimy marrentill":  ("marrentill", 5, 4),
     "grimy tarromin":    ("tarromin", 11, 5),
     "grimy harralander": ("harralander", 20, 6),
@@ -834,7 +834,7 @@ for _sec, _val in [("eye of newt", 3), ("limpwurt root", 25), ("snape grass", 30
 #   ("boost", skill, tier)  temporary +level boost for the current fight
 #   ("restore","prayer"/"energy")   ("cure","poison")
 POTIONS = {
-    "attack potion":   {"herb": "guam leaf", "second": "eye of newt", "lvl": 3,
+    "attack potion":   {"herb": "guam leaf", "second": "eye of newt", "lvl": 1,
                         "xp": 25, "effect": ("boost", "attack", 0), "value": 40},
     "antipoison":      {"herb": "marrentill", "second": "unicorn horn dust",
                         "lvl": 5, "xp": 38, "effect": ("cure", "poison", 0),
@@ -1990,6 +1990,7 @@ def _player_attack(p, m):
         if not _consume_runes(p, spell["runes"]):
             say(f"You don't have the runes for {p.autocast}.")
             return None
+        p.gain_xp("magic", max(1, spell["xp"] // 2))   # xp per cast, OSRS-style
         _LAST_SPELL[0] = p.autocast
         att_roll = (p.lvl("magic") + 9) * (p.equip_bonus("amagic") + 64)
         # magic-damage gear (ahrim's, nightmare staff) raises the spell cap
@@ -4266,6 +4267,11 @@ def cmd_ge(p, arg):
 
 # --- combat & farm actions ------------------------------------------------
 def _handle_death(p):
+    if getattr(p, "god", False):        # [dev] god mode refuses death
+        p.hp = p.max_hp
+        say("[dev] God mode shrugs off the killing blow.", "bmagenta",
+            "bold")
+        return
     _clear_status(p)
     show_art(ART_DEATH, "bred")
     banner("YOU HAVE DIED", color="bred", line_color="red")
@@ -4550,7 +4556,8 @@ def talk_cook(p):
     if stage == "not_started":
         banner("Quest Start: Cook's Assistant", color="purple", line_color="bmagenta")
         say("\"It's the Duke's birthday and I've ruined the cake! Fetch me an "
-            "EGG, a BUCKET OF MILK and a POT OF FLOUR. The farm is east!\"")
+            "EGG, a BUCKET OF MILK and a POT OF FLOUR. The farm is past "
+            "the general store — north, then east!\"")
         say("He hands you an empty bucket and pot.")
         p.add("bucket")
         p.add("pot")
@@ -5576,6 +5583,44 @@ def cmd_devmax(p, arg):
     cmd_equipment(p, "")
 
 
+def cmd_spawn(p, arg):
+    """[beta only] Spawn any item: 'spawn <item> [qty]'."""
+    if not BETA:
+        return say("You don't know how to do that. Type 'help'.")
+    words = arg.strip().lower().split()
+    qty = 1
+    if words and words[-1].isdigit():
+        qty = max(1, int(words[-1]))
+        words = words[:-1]
+    name = " ".join(words)
+    if not name:
+        return say("Spawn what? 'spawn <item> [qty]' — any item in the "
+                   "game.", "grey")
+    if name not in ITEMS:
+        near = [i for i in ITEMS if name in i][:6]
+        if len(near) == 1:
+            name = near[0]
+        elif near:
+            return say("Which one? " + ", ".join(near), "grey")
+        else:
+            return say(f"No item called '{name}'.", "grey")
+    p.add(name, qty)
+    say(f"[dev] Spawned {qty} x {name}.", "bmagenta", "bold")
+
+
+def cmd_god(p, arg):
+    """[beta only] Toggle god mode: hp pinned to full, death refused."""
+    if not BETA:
+        return say("You don't know how to do that. Type 'help'.")
+    p.god = not getattr(p, "god", False)
+    if p.god:
+        p.hp = p.max_hp
+        say("[dev] GOD MODE ON — your hp is pinned to full and death "
+            "cannot take you.", "bmagenta", "bold")
+    else:
+        say("[dev] God mode off. Mortality restored.", "bmagenta")
+
+
 HANDLERS = {
     "look": cmd_look, "l": cmd_look, "exits": cmd_look,
     "go": cmd_go,
@@ -5623,10 +5668,11 @@ HANDLERS = {
     # dev/test only — no-op unless enable_beta() was called (beta/localhost).
     # Hidden from web autocomplete/help even on beta (see web_commands()).
     "maxme": cmd_devmax, "devmax": cmd_devmax, "dev": cmd_devmax,
+    "spawn": cmd_spawn, "god": cmd_god, "godmode": cmd_god,
 }
 
 # verbs kept out of the web tab-completion list (dev tools; still runnable)
-_HIDDEN_VERBS = {"maxme", "devmax", "dev"}
+_HIDDEN_VERBS = {"maxme", "devmax", "dev", "spawn", "god", "godmode"}
 
 
 def _backup_nudge(p):
@@ -5701,6 +5747,8 @@ def _run_batch(p, handler, arg, n):
 def dispatch(player, raw):
     """Execute a single command line. Returns False if the player quit."""
     raw = raw.strip()
+    if getattr(player, "god", False):   # [dev] god mode pins hp to full
+        player.hp = player.max_hp
     if getattr(player, "auto", None) is not None:
         player.auto = None
         say("(You break off the auto-fight.)", "byellow")
