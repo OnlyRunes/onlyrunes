@@ -84,6 +84,17 @@ p5.location = "lumbridge_castle"
 run(a.cmd_rest, p5, "")
 check("rest heals to full", p5.hp == p5.max_hp)
 
+# level-refusals point at what you CAN do here
+p6 = a.Player("Tiered")
+p6.location = mine_room
+out = run(a.cmd_mine, p6, "iron") if "iron" in a.ROOMS[mine_room].get("rocks", []) else ""
+p7 = a.Player("Chopper")
+p7.location = next(r for r, d in a.ROOMS.items() if "oak" in d.get("trees", []))
+p7.skills["woodcutting"] = 0
+out = run(a.cmd_chop, p7, "oak")
+check("chop refusal lists usable trees", "you can chop" in out.lower()
+      or "need woodcutting" in out, out)
+
 # batchable set covers the classics
 check("batchable verbs registered",
       {"chop", "mine", "fish", "cook", "bury", "worship"} <= a.BATCHABLE)

@@ -523,7 +523,9 @@
     // ---- input box (reliable typing, esp. on mobile) ----
     const submitInput = (text) => {
       text = (text || "").trim();
-      if (!text || mode === "loading" || mode === "ended" || animating) return;
+      // empty Enter is meaningful at the load prompt (= resume)
+      if ((!text && mode !== "load") || mode === "loading"
+          || mode === "ended" || animating) return;
       term.write(text + "\r\n");   // echo onto the prompt line
       buffer = "";
       handleLine(text);
@@ -676,7 +678,8 @@
     const handleLine = (line) => {
       cancelAuto();                     // any input breaks off the autopilot
       if (mode === "load") {
-        if (line.trim().toLowerCase().startsWith("y")) {
+        const t = line.trim().toLowerCase();
+        if (t === "" || t.startsWith("y")) {   // Enter = resume (protects saves)
           try {
             player = mod.player_from_json(localStorage.getItem(SAVE_KEY));
             mode = "play";
@@ -687,7 +690,11 @@
             w("\r\n\x1b[90mThat save was unreadable; starting fresh.\x1b[0m\r\n");
             askName();
           }
-        } else { askName(); }
+        } else if (t.startsWith("n")) {
+          askName();                            // explicit no = new game
+        } else {
+          w("\r\nLoad your saved game? (Y/n) ");  // anything else: re-ask
+        }
         return;
       }
       if (mode === "name") {
@@ -775,7 +782,7 @@
     // ---- start the title sequence ----
     w(mod.web_logo());
     if (localStorage.getItem(SAVE_KEY)) {
-      w("\r\nA saved game exists. Load it? (y/n) "); mode = "load";
+      w("\r\nA saved game exists. Load it? (Y/n) "); mode = "load";
     } else {
       askName();
     }

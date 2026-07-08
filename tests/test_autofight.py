@@ -109,6 +109,25 @@ if p.combat is not None:                # boss fight opened interactively
         res = json.loads(a.web_command(p, "flee"))
 check("boss fight was interactive", True)
 
+
+# the autopilot eats from the pack instead of retreating
+pe = a.Player("Feeder")
+for s in a.SKILLS:
+    pe.skills[s] = a._XP_TABLE[40]
+pe.hp = int(pe.max_hp * 0.3)
+pe.add("swordfish", 10)
+pe.location = "lumbridge_forest"
+run(a.dispatch, pe, "fight goblin auto 2")
+out = ""
+guard = 0
+while getattr(pe, "auto", None) is not None and guard < 60:
+    guard += 1
+    out += run(a.web_autostep, pe) if hasattr(a, "web_autostep") else ""
+    if not out:
+        break
+check("autopilot pauses to eat", pe.count("swordfish") < 10
+      or pe.hp > pe.max_hp * 0.4, f"fish={pe.count('swordfish')} hp={pe.hp}")
+
 print()
 print("FAILURES:", len(FAILS), FAILS if FAILS else "")
 sys.exit(1 if FAILS else 0)

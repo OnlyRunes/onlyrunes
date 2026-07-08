@@ -2580,6 +2580,12 @@ def combat_action(p, raw):
         return cmd_style(p, arg)
     if verb == "autocast":
         return cmd_autocast(p, arg)
+    if verb == "quests":
+        return cmd_quests(p, "")
+    if verb in ("goal", "goals"):
+        return cmd_goal(p, "")
+    if verb == "task":
+        return cmd_task(p, "")
     if verb in ("stats", "skills"):
         return cmd_stats(p, "")
     if verb in ("inventory", "inv", "i"):
@@ -3519,6 +3525,9 @@ def cmd_chop(p, arg):
     product, req, xp = TREES[tree]
     if p.lvl("woodcutting") < req:
         say(f"You need woodcutting level {req} to chop {tree}.")
+        can = [t for t in trees if p.lvl("woodcutting") >= TREES[t][1]]
+        if can:
+            say("  (Here you can chop: " + ", ".join(can) + ".)", "grey")
         return
     say(f"You swing your axe at the {tree}...")
     eff = p.lvl("woodcutting")
@@ -3551,6 +3560,9 @@ def cmd_mine(p, arg):
     product, req, xp = ROCKS[rock]
     if p.lvl("mining") < req:
         say(f"You need mining level {req} to mine {rock}.")
+        can = [r2 for r2 in rocks if p.lvl("mining") >= ROCKS[r2][1]]
+        if can:
+            say("  (Here you can mine: " + ", ".join(can) + ".)", "grey")
         return
     say(f"You swing your pickaxe at the {rock} rock...")
     eff = p.lvl("mining")
@@ -4328,6 +4340,21 @@ def _auto_step(p):
     if not a:
         return
     target, count = a["target"], a["count"]
+    if p.hp <= p.max_hp * 0.4:
+        # eat from the pack like a real grinder; retreat only when it's empty
+        ate = {}
+        while p.hp < p.max_hp * 0.7:
+            food = next((i for i in p.inventory
+                         if "heal" in ITEMS.get(i, {})), None)
+            if not food:
+                break
+            p.take(food)
+            p.hp = min(p.max_hp, p.hp + ITEMS[food]["heal"])
+            ate[food] = ate.get(food, 0) + 1
+        if ate:
+            menu = ", ".join(f"{n}x {f}" for f, n in ate.items())
+            print("  " + paint(f"(You pause to eat {menu} — "
+                               f"hp {p.hp}/{p.max_hp}.)", "lime"))
     if p.hp <= p.max_hp * 0.4 and a["done"] > 0:
         _auto_finish(p, "retreat")
         return
