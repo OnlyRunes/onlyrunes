@@ -119,6 +119,16 @@ do(al, "fletch oak shortbow (u) all")
 check("'all' caps at inventory's worth", al.count("oak shortbow (u)") == 6,
       f"made {al.count('oak shortbow (u)')}")
 
+# ---- startable at level 1 (no dead-end like the old herblore bug) ------------
+z = a.Player("Fresh")
+z.members = True                       # brand-new fletcher, level 1
+z.add("knife")
+z.add("logs", 1)
+zx = z.skills["fletching"]
+out = do(z, "fletch shortbow (u)")
+check("fletching is startable at level 1", z.skills["fletching"] > zx
+      and z.has("shortbow (u)"), out)
+
 # ---- discoverability: fletch is in help -------------------------------------
 h = do(a.Player("H"), "help")
 check("fletch listed in help", "fletch" in h.lower(), h[:200])

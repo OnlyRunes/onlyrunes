@@ -7659,13 +7659,15 @@ for _u in ["shortbow (u)", "longbow (u)", "oak shortbow (u)", "oak longbow (u)",
     add_item(_u, 8)
 
 FLETCH_CUT = {
-    "logs": [("shortbow (u)", 5, 5), ("longbow (u)", 10, 10)],
+    # a plain shortbow is the level-1 entry point (like arrow shafts in OSRS) —
+    # without it Fletching would be unstartable, no xp source below level 5
+    "logs": [("shortbow (u)", 1, 5), ("longbow (u)", 10, 10)],
     "oak logs": [("oak shortbow (u)", 20, 16), ("oak longbow (u)", 25, 25)],
     "willow logs": [("willow shortbow (u)", 35, 33), ("willow longbow (u)", 40, 42)],
     "maple logs": [("maple shortbow (u)", 50, 50), ("maple longbow (u)", 55, 58)],
 }
 FLETCH_STRING = {
-    "shortbow (u)": ("shortbow", 5, 5), "longbow (u)": ("longbow", 10, 10),
+    "shortbow (u)": ("shortbow", 1, 5), "longbow (u)": ("longbow", 10, 10),
     "oak shortbow (u)": ("oak shortbow", 20, 16), "oak longbow (u)": ("oak longbow", 25, 25),
     "willow shortbow (u)": ("willow shortbow", 35, 33),
     "willow longbow (u)": ("willow longbow", 40, 42),
