@@ -6437,7 +6437,8 @@ def cmd_help(_p, _a):
                 "style), drop <item> [n|all]",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
-                    "craft <item>, cut <gem>, craftrune, skillcape <skill>, "
+                    "craft <item>, cut <gem>, fletch <bow>, craftrune, "
+                    "skillcape <skill>, "
                     "plant <seed>, harvest, farm (your patches), "
                     "saw <logs>, build (your house), home, "
                     "settrap <creature>, check (traps) — "
@@ -7706,7 +7707,7 @@ def cmd_fletch(p, arg):
             p.take(u); p.take("bow string"); p.add(bow)
             say(f"You string the {u} into a {bow}.", "bcyan")
             p.gain_xp("fletching", xp)
-            return
+            return True
     if name in cut:
         log, lvl, xp = cut[name]
         if not p.has("knife"):
@@ -7721,12 +7722,14 @@ def cmd_fletch(p, arg):
         p.take(log); p.add(name)
         say(f"You carve the {log} into a {name}.", "bcyan")
         p.gain_xp("fletching", xp)
-        return
+        return True
     say("You can't fletch that. Type 'fletch' to see options.", "grey")
 
 
 HANDLERS["fletch"] = cmd_fletch
 HANDLERS["string"] = cmd_fletch
+BATCHABLE.add("fletch")     # 'fletch willow shortbow (u) 10' cuts a batch
+BATCHABLE.add("string")     # 'string maple longbow 10' strings a batch
 
 # Sources in Kandarin + supply shops
 TREES["maple"] = ("maple logs", 45, 100)
