@@ -195,9 +195,10 @@
     </div>
     <p class="hint">Type a command and press <b>Send</b> (or tap a button below).
       <span class="kbd">↑</span><span class="kbd">↓</span> history ·
-      <span class="kbd">Tab</span> autocomplete. Try <b>help</b>, <b>look</b>,
-      <b>map</b>, <b>fight</b>. Progress auto-saves; <b>save export</b> /
-      <b>save import</b> moves it between devices.</p>
+      <span class="kbd">Tab</span> autocomplete ·
+      <span class="kbd">Enter</span> on empty repeats. Try <b>help</b>,
+      <b>look</b>, <b>map</b>, <b>fight</b>. Progress auto-saves;
+      <b>save export</b> / <b>save import</b> moves it between devices.</p>
     <div id="navbar"></div>
     <div id="quickbar"></div>
     <div id="actions"></div>
@@ -523,8 +524,9 @@
     // ---- input box (reliable typing, esp. on mobile) ----
     const submitInput = (text) => {
       text = (text || "").trim();
-      // empty Enter is meaningful at the load prompt (= resume)
-      if ((!text && mode !== "load") || mode === "loading"
+      // empty Enter is meaningful: at the load prompt (= resume) and in
+      // play (= repeat last command / attack in combat)
+      if ((!text && mode !== "load" && mode !== "play") || mode === "loading"
           || mode === "ended" || animating) return;
       term.write(text + "\r\n");   // echo onto the prompt line
       buffer = "";

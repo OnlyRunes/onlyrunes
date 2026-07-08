@@ -81,6 +81,8 @@ check("recoil can't kill", q["cur"] == 1)
 
 # --- ring of life ---------------------------------------------------------------------
 run(p.equip_item, "ring of life", True)
+for f in [i for i in list(p.inventory) if "heal" in a.ITEMS.get(i, {})]:
+    p.take(f, p.count(f))       # no food left: autoeat can't outrank the ring
 p.location = "wilderness_edge"
 p.combat = a._new_monster("skeleton")
 p.hp = max(1, p.max_hp // 10)

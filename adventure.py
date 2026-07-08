@@ -1731,6 +1731,9 @@ class Player:
         self.bosses = []          # boss names defeated
         self.potions_made = 0     # potions brewed (for the Herbalist achievement)
         self.tips_seen = []       # one-time tips already shown (e.g. backup nudge)
+        self.seen = {self.location}   # rooms discovered ('goto' walks these)
+        self.autoeat = True       # reflex-eat when badly hurt in combat
+        self.last_cmd = ""        # empty Enter repeats this (not saved)
         # starter kit — now includes basic armour so new adventurers aren't
         # one-shot fodder (combat felt punishing with just a sword + 10 HP).
         for it, q in [("bronze sword", 1), ("bronze full helm", 1),
@@ -2580,6 +2583,10 @@ def combat_action(p, raw):
         return cmd_style(p, arg)
     if verb == "autocast":
         return cmd_autocast(p, arg)
+    if verb in ("gear", "loadout", "outfit"):   # the OSRS mid-fight swap
+        return cmd_gear(p, arg)
+    if verb == "autoeat":
+        return cmd_autoeat(p, arg)
     if verb == "quests":
         return cmd_quests(p, "")
     if verb in ("goal", "goals"):
@@ -2598,7 +2605,8 @@ def combat_action(p, raw):
         return _combat_prompt(p)
     if verb in ("help", "?", "commands"):
         return say("In combat: attack · spec · eat [food] · pray [name] · "
-                   "flee. (stats/inventory are free to check.)", "grey")
+                   "flee. (style/gear/stats/inventory are free to check "
+                   "or switch.)", "grey")
     if verb == "pray" and not arg:
         return cmd_pray(p, "")          # checking prayers is free
 
@@ -2685,6 +2693,8 @@ def combat_action(p, raw):
         if getattr(p, "duel", None):
             return _duel_loss(p)
         return _handle_death(p)
+    if getattr(p, "autoeat", True) and p.hp <= p.max_hp * 0.4:
+        _autoeat_bite(p)                  # reflexes kick in when badly hurt
     if _ring_of_life(p):                  # emergency escape at low hp
         return
     _combat_prompt(p)
@@ -3136,10 +3146,13 @@ def cmd_travel(p, arg):
     # otherwise run there, spending energy (cheaper with agility)
     cost = _travel_cost(p)
     if getattr(p, "run_energy", 100) < cost:
-        say(f"You're too winded to run that far (need {cost} energy, have "
-            f"{int(p.run_energy)}). 'rest' in a city, or walk with n/s/e/w.",
-            "byellow")
-        return
+        if p.location in set(TRAVEL_HUBS.values()) or _house_perk(p, "oak bed"):
+            cmd_rest(p, "")             # catch your breath, then set off
+        else:
+            say(f"You're too winded to run that far (need {cost} energy, have "
+                f"{int(p.run_energy)}). 'rest' in a city, or walk with n/s/e/w.",
+                "byellow")
+            return
     p.run_energy -= cost
     say(f"You set off and travel to {ROOMS[room]['name']}.  "
         + paint(f"(-{cost} energy → {int(p.run_energy)}/100)", "grey"), "bgreen")
@@ -3232,6 +3245,12 @@ def cmd_go(p, arg):
     r = ROOMS[p.location]
     d = arg.strip().lower()
     if d not in r["exits"]:
+        d = DIRECTIONS.get(d, d)            # 'go n' means 'go north'
+    if d not in r["exits"]:
+        # a compass direction that simply isn't an exit stays a refusal;
+        # anything else may be a place: 'go bank', 'go cow field'
+        if d not in DIRECTIONS.values() and cmd_goto(p, d, quiet_fail=True):
+            return
         say("You can't go that way.")
         return
     dest = r["exits"][d]
@@ -3311,9 +3330,138 @@ def cmd_go(p, arg):
             p.take("coins", toll)
             say(f"You pay the {toll} coin toll.")
     p.location = dest
+    getattr(p, "seen", set()).add(dest)
     cmd_look(p, "")
     _ambient(p)
     _maybe_ambush(p)
+
+
+# --- goto: auto-walk anywhere you've already discovered --------------------
+def _bfs_path(p, is_target):
+    """Shortest walk from here to a target, through discovered rooms only.
+    Returns a list of exit directions, or None. You can only auto-walk
+    roads you've walked before — exploring stays a hands-on affair."""
+    seen = (getattr(p, "seen", None) or set()) | {p.location}
+    if is_target(p.location):
+        return []
+    came = {p.location: None}           # room -> (previous room, direction)
+    queue = [p.location]
+    i = 0
+    while i < len(queue):
+        cur = queue[i]
+        i += 1
+        for d, nxt in ROOMS[cur]["exits"].items():
+            if nxt in came or nxt not in seen:
+                continue
+            came[nxt] = (cur, d)
+            if is_target(nxt):
+                path = []
+                node = nxt
+                while came[node]:
+                    node, step = came[node]
+                    path.append(step)
+                return path[::-1]
+            queue.append(nxt)
+    return None
+
+
+def _walk_path(p, path):
+    """Follow a list of exit directions, stopping honestly at trouble."""
+    crumbs = []
+    for d in path:
+        before = p.location
+        coins0 = p.count("coins")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            cmd_go(p, d)
+        if p.location == before:            # a locked/tolled door said no
+            if crumbs:
+                say("You walk: " + " → ".join(crumbs) + " …and stop short.",
+                    "bcyan")
+            print(buf.getvalue(), end="")   # replay the refusal, loudly
+            return True
+        crumbs.append(d)
+        if getattr(p, "combat", None) is not None:      # ambushed en route!
+            say("You walk: " + " → ".join(crumbs), "bcyan")
+            print(buf.getvalue(), end="")   # the ambush, as you'd have seen it
+            return True
+        if p.count("coins") < coins0:       # a door took payment — show it
+            print(buf.getvalue(), end="")
+        if len(crumbs) < len(path):
+            _regen_energy(p)                # each step moves the world
+    say("You walk: " + " → ".join(crumbs) + ".", "bcyan")
+    cmd_look(p, "")
+    return True
+
+
+# 'goto <service>' finds the nearest discovered room offering it
+_GOTO_SERVICES = {"bank": "bank", "ge": "ge", "grand exchange": "ge",
+                  "anvil": "anvil", "furnace": "furnace", "range": "range",
+                  "kitchen": "range", "altar": "prayer_altar", "shop": "shop",
+                  "spinning wheel": "spinning_wheel", "tanner": "tanner"}
+
+
+def cmd_goto(p, arg, quiet_fail=False):
+    """Auto-walk to any place you've discovered: 'goto draynor village',
+    'goto bank'. Stops at locked doors and ambushes, like honest feet."""
+    want = arg.strip().lower().replace("_", " ")
+    if getattr(p, "combat", None) is not None:
+        say("Not while something is trying to kill you!", "bred")
+        return True
+    if not want:
+        say("Go where? 'goto <place>' walks you anywhere you've explored — "
+            "try 'goto bank' or 'goto cow field'.", "grey")
+        return True
+    svc = _GOTO_SERVICES.get(want)
+    if svc:
+        path = _bfs_path(p, lambda room: ROOMS[room].get(svc))
+        if path is None:
+            say(f"You don't know anywhere around here with a {want}. "
+                "Explore, or 'travel' to a city.", "grey")
+        elif not path:
+            say(f"There's a {want} right here.", "grey")
+        else:
+            _walk_path(p, path)
+        return True
+    seen = (getattr(p, "seen", None) or set()) | {p.location}
+
+    def label(k):
+        return ROOMS[k]["name"].lower()
+    hits = [k for k in seen if k.replace("_", " ") == want or label(k) == want]
+    if not hits:
+        hits = [k for k in seen
+                if want in k.replace("_", " ") or want in label(k)]
+    if not hits:
+        anywhere = [k for k in ROOMS if want in k.replace("_", " ")
+                    or want in label(k)]
+        if quiet_fail and not anywhere:
+            return False                    # let 'go' print its own refusal
+        if anywhere:
+            say(f"You haven't found the way to {ROOMS[anywhere[0]]['name']} "
+                "yet — explore, or 'travel' to a city and walk from there.",
+                "grey")
+        else:
+            close = difflib.get_close_matches(
+                want, [label(k) for k in seen], 1, 0.6)
+            hint = f" Did you mean '{close[0]}'?" if close else ""
+            say(f"You don't know a place called '{arg.strip()}'.{hint}",
+                "grey")
+        return True
+    targets = set(hits)
+    if targets == {p.location}:
+        say("You're already there.", "grey")
+        return True
+    targets.discard(p.location)
+    path = _bfs_path(p, lambda room: room in targets)
+    if path is None:                        # discovered, but across the sea
+        dest = sorted(targets)[0]
+        hub = next((c for c, r in TRAVEL_HUBS.items() if r == dest), None)
+        say("No walking route that you know — "
+            + (f"'travel {hub}' will take you." if hub
+               else "'travel' to a nearby city and walk from there."), "grey")
+        return True
+    _walk_path(p, path)
+    return True
 
 
 # skill -> theme colour for the stats screen
@@ -3515,7 +3663,10 @@ def cmd_chop(p, arg):
     if not trees:
         say("No trees here.")
         return
-    tree = arg.strip().lower() or trees[0]
+    tree = arg.strip().lower()
+    if not tree:            # bare 'chop': best tree you can actually cut here
+        can = [t for t in trees if p.lvl("woodcutting") >= TREES[t][1]]
+        tree = max(can, key=lambda t: TREES[t][1]) if can else trees[0]
     if tree not in trees:
         say(f"No {tree} tree here. Available: {', '.join(trees)}")
         return
@@ -3550,7 +3701,10 @@ def cmd_mine(p, arg):
     if not rocks:
         say("No rocks here.")
         return
-    rock = arg.strip().lower() or rocks[0]
+    rock = arg.strip().lower()
+    if not rock:            # bare 'mine': best rock you can actually mine here
+        can = [x for x in rocks if p.lvl("mining") >= ROCKS[x][1]]
+        rock = max(can, key=lambda x: ROCKS[x][1]) if can else rocks[0]
     if rock not in rocks:
         say(f"No {rock} here. Available: {', '.join(rocks)}")
         return
@@ -3947,6 +4101,41 @@ def cmd_eat(p, arg):
     p.take(item)
     p.hp = min(p.max_hp, p.hp + ITEMS[item]["heal"])
     say(f"You eat the {item}. (HP: {p.hp}/{p.max_hp})")
+
+
+def _autoeat_bite(p):
+    """Reflex-eat when badly hurt in interactive combat ('autoeat' toggles)."""
+    if getattr(p, "duel", None) and p.duel["rule"] == "no food":
+        return
+    foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
+    if not foods:
+        return
+    food = max(foods, key=lambda f: ITEMS[f]["heal"])
+    p.take(food)
+    p.hp = min(p.max_hp, p.hp + ITEMS[food]["heal"])
+    note = ""
+    seen = getattr(p, "tips_seen", None)
+    if seen is None:
+        seen = p.tips_seen = []
+    if "autoeat" not in seen:
+        seen.append("autoeat")
+        note = " 'autoeat off' to disable."
+    print("  " + paint(f"(autoeat: you wolf down a {food} — "
+                       f"hp {p.hp}/{p.max_hp}.{note})", "lime"))
+
+
+def cmd_autoeat(p, arg):
+    a = arg.strip().lower()
+    if a in ("on", "off"):
+        p.autoeat = (a == "on")
+    elif a:
+        say("'autoeat on' or 'autoeat off'.", "grey")
+        return
+    else:
+        p.autoeat = not getattr(p, "autoeat", True)
+    say("Autoeat is " + ("ON — you'll reflexively eat when badly hurt in "
+                         "combat." if p.autoeat
+                         else "OFF — you eat only when you say so."), "bcyan")
 
 
 # --- Herblore: clean grimy herbs, brew potions, drink them -----------------
@@ -5284,7 +5473,9 @@ def serialize(p):
             "kill_log": dict(getattr(p, "kill_log", {})),
             "bosses": list(getattr(p, "bosses", [])),
             "potions_made": getattr(p, "potions_made", 0),
-            "tips_seen": list(getattr(p, "tips_seen", []))}
+            "tips_seen": list(getattr(p, "tips_seen", [])),
+            "seen": sorted(getattr(p, "seen", [])),
+            "autoeat": getattr(p, "autoeat", True)}
 
 
 def deserialize(data):
@@ -5328,6 +5519,9 @@ def deserialize(data):
     p.bosses = data.get("bosses", [])
     p.potions_made = data.get("potions_made", 0)
     p.tips_seen = data.get("tips_seen", [])
+    p.seen = set(data.get("seen") or [])
+    p.seen.add(p.location)
+    p.autoeat = data.get("autoeat", True)
     # restore quest-spawned monsters
     if p.quests.get("vampyre_slayer") == "started" and \
             "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
@@ -5371,14 +5565,19 @@ def cmd_load(p, _a):
 def cmd_help(_p, _a):
     banner("Commands")
     groups = {
-        "Move": "look (l), go <dir>, n/s/e/w, up/down, exits",
+        "Move": "look (l), go <dir>, n/s/e/w, up/down, "
+                "goto <place|bank|ge…> (auto-walk anywhere you've explored), "
+                "exits — and Enter on an empty line repeats your last command",
         "Info": "me (character card), stats [skill], inventory (i), "
                 "equipment, quests, examine <item|creature>, bestiary",
         "Combat": "fight [monster], spec (special attack), "
                   "train <attack|strength|defence|shared>, "
                   "style <melee|ranged|magic|stab|slash|crush>, "
-                  "autocast <spell>, eat [food], drink [potion]",
-        "Gear": "equip <item>, unequip <slot>, drop <item> [n|all]",
+                  "autocast <spell>, eat [food], drink [potion], "
+                  "autoeat on/off (reflex-eat when badly hurt)",
+        "Gear": "equip <item>, unequip <slot>, "
+                "gear <melee|ranged|magic> (wear your best kit + switch "
+                "style), drop <item> [n|all]",
         "Skilling": "chop [tree], mine [rock], fish, cook [food], light [logs], "
                     "bury [bones], smelt <bar>, smith <metal> <item>, spin, tan, "
                     "craft <item>, cut <gem>, craftrune, skillcape <skill>, "
@@ -5405,9 +5604,12 @@ def _intro_tips():
     """A concise getting-started guide for brand-new players."""
     banner("Getting Started", color="bgreen", line_color="green")
     for k, v in [
-        ("Move", "type a direction (n/s/e/w) — or tap the arrow buttons."),
+        ("Move", "type a direction (n/s/e/w) — or tap the arrow buttons. "
+                 "'goto <place>' walks anywhere you've been."),
         ("Look", "'look' shows what's here, who's around, and your exits."),
         ("Fight", "'fight chicken' (or tap a creature). Win XP and loot."),
+        ("Repeat", "Enter on an empty line repeats your last command — "
+                   "great for grinding."),
         ("Progress", "'me' for your character card; 'stats', 'inventory', "
                      "'equipment' for detail."),
         ("Spend", "'bank' to store loot; 'shop' and 'ge' to buy & sell."),
@@ -5547,25 +5749,27 @@ def cmd_bestiary(p, _a):
 DIRECTIONS = {"n": "north", "s": "south", "e": "east", "w": "west",
               "u": "up", "d": "down"}
 
+def _gear_score(eq, style):
+    """How much an equip block helps a combat style (bigger = better)."""
+    defsum = sum(eq.get(k, 0) for k in ("dstab", "dslash", "dcrush",
+                                        "dmagic", "drange"))
+    if style == "ranged":
+        return eq.get("arange", 0) * 2 + eq.get("rstr", 0) * 3 + defsum * 0.05
+    if style == "magic":
+        return eq.get("amagic", 0) * 3 + eq.get("mdmg", 0) * 2 + defsum * 0.05
+    best_atk = max(eq.get("astab", 0), eq.get("aslash", 0), eq.get("acrush", 0))
+    return best_atk + eq.get("str", 0) * 2 + defsum * 0.05
+
+
 def _best_gear_for_style(style):
     """Best-in-slot item per equipment slot for a combat style (ignores reqs)."""
-    def defsum(eq):
-        return sum(eq.get(k, 0) for k in ("dstab", "dslash", "dcrush",
-                                          "dmagic", "drange"))
-    def score(eq):
-        if style == "ranged":
-            return eq.get("arange", 0) * 2 + eq.get("rstr", 0) * 3 + defsum(eq) * 0.05
-        if style == "magic":
-            return eq.get("amagic", 0) * 3 + eq.get("mdmg", 0) * 2 + defsum(eq) * 0.05
-        best_atk = max(eq.get("astab", 0), eq.get("aslash", 0), eq.get("acrush", 0))
-        return best_atk + eq.get("str", 0) * 2 + defsum(eq) * 0.05
     best, best_score = {}, {}
     for name, info in ITEMS.items():
         eq = info.get("equip")
         slot = eq.get("slot") if eq else None
         if not slot:
             continue
-        sc = score(eq)
+        sc = _gear_score(eq, style)
         if sc <= 0:                       # irrelevant to this style
             continue
         if slot not in best_score or sc > best_score[slot]:
@@ -5575,6 +5779,60 @@ def _best_gear_for_style(style):
     if w and ITEMS[w].get("equip", {}).get("two_handed"):
         best.pop("shield", None)
     return best
+
+
+def cmd_gear(p, arg):
+    """Equip the best kit you're carrying for a style, and switch to it:
+    'gear magic'. The one-command loadout swap (free mid-fight, as in OSRS)."""
+    want = arg.strip().lower()
+    style = {"mage": "magic", "range": "ranged", "ranging": "ranged",
+             "melee": "melee", "ranged": "ranged", "magic": "magic"}.get(want)
+    if want and not style:
+        say("'gear melee', 'gear ranged' or 'gear magic' — equips the best "
+            "kit in your pack and switches style.", "grey")
+        return
+    style = style or p.style
+
+    def wearable(item):
+        info = ITEMS.get(item, {})
+        eq = info.get("equip")
+        if not eq:
+            return None
+        if info.get("members") and not getattr(p, "members", False):
+            return None
+        if any(p.lvl(sk) < req for sk, req in eq.get("req", {}).items()):
+            return None
+        q = eq.get("quest")
+        if q and p.quests.get(q) != "complete":
+            return None
+        return eq
+    pool = set(p.inventory) | set(filter(None, p.equipment.values()))
+    best = {}
+    for item in pool:
+        eq = wearable(item)
+        if not eq:
+            continue
+        sc = _gear_score(eq, style)
+        if sc <= 0:
+            continue
+        slot = eq["slot"]
+        if slot not in best or sc > best[slot][1]:
+            best[slot] = (item, sc)
+    if "weapon" in best and \
+            ITEMS[best["weapon"][0]]["equip"].get("two_handed"):
+        best.pop("shield", None)            # both hands on the big one
+    changes = []
+    for slot in EQUIP_SLOTS:                # weapon first: settles 2H/shield
+        pick = best.get(slot)
+        if not pick or p.equipment.get(slot) == pick[0]:
+            continue
+        if p.equip_item(pick[0], silent=True):
+            changes.append(pick[0])
+    if changes:
+        say("You kit up: " + ", ".join(changes) + ".", "bcyan")
+    else:
+        say(f"You're already wearing your best {style} kit.", "grey")
+    cmd_style(p, style)
 
 
 def cmd_devmax(p, arg):
@@ -5662,7 +5920,7 @@ def cmd_god(p, arg):
 
 HANDLERS = {
     "look": cmd_look, "l": cmd_look, "exits": cmd_look,
-    "go": cmd_go,
+    "go": cmd_go, "goto": cmd_goto, "walk": cmd_goto,
     "stats": cmd_stats, "skills": cmd_stats,
     "inventory": cmd_inventory, "inv": cmd_inventory, "i": cmd_inventory,
     "equipment": cmd_equipment, "worn": cmd_equipment,
@@ -5679,7 +5937,8 @@ HANDLERS = {
     "bury": cmd_bury,
     "smelt": cmd_smelt, "smith": cmd_smith,
     "spin": cmd_spin, "tan": cmd_tan, "craft": cmd_craft, "craftrune": cmd_craftrune,
-    "eat": cmd_eat,
+    "eat": cmd_eat, "autoeat": cmd_autoeat,
+    "gear": cmd_gear, "loadout": cmd_gear, "outfit": cmd_gear,
     "clean": cmd_clean, "brew": cmd_brew, "mix": cmd_brew, "drink": cmd_drink,
     "cast": cmd_cast,
     "bank": cmd_bank, "deposit": cmd_deposit, "withdraw": cmd_withdraw,
@@ -5788,10 +6047,13 @@ def dispatch(player, raw):
     raw = raw.strip()
     if getattr(player, "god", False):   # [dev] god mode pins hp to full
         player.hp = player.max_hp
+    if not hasattr(player, "seen"):     # you always know where you stand
+        player.seen = set()
+    player.seen.add(player.location)
     if getattr(player, "auto", None) is not None:
         player.auto = None
         say("(You break off the auto-fight.)", "byellow")
-        if raw.lower() == "stop":
+        if raw.lower() == "stop" or not raw:    # Enter/stop: just stand down
             return True
     # interactive combat captures every command (Enter = attack); quit still works
     if getattr(player, "combat", None) is not None:
@@ -5803,14 +6065,20 @@ def dispatch(player, raw):
         _check_achievements(player)
         _backup_nudge(player)
         return True
-    if not raw:
-        return True
+    if not raw:                         # empty Enter repeats your last command
+        raw = getattr(player, "last_cmd", "")
+        if not raw:
+            return True
+        say(f"(again: {raw})", "grey")
     parts = raw.split(maxsplit=1)
     verb = parts[0].lower()
     arg = parts[1] if len(parts) > 1 else ""
     if verb in ("quit", "exit", "q"):
         say("Farewell, adventurer. May your bank be ever full.", "gold")
         return False
+    if verb in DIRECTIONS or verb in ROOMS[player.location]["exits"] \
+            or verb in HANDLERS:
+        player.last_cmd = raw           # something real: remember it for Enter
     if verb in DIRECTIONS:
         cmd_go(player, DIRECTIONS[verb])
     elif verb in ROOMS[player.location]["exits"]:
