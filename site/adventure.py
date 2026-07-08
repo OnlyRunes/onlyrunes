@@ -2576,6 +2576,10 @@ def combat_action(p, raw):
             "special": "spec", "": "attack"}.get(verb, verb)
 
     # free, no-cost actions while fighting
+    if verb == "style":                 # switching stance is free, as in OSRS
+        return cmd_style(p, arg)
+    if verb == "autocast":
+        return cmd_autocast(p, arg)
     if verb in ("stats", "skills"):
         return cmd_stats(p, "")
     if verb in ("inventory", "inv", "i"):
