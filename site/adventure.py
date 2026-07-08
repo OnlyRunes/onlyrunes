@@ -3433,6 +3433,15 @@ def cmd_goto(p, arg, quiet_fail=False):
         hits = [k for k in seen
                 if want in k.replace("_", " ") or want in label(k)]
     if not hits:
+        # a city you've never walked to? take the road — that's what feet
+        # would do ('goto varrock' on a fresh character just travels)
+        hub = want if want in TRAVEL_HUBS else \
+            next((c for c in TRAVEL_HUBS if want in c), None)
+        if hub:
+            say(f"You don't know the streets yet — you take the road to "
+                f"{hub.title()} instead.", "grey")
+            cmd_travel(p, hub)
+            return True
         anywhere = [k for k in ROOMS if want in k.replace("_", " ")
                     or want in label(k)]
         if quiet_fail and not anywhere:
@@ -3455,11 +3464,14 @@ def cmd_goto(p, arg, quiet_fail=False):
     targets.discard(p.location)
     path = _bfs_path(p, lambda room: room in targets)
     if path is None:                        # discovered, but across the sea
-        dest = sorted(targets)[0]
-        hub = next((c for c, r in TRAVEL_HUBS.items() if r == dest), None)
-        say("No walking route that you know — "
-            + (f"'travel {hub}' will take you." if hub
-               else "'travel' to a nearby city and walk from there."), "grey")
+        hub = next((c for c, r in TRAVEL_HUBS.items() if r in targets), None)
+        if hub:
+            say("No walking route that you know — you take the road.",
+                "grey")
+            cmd_travel(p, hub)
+        else:
+            say("No walking route that you know — 'travel' to a nearby "
+                "city and walk from there.", "grey")
         return True
     _walk_path(p, path)
     return True
@@ -3586,14 +3598,29 @@ def cmd_equip(p, arg):
     if not item:
         say("Equip what?")
         return
+    if item not in p.inventory:         # 'equip scim' finds rune scimitar
+        wearable = [i for i in p.inventory if ITEMS.get(i, {}).get("equip")]
+        found = _resolve_named(item, wearable)
+        if found is _ASKED:
+            return
+        if found:
+            item = found
     p.equip_item(item)
 
 
 def cmd_unequip(p, arg):
     slot = arg.strip().lower()
     if slot not in EQUIP_SLOTS:
-        say(f"Slots: {', '.join(EQUIP_SLOTS)}")
-        return
+        # accept the worn item's name too: 'unequip scimitar'
+        worn = {v: k for k, v in p.equipment.items() if v}
+        found = _resolve_named(slot, worn)
+        if found is _ASKED:
+            return
+        if found:
+            slot = worn[found]
+        else:
+            say(f"Slots: {', '.join(EQUIP_SLOTS)} — or name the worn item.")
+            return
     p.unequip(slot)
 
 
@@ -3648,6 +3675,13 @@ def cmd_autocast(p, arg):
         say(f"{spell.title()} belongs to the "
             f"{SPELLS[spell].get('book', 'standard')} spellbook — swap "
             "books at its altar.", "byellow")
+        return
+    if p.lvl("magic") < SPELLS[spell]["lvl"]:
+        can = [s for s in SPELLS if SPELLS[s]["type"] == "combat"
+               and SPELLS[s].get("book", "standard") == book
+               and p.lvl("magic") >= SPELLS[s]["lvl"]]
+        say(f"You need magic level {SPELLS[spell]['lvl']} to cast {spell}."
+            + (f" You can cast: {', '.join(can)}." if can else ""), "byellow")
         return
     p.autocast = spell
     p.style = "magic"
@@ -3799,7 +3833,7 @@ def cmd_cook(p, arg):
     if not (r.get("range") or r.get("fire") or _has_fire(p)
             or _house_perk(p, "kitchen range")):
         say("You need a cooking range or a fire ('light logs' with a "
-            "tinderbox).")
+            "tinderbox — or 'goto range' finds a kitchen).")
         return
     raw = arg.strip().lower()
     cookable = [i for i in p.inventory if i in RAW_TO_COOKED]
@@ -3872,7 +3906,7 @@ def cmd_bury(p, arg):
 def cmd_smelt(p, arg):
     r = ROOMS[p.location]
     if not r.get("furnace"):
-        say("You need a furnace.")
+        say("You need a furnace. ('goto furnace' knows the way.)")
         return
     bar = arg.strip().lower()
     if not bar.endswith("bar"):
@@ -3905,7 +3939,7 @@ def cmd_smelt(p, arg):
 def cmd_smith(p, arg):
     r = ROOMS[p.location]
     if not (r.get("anvil") or _house_perk(p, "workbench")):
-        say("You need an anvil.")
+        say("You need an anvil. ('goto anvil' knows the way.)")
         return
     if not p.find_tool("hammer"):
         say("You need a hammer.")
@@ -4295,7 +4329,7 @@ def cmd_cast(p, arg):
 # --- banking, shops, GE ---------------------------------------------------
 def cmd_bank(p, arg=""):
     if not ROOMS[p.location].get("bank"):
-        say("There's no bank here.")
+        say("There's no bank here. ('goto bank' knows the way.)")
         return
     total = sum(ITEMS.get(i, {}).get("value", 0) * q for i, q in p.bank.items())
     banner(f"Bank of Gielinor — {len(p.bank)} stack(s), worth ~{total:,} gp")
@@ -4322,7 +4356,7 @@ def cmd_bank(p, arg=""):
 
 def cmd_deposit(p, arg):
     if not ROOMS[p.location].get("bank"):
-        say("There's no bank here.")
+        say("There's no bank here. ('goto bank' knows the way.)")
         return
     arg = arg.strip().lower()
     if arg in ("all", ""):
@@ -4340,8 +4374,13 @@ def cmd_deposit(p, arg):
     else:
         item, qarg = arg, "all"
     if not p.has(item):
-        say(f"You have no {item}.")
-        return
+        found = _resolve_named(item, p.inventory)   # 'deposit trout' works
+        if found is _ASKED:
+            return
+        if not found:
+            say(f"You have no {item}.")
+            return
+        item = found
     q = p.count(item) if qarg == "all" else min(int(qarg), p.count(item))
     p.take(item, q)
     p.bank[item] = p.bank.get(item, 0) + q
@@ -4350,7 +4389,7 @@ def cmd_deposit(p, arg):
 
 def cmd_withdraw(p, arg):
     if not ROOMS[p.location].get("bank"):
-        say("There's no bank here.")
+        say("There's no bank here. ('goto bank' knows the way.)")
         return
     arg = arg.strip().lower()
     parts = arg.rsplit(" ", 1)
@@ -4359,8 +4398,13 @@ def cmd_withdraw(p, arg):
     else:
         item, qarg = arg, "1"
     if p.bank.get(item, 0) <= 0:
-        say(f"You have no {item} in the bank.")
-        return
+        found = _resolve_named(item, p.bank)    # 'withdraw trout' works
+        if found is _ASKED:
+            return
+        if not found:
+            say(f"You have no {item} in the bank.")
+            return
+        item = found
     q = p.bank[item] if qarg == "all" else min(int(qarg), p.bank[item])
     p.bank[item] -= q
     if p.bank[item] <= 0:
@@ -4372,7 +4416,7 @@ def cmd_withdraw(p, arg):
 def cmd_shop(p, _a):
     shop = ROOMS[p.location].get("shop")
     if not shop:
-        say("There's no shop here.")
+        say("There's no shop here. ('goto shop' finds the nearest.)")
         return
     banner(f"Shop — {shop}")
     print("  " + paint(f"Your coins: {p.coins:,}", "gold")
@@ -4392,6 +4436,26 @@ def _parse_item_qty(arg):
     return arg.strip().lower(), 1
 
 
+_ASKED = object()       # sentinel: _resolve_named already asked "which one?"
+
+
+def _resolve_named(name, pool):
+    """Resolve a (possibly partial) item name against a pool of names, the
+    way 'eat trout' finds cooked trout. Returns the resolved name, None
+    (nothing close — the caller prints its own refusal), or _ASKED (it was
+    ambiguous and we listed the choices, so the caller should just stop)."""
+    if not name or name in pool:
+        return name if name in pool else None
+    near = sorted(i for i in pool if name in i)
+    if len(near) == 1:
+        return near[0]
+    if near:
+        say("Which one? " + ", ".join(near[:8])
+            + (" …" if len(near) > 8 else ""), "grey")
+        return _ASKED
+    return None
+
+
 def cmd_drop(p, arg):
     a = arg.strip().lower()
     if not a:
@@ -4403,8 +4467,13 @@ def cmd_drop(p, arg):
     else:
         item, qarg = a, "1"
     if not p.has(item):
-        say(f"You have no {item}.")
-        return
+        found = _resolve_named(item, p.inventory)   # 'drop beef' works
+        if found is _ASKED:
+            return
+        if not found:
+            say(f"You have no {item}.")
+            return
+        item = found
     q = p.count(item) if qarg == "all" else min(int(qarg), p.count(item))
     p.take(item, q)
     say(f"You drop {item} x{q}." + (" A seagull swoops in to inspect it."
@@ -4414,39 +4483,52 @@ def cmd_drop(p, arg):
 def cmd_buy(p, arg):
     shop = ROOMS[p.location].get("shop")
     if not shop:
-        say("There's no shop here.")
+        say("There's no shop here. ('goto shop' finds the nearest.)")
         return
     item, qty = _parse_item_qty(arg)
     if item not in SHOPS[shop]:
-        say("The shopkeeper doesn't sell that.")
-        return
+        found = _resolve_named(item, SHOPS[shop])   # 'buy scim' works
+        if found is _ASKED:
+            return
+        if not found:
+            say("The shopkeeper doesn't sell that. ('shop' lists the stock.)")
+            return
+        item = found
     cost = SHOPS[shop][item] * qty
     if not p.has("coins", cost):
-        say(f"That costs {cost} coins; you can't afford it.")
+        say(f"That costs {cost:,} coins; you can't afford it. "
+            f"(You have {p.coins:,}.)")
         return
     p.take("coins", cost)
     p.add(item, qty)
-    say(f"You buy {item} x{qty} for {cost} coins.")
+    say(f"You buy {item} x{qty} for {cost:,} coins.")
 
 
 def cmd_sell(p, arg):
     shop = ROOMS[p.location].get("shop")
     if not shop:
-        say("There's no shop here.")
+        say("There's no shop here. ('goto shop' finds the nearest.)")
         return
     item, qty = _parse_item_qty(arg)
+    if item not in p.inventory:
+        found = _resolve_named(item, p.inventory)   # 'sell beef' works
+        if found is _ASKED:
+            return
+        if found:
+            item = found
     if not p.has(item, qty):
         say(f"You don't have {qty}x {item}.")
         return
     price = max(1, int(ITEMS.get(item, {}).get("value", 1) * 0.4)) * qty
     p.take(item, qty)
     p.add("coins", price)
-    say(f"You sell {item} x{qty} for {price} coins.")
+    say(f"You sell {item} x{qty} for {price:,} coins.")
 
 
 def cmd_ge(p, arg):
     if not ROOMS[p.location].get("ge"):
-        say("You must be at the Grand Exchange.")
+        say("You must be at the Grand Exchange. ('goto ge' knows the way; "
+            "it's north of Varrock.)")
         return
     arg = arg.strip().lower()
     if not arg:
@@ -4458,23 +4540,33 @@ def cmd_ge(p, arg):
     action, rest = (arg.split(" ", 1) + [""])[:2]
     item, qty = _parse_item_qty(rest)
     if item not in ITEMS:
-        say(f"No such item: {item}")
-        return
+        # selling matches what you carry first; buying matches the catalogue
+        pool = p.inventory if action == "sell" else ITEMS
+        found = _resolve_named(item, pool)
+        if found is _ASKED:
+            return
+        if not found:
+            close = difflib.get_close_matches(item, list(ITEMS), 1, 0.75)
+            hint = f" Did you mean '{close[0]}'?" if close else ""
+            say(f"No such item: {item}.{hint}")
+            return
+        item = found
     price = ITEMS[item]["value"] * qty
     if action == "buy":
         if not p.has("coins", price):
-            say(f"That costs {price} coins; you can't afford it.")
+            say(f"That costs {price:,} coins; you can't afford it. "
+                f"(You have {p.coins:,}.)")
             return
         p.take("coins", price)
         p.add(item, qty)
-        say(f"Bought {item} x{qty} for {price} coins.")
+        say(f"Bought {item} x{qty} for {price:,} coins.")
     elif action == "sell":
         if not p.has(item, qty):
             say(f"You don't have {qty}x {item}.")
             return
         p.take(item, qty)
         p.add("coins", price)
-        say(f"Sold {item} x{qty} for {price} coins.")
+        say(f"Sold {item} x{qty} for {price:,} coins.")
     else:
         say("Use: ge buy <item> [n] | ge sell <item> [n]")
 
