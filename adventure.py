@@ -2631,6 +2631,9 @@ def combat_action(p, raw):
             return say("Duel rules: NO FOOD. The crowd would riot.", "bred")
         foods = [i for i in p.inventory if "heal" in ITEMS.get(i, {})]
         food = arg or (foods[0] if foods else "")
+        if food and not p.has(food):
+            near = [f for f in foods if food in f]   # 'eat trout' finds cooked trout
+            food = near[0] if near else food
         if not food or not p.has(food):
             return say("You have no food to eat!", "grey")
         if p.hp >= p.max_hp:
@@ -3912,8 +3915,13 @@ def cmd_eat(p, arg):
             return
         item = foods[0]
     if "heal" not in ITEMS.get(item, {}):
-        say(f"You can't eat {item}.")
-        return
+        # 'eat trout' should find your cooked trout
+        near = [f for f in foods if item in f]
+        if near:
+            item = near[0]
+        else:
+            say(f"You can't eat {item}.")
+            return
     if p.hp >= p.max_hp:
         say("You're already at full health — save the food.", "grey")
         return
@@ -6667,8 +6675,8 @@ _add_mob("green dragon",
 
 _add_mob("elvarg",
     {"abonus": 0, "atktype": ["slash", "dragonfire"], "att": 120, "cb": 83,
-     "dstab": 50, "dslash": 50, "dcrush": 50, "dmagic": -15, "drange": 30,
-     "def": 100, "hp": 140, "maxhit": 10, "str": 120, "weak": "stab"},
+     "dstab": 10, "dslash": 45, "dcrush": 45, "dmagic": 25, "drange": 30,
+     "def": 75, "hp": 120, "maxhit": 10, "str": 120, "weak": "stab"},
     [("dragon bones", 1, 1, 1.0), ("green dragonhide", 2, 3, 1.0),
      ("coins", 1000, 3000, 1.0), ("dragon med helm", 1, 1, 0.04)])
 MONSTERS["elvarg"]["boss"] = True
