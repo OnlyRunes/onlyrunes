@@ -5521,6 +5521,17 @@ def deserialize(data):
     p.tips_seen = data.get("tips_seen", [])
     p.seen = set(data.get("seen") or [])
     p.seen.add(p.location)
+    if not data.get("seen"):
+        # older save: seed the cities 'travel' already offers — they're one
+        # command away regardless, so 'goto' knowing them spoils nothing
+        for room in set(TRAVEL_HUBS.values()):
+            r = ROOMS[room]
+            if r.get("members") and not p.members:
+                continue
+            ql = r.get("qlock")
+            if ql and p.quests.get(ql[0]) not in ql[1]:
+                continue
+            p.seen.add(room)
     p.autoeat = data.get("autoeat", True)
     # restore quest-spawned monsters
     if p.quests.get("vampyre_slayer") == "started" and \

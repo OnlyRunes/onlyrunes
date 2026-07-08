@@ -187,6 +187,21 @@ check("discovered rooms survive the save", "cow_field" in getattr(q, "seen", set
       str(getattr(q, "seen", None)))
 check("autoeat setting survives the save", q.autoeat is False)
 
+# older saves (no 'seen' data) get the free-to-travel cities seeded
+import json
+old = json.loads(data)
+del old["seen"]
+old["members"] = False
+q2 = a.player_from_json(json.dumps(old))
+check("old saves seed free travel hubs",
+      a.TRAVEL_HUBS["varrock"] in q2.seen
+      and a.TRAVEL_HUBS["lumbridge"] in q2.seen, str(sorted(q2.seen))[:200])
+members_hub = next((r for r in set(a.TRAVEL_HUBS.values())
+                    if a.ROOMS[r].get("members")), None)
+if members_hub:
+    check("old f2p saves don't learn members cities",
+          members_hub not in q2.seen, members_hub)
+
 print()
 print("FAILURES:", len(FAILS), FAILS if FAILS else "")
 sys.exit(1 if FAILS else 0)
