@@ -945,6 +945,501 @@ def _fallback_art(name):
     return None
 
 
+# ===========================================================================
+#  BOSS SPECTACLE — multi-frame entrances, signature attacks, death throes
+#  (the KBD treatment, rolled out to the whole endgame rogues' gallery)
+# ===========================================================================
+# --- intro stage frames ----------------------------------------------------
+KRAKEN_SEA = r"""
+     ~   ~    ~     ~    ~     ~
+   ~    ~   ~    ~     ~   ~
+      ~     .   ~   .    ~    ~
+   ~    ~     ~    ~    ~   ~
+"""
+KRAKEN_BREACH = r"""
+        (        )       (
+     ~  )\  ~  ( \  ~  ~/ (  ~
+   ~   / /  ~ ~ \ \  ~ / /   ~
+      ~     ~    ~    ~    ~
+"""
+CERB_DARK = r"""
+      ,_      ,_      ,_
+     (--)    (--)    (--)
+      ..      ..      ..
+       \ \____ | ____/ /
+        \____ \|/ ____/
+         //   |||   \\
+"""
+CERB_EMBER = r"""
+      ,_      ,_      ,_
+     (*,*)   (--)    (*,*)
+      ..      ..      ..
+       \ \____ | ____/ /
+        \____ \|/ ____/
+         //   |||   \\
+"""
+THERMY_WISP = r"""
+
+           ~  ~
+          ~ ~~ ~
+           ~  ~
+"""
+THERMY_GATHER = r"""
+          ( ~~~~ )
+        ( ~~~~~~~~ )
+         ( ~~~~~~ )
+           \ ~~ /
+"""
+SIRE_FOG = r"""
+    . ~ .  ~  . ~ .  ~  . ~ .
+   ~  .  ~  .  ~  .  ~  .  ~
+    . ~ . ~  . ~ .  ~ . ~ .
+"""
+SIRE_LOOM = r"""
+      . ~ .-''''''-. ~ .
+     ~   /  ~    ~  \   ~
+    . ~ |   ~    ~   | ~ .
+   ~  . ~\  ~ __ ~  /~ .  ~
+    .~ _/|\_/ || \_/|\_ ~.
+"""
+GROT_STILL = r"""
+      /\ /\        /\ /\
+     ( - - )      ( - - )
+     /| _ |\      /| _ |\
+      |___|        |___|
+     _|   |_      _|   |_
+"""
+GROT_CRACK = r"""
+      /\ /\   ,    /\ /\
+     ( o - ) /    ( - o )
+     /| _ |\/     /| _ |\
+      |__/|   ,    |\__|
+     _|   |_ /    _|   |_
+"""
+CORP_MIST = r"""
+     .  .  .    .   .  .  .
+    .    .   .    .   .   .
+      .    .    .    .   .
+    .   .    .     .    .
+"""
+CORP_EYES = r"""
+     .  .  .    .   .  .  .
+    .   (o)  .    . (o)  .
+      .    .    .    .   .
+    .   .    .     .    .
+"""
+CALL_PROWL = r"""
+
+        ,--.________,--.
+       /  '            \
+      |  (o)    ______(o)|
+       \___\___/      \__|
+        ||  ||     ||  ||
+"""
+VEN_STRAND = r"""
+              |
+              |
+             (o)
+            //''\\
+"""
+VET_GRAVE = r"""
+
+         ______________
+        |  R  I  P     |
+     ___|______________|___
+       \/  \_/  \/  \_/  \,
+          '--,  \_ __/
+"""
+VET_HALF = r"""
+         .-------.
+        |  [x x]  |
+        |   ___   |
+     ___|__|   |__|___
+       \/  \_/  \/  \_/
+"""
+CHAOS_SPARK = r"""
+
+          ~  @  ~
+           \ | /
+          --(?)--
+           / | \
+"""
+SCORP_MOUND = r"""
+
+       .  ,  .  ,  .  ,
+     .  , //''\\  ,  .
+    , .  ((    )) . , .
+"""
+# --- death frames -----------------------------------------------------------
+CERB_SLUMP = r"""
+      ,_      ,_      ,_
+     (x,x)   (x,x)   (x,x)
+      ..      ..      ..
+       \ \____ | ____/ /
+        \______|______/
+"""
+THERMY_SCATTER = r"""
+     ~~     ~   ~~     ~~
+   ~    ~~    (o)   ~    ~
+      ~~    ~   ~~    ~~
+   ~     ~~   ~    ~~    ~
+"""
+SIRE_SLUMP = r"""
+       _____________
+      /  x       x  \
+      \____  __ ____/
+    _/|\_ \_/||\_/ _/|\_
+   / \|/    ||    \|/ \
+"""
+GROT_RUBBLE = r"""
+
+      ,  /\  .    .  /\  ,
+     . _|  |_  ..  _|  |_ .
+    ,_|      |_,,_|      |_,
+"""
+VET_BONES = r"""
+
+          _  [x x]  _
+       \_/ \__ _ __/ \_/
+      , \_/  \|_|/ \_/ ,
+"""
+VEN_CURL = r"""
+         \\  //
+        _ ((oo)) _
+       \ \/,,,,\/ /
+        \/      \/
+"""
+SCORP_CURL = r"""
+        ______________
+       ( _\        /_ )
+        \ |(x)  (x)| /
+          |___,____|--,
+                   (x_)
+"""
+# --- signature attack fx ------------------------------------------------------
+FX_PILLAR1 = r"""
+         ) ) (
+        ( ( ) )
+        | | | |
+        | | | |
+       ~~~~~~~~~
+"""
+FX_PILLAR2 = r"""
+        (  )  (
+        ) (( ) )
+       || || || |
+       || || || |
+      ~~~~~~~~~~~
+"""
+FX_TENTACLE1 = r"""
+
+        __/\__
+     __/      \__,-,
+    /             \_)
+"""
+FX_TENTACLE2 = r"""
+       ,-,__/\____
+      (_/         \__
+                     \
+"""
+FX_JAWS1 = r"""
+     \/\/    \/\/    \/\/
+     /\/\    /\/\    /\/\
+"""
+FX_JAWS2 = r"""
+     \/v\/  \/v\/  \/v\/
+     /\^/\  /\^/\  /\^/\
+"""
+FX_SOULS = r"""
+      }>---   )+---   *~---
+       sword    bow    staff
+"""
+FX_BILLOW1 = r"""
+        (  ~~~  )
+       ( ~~~~~~~ )
+        ( ~~~~~ )
+"""
+FX_BILLOW2 = r"""
+      ( ~~~~~~~~~ )
+     ( ~~~~~~~~~~~ )
+      ( ~~~~~~~~~ )
+"""
+FX_BOLT1 = r"""
+         \
+          \/\
+            \
+"""
+FX_BOLT2 = r"""
+         \\
+          \\/\
+           /\\
+             \\
+"""
+FX_WEB = r"""
+       \ | | | /
+      --+--+--+--
+       / | | | \
+      --+--+--+--
+"""
+FX_SMASH1 = r"""
+
+         \ | /
+        -- * --
+         / | \
+"""
+FX_SMASH2 = r"""
+        \  |  /
+       \ \ | / /
+      --- (*) ---
+       / / | \ \
+        /  |  \
+"""
+FX_CHARGE1 = r"""
+    - -  ,--.____,--.
+   - -  /  '        \>>
+    - - \____________/
+"""
+FX_CHARGE2 = r"""
+   - - -  ,--.____,--.
+  - - -  /  '        \>>>
+   - - - \____________/
+"""
+FX_ROAR1 = r"""
+        (  RRAAA  )
+       ((         ))
+"""
+FX_ROAR2 = r"""
+      ((  RRAAAAA  ))
+     (((           )))
+"""
+FX_TAIL1 = r"""
+              ,-,
+             ( x )
+              )-(
+            __//
+         __//
+"""
+FX_TAIL2 = r"""
+      ,-,
+     ( x )==<
+      )-(
+       \\__
+          \\__
+"""
+
+
+def _fx(*pairs):
+    """Build an animation from (art, styles...) tuples."""
+    return [_tint(art, *styles) for art, *styles in pairs]
+
+
+# intro/death builders: stage frames climax on the boss's own portrait
+def _kraken_intro(name):
+    return _fx((KRAKEN_SEA, "bblue", "dim"), (KRAKEN_BREACH, "bblue"),
+               (MONSTER_ART["kraken"], "teal", "bold"),
+               (MONSTER_ART["kraken"], "bcyan", "bold"))
+
+
+def _kraken_death(name):
+    return _fx((MONSTER_ART["kraken"], "bred"),
+               (KRAKEN_BREACH, "bblue", "dim"), (KRAKEN_SEA, "grey", "dim"))
+
+
+def _cerb_intro(name):
+    return _fx((CERB_DARK, "grey", "dim"), (CERB_EMBER, "red"),
+               (MONSTER_ART["cerberus"], "bred", "bold"),
+               (MONSTER_ART["cerberus"], "orange", "bold"))
+
+
+def _cerb_death(name):
+    return _fx((MONSTER_ART["cerberus"], "bred"), (CERB_SLUMP, "grey"),
+               (CERB_SLUMP, "grey", "dim"))
+
+
+def _thermy_intro(name):
+    return _fx((THERMY_WISP, "grey", "dim"), (THERMY_GATHER, "grey"),
+               (MONSTER_ART["thermonuclear smoke devil"], "bwhite", "bold"),
+               (MONSTER_ART["thermonuclear smoke devil"], "bmagenta", "bold"))
+
+
+def _thermy_death(name):
+    return _fx((MONSTER_ART["thermonuclear smoke devil"], "bred"),
+               (THERMY_SCATTER, "grey"), (THERMY_WISP, "grey", "dim"))
+
+
+def _sire_intro(name):
+    return _fx((SIRE_FOG, "green", "dim"), (SIRE_LOOM, "green"),
+               (MONSTER_ART["abyssal sire"], "purple", "bold"),
+               (MONSTER_ART["abyssal sire"], "bmagenta", "bold"))
+
+
+def _sire_death(name):
+    return _fx((MONSTER_ART["abyssal sire"], "bred"), (SIRE_SLUMP, "green"),
+               (SIRE_FOG, "grey", "dim"))
+
+
+def _grot_intro(name):
+    return _fx((GROT_STILL, "grey", "dim"), (GROT_CRACK, "grey"),
+               (MONSTER_ART["grotesque guardians"], "byellow", "bold"),
+               (MONSTER_ART["grotesque guardians"], "bwhite", "bold"))
+
+
+def _grot_death(name):
+    return _fx((MONSTER_ART["grotesque guardians"], "bred"),
+               (GROT_RUBBLE, "grey"), (GROT_RUBBLE, "grey", "dim"))
+
+
+def _corp_intro(name):
+    return _fx((CORP_MIST, "grey", "dim"), (CORP_EYES, "bred"),
+               (MONSTER_ART["corporeal beast"], "grey", "bold"),
+               (MONSTER_ART["corporeal beast"], "bred", "bold"))
+
+
+def _corp_death(name):
+    return _fx((MONSTER_ART["corporeal beast"], "bred"),
+               (CORP_EYES, "grey"), (CORP_MIST, "grey", "dim"))
+
+
+def _callisto_intro(name):
+    return _fx((CALL_PROWL, "grey"), (MONSTER_ART["callisto"], "brown", "bold"),
+               (MONSTER_ART["callisto"], "bred", "bold"))
+
+
+def _callisto_death(name):
+    return _fx((MONSTER_ART["callisto"], "bred"), (CALL_PROWL, "grey"),
+               (CALL_PROWL, "grey", "dim"))
+
+
+def _venenatis_intro(name):
+    return _fx((VEN_STRAND, "grey"), (MONSTER_ART["venenatis"], "purple", "bold"),
+               (MONSTER_ART["venenatis"], "bmagenta", "bold"))
+
+
+def _venenatis_death(name):
+    return _fx((MONSTER_ART["venenatis"], "bred"), (VEN_CURL, "grey"),
+               (VEN_CURL, "grey", "dim"))
+
+
+def _vetion_intro(name):
+    return _fx((VET_GRAVE, "grey", "dim"), (VET_HALF, "purple"),
+               (MONSTER_ART["vet'ion"], "bmagenta", "bold"),
+               (MONSTER_ART["vet'ion"], "bwhite", "bold"))
+
+
+def _vetion_death(name):
+    return _fx((MONSTER_ART["vet'ion"], "bred"), (VET_BONES, "grey"),
+               (VET_BONES, "grey", "dim"))
+
+
+def _chaosele_intro(name):
+    return _fx((CHAOS_SPARK, "bmagenta", "dim"), (CHAOS_SPARK, "bmagenta"),
+               (MONSTER_ART["chaos elemental"], "bmagenta", "bold"),
+               (MONSTER_ART["chaos elemental"], "bcyan", "bold"))
+
+
+def _chaosele_death(name):
+    return _fx((MONSTER_ART["chaos elemental"], "bred"),
+               (CHAOS_SPARK, "bmagenta"), (CHAOS_SPARK, "grey", "dim"))
+
+
+def _scorpia_intro(name):
+    return _fx((SCORP_MOUND, "brown", "dim"), (SCORP_MOUND, "brown"),
+               (MONSTER_ART["scorpia"], "green", "bold"),
+               (MONSTER_ART["scorpia"], "bgreen", "bold"))
+
+
+def _scorpia_death(name):
+    return _fx((MONSTER_ART["scorpia"], "bred"), (SCORP_CURL, "green"),
+               (SCORP_CURL, "grey", "dim"))
+
+
+BOSS_INTRO.update({
+    "kraken": _kraken_intro, "cerberus": _cerb_intro,
+    "thermonuclear smoke devil": _thermy_intro, "abyssal sire": _sire_intro,
+    "grotesque guardians": _grot_intro, "corporeal beast": _corp_intro,
+    "callisto": _callisto_intro, "venenatis": _venenatis_intro,
+    "vet'ion": _vetion_intro, "chaos elemental": _chaosele_intro,
+    "scorpia": _scorpia_intro,
+})
+BOSS_DEATH.update({
+    "kraken": _kraken_death, "cerberus": _cerb_death,
+    "thermonuclear smoke devil": _thermy_death, "abyssal sire": _sire_death,
+    "grotesque guardians": _grot_death, "corporeal beast": _corp_death,
+    "callisto": _callisto_death, "venenatis": _venenatis_death,
+    "vet'ion": _vetion_death, "chaos elemental": _chaosele_death,
+    "scorpia": _scorpia_death,
+})
+
+
+# attack-fx builders (wired into the boss attack tables)
+def _fx_pillar():
+    return _fx((FX_PILLAR1, "bblue"), (FX_PILLAR2, "bcyan", "bold"))
+
+
+def _fx_tentacle():
+    return _fx((FX_TENTACLE1, "teal"), (FX_TENTACLE2, "teal", "bold"))
+
+
+def _fx_jaws():
+    return _fx((FX_JAWS1, "bred"), (FX_JAWS2, "bred", "bold"))
+
+
+def _fx_hellfire():
+    return _fx((FX_BILLOW1, "orange"), (FX_BILLOW2, "bred", "bold"))
+
+
+def _fx_souls():
+    return _fx((FX_SOULS, "grey"), (FX_SOULS, "bcyan", "bold"))
+
+
+def _fx_smoke():
+    return _fx((FX_BILLOW1, "grey"), (FX_BILLOW2, "grey", "bold"))
+
+
+def _fx_lash():
+    return _fx((FX_TENTACLE1, "purple"), (FX_TENTACLE2, "bmagenta", "bold"))
+
+
+def _fx_miasma():
+    return _fx((FX_BILLOW1, "green"), (FX_BILLOW2, "bgreen", "bold"))
+
+
+def _fx_darkness():
+    return _fx((FX_BILLOW1, "purple"), (FX_BILLOW2, "bmagenta", "bold"))
+
+
+def _fx_smash():
+    return _fx((FX_SMASH1, "grey"), (FX_SMASH2, "byellow", "bold"))
+
+
+def _fx_slag():
+    return _fx((FX_SMASH1, "orange"), (FX_SMASH2, "bred", "bold"))
+
+
+def _fx_bolt():
+    return _fx((FX_BOLT1, "bmagenta"), (FX_BOLT2, "bmagenta", "bold"))
+
+
+def _fx_bolt_blue():
+    return _fx((FX_BOLT1, "bblue"), (FX_BOLT2, "bcyan", "bold"))
+
+
+def _fx_web():
+    return _fx((FX_WEB, "grey"), (FX_WEB, "bwhite", "bold"))
+
+
+def _fx_charge():
+    return _fx((FX_CHARGE1, "brown"), (FX_CHARGE2, "bred", "bold"))
+
+
+def _fx_roar():
+    return _fx((FX_ROAR1, "orange"), (FX_ROAR2, "bred", "bold"))
+
+
+def _fx_tail():
+    return _fx((FX_TAIL1, "green"), (FX_TAIL2, "bgreen", "bold"))
+
+
 def item_rarity_color(name):
     """Colour an item by its market value (loot-rarity flavour)."""
     v = ITEMS.get(name, {}).get("value", 0)
@@ -12185,10 +12680,10 @@ _WARLORDS = {
          ("tyrannical ring", 1, 1, 0.04), ("dragon pickaxe", 1, 1, 0.03),
          ("grimy ranarr", 2, 5, 0.4)],
         [{"label": "a mauling charge", "verb": "barrels in with",
-          "color": ("bred", "bold"), "builder": lambda: [],
+          "color": ("bred", "bold"), "builder": _fx_charge,
           "mult": 1.2, "w": 3, "atype": "crush"},
          {"label": "a ground-shaking roar", "verb": "erupts with",
-          "color": ("orange",), "builder": lambda: [],
+          "color": ("orange",), "builder": _fx_roar,
           "mult": 0.9, "w": 2, "atype": "crush"}]),
     "venenatis": (
         {"abonus": 40, "atktype": ["magic"], "att": 170, "cb": 464,
@@ -12199,10 +12694,10 @@ _WARLORDS = {
          ("treasonous ring", 1, 1, 0.04), ("dragon pickaxe", 1, 1, 0.03),
          ("grimy ranarr", 2, 5, 0.4)],
         [{"label": "a bolt of woven lightning", "verb": "spits",
-          "color": ("bmagenta", "bold"), "builder": lambda: [],
+          "color": ("bmagenta", "bold"), "builder": _fx_bolt,
           "mult": 1.1, "w": 3, "atype": "magic"},
          {"label": "a cast of clinging web", "verb": "throws",
-          "color": ("grey",), "builder": lambda: [],
+          "color": ("grey",), "builder": _fx_web,
           "mult": 0.8, "w": 2, "atype": "ranged",
           "effect": _venenatis_web}]),
     "vet'ion": (
@@ -12214,10 +12709,10 @@ _WARLORDS = {
          ("ring of the gods", 1, 1, 0.04), ("dragon pickaxe", 1, 1, 0.03),
          ("grimy ranarr", 2, 5, 0.4)],
         [{"label": "a sledge of grave-iron", "verb": "swings",
-          "color": ("purple", "bold"), "builder": lambda: [],
+          "color": ("purple", "bold"), "builder": _fx_smash,
           "mult": 1.15, "w": 3, "atype": "crush"},
          {"label": "a crackle of earth-lightning", "verb": "calls down",
-          "color": ("bmagenta",), "builder": lambda: [],
+          "color": ("bmagenta",), "builder": _fx_bolt,
           "mult": 1.0, "w": 2, "atype": "magic"}]),
     "scorpia": (
         {"abonus": 35, "atktype": ["stab"], "att": 140, "cb": 225,
@@ -12228,10 +12723,10 @@ _WARLORDS = {
          ("odium shard", 1, 1, 0.2), ("malediction shard", 1, 1, 0.2),
          ("antipoison", 1, 2, 0.4)],
         [{"label": "her barbed tail", "verb": "whips over with",
-          "color": ("green", "bold"), "builder": lambda: [],
+          "color": ("green", "bold"), "builder": _fx_tail,
           "mult": 1.1, "w": 3, "atype": "stab", "effect": _scorpia_sting},
          {"label": "a crushing pincer", "verb": "snaps",
-          "color": ("byellow",), "builder": lambda: [],
+          "color": ("byellow",), "builder": _fx_smash,
           "mult": 1.0, "w": 2, "atype": "crush"}]),
     "chaos elemental": (
         {"abonus": 40, "atktype": ["magic", "ranged", "crush"], "att": 160,
@@ -12241,10 +12736,10 @@ _WARLORDS = {
         [("coins", 3000, 12000, 1.0), ("dragon pickaxe", 1, 1, 0.03),
          ("uncut ruby", 1, 3, 0.4), ("blood rune", 5, 20, 0.5)],
         [{"label": "a lash of raw chaos", "verb": "whips out",
-          "color": ("bmagenta", "bold"), "builder": lambda: [],
+          "color": ("bmagenta", "bold"), "builder": _fx_bolt,
           "mult": 1.1, "w": 3, "atype": "magic"},
          {"label": "a discombobulating tendril", "verb": "flicks",
-          "color": ("purple",), "builder": lambda: [],
+          "color": ("purple",), "builder": _fx_lash,
           "mult": 0.7, "w": 2, "atype": "ranged",
           "effect": _chaos_disrobe}]),
     "kolodion": (
@@ -12255,10 +12750,10 @@ _WARLORDS = {
         [("god cape", 1, 1, 1.0), ("god staff", 1, 1, 1.0),
          ("blood rune", 10, 30, 1.0), ("coins", 1000, 5000, 1.0)],
         [{"label": "a searing bolt of pure magic", "verb": "hurls",
-          "color": ("bblue", "bold"), "builder": lambda: [],
+          "color": ("bblue", "bold"), "builder": _fx_bolt_blue,
           "mult": 1.1, "w": 3, "atype": "magic"},
          {"label": "a shapeshifted maul-swing", "verb": "morphs into",
-          "color": ("purple",), "builder": lambda: [],
+          "color": ("purple",), "builder": _fx_smash,
           "mult": 0.9, "w": 2, "atype": "crush"}]),
     "corporeal beast": (
         {"abonus": 50, "atktype": ["magic", "stab"], "att": 220, "cb": 785,
@@ -12269,10 +12764,10 @@ _WARLORDS = {
          ("spirit shield", 1, 1, 0.06), ("holy elixir", 1, 1, 0.03),
          ("uncut diamond", 2, 4, 0.5)],
         [{"label": "a gore of black horn", "verb": "lowers into",
-          "color": ("grey", "bold"), "builder": lambda: [],
+          "color": ("grey", "bold"), "builder": _fx_charge,
           "mult": 1.15, "w": 3, "atype": "stab"},
          {"label": "a scything blast of dark energy", "verb": "exhales",
-          "color": ("bmagenta", "bold"), "builder": lambda: [],
+          "color": ("bmagenta", "bold"), "builder": _fx_darkness,
           "mult": 1.05, "w": 3, "atype": "magic"}]),
 }
 for _w, (_st, _drops, _atk) in _WARLORDS.items():
@@ -12426,6 +12921,7 @@ def _cerb_take_turn(p, m):
     cyc = m.get("cerb_cycle", 0)
     m["cerb_cycle"] = cyc + 1
     if cyc % 4 == 3:
+        animate(_fx_souls(), delay=0.14, center=True)
         say("CERBERUS howls — three SUMMONED SOULS streak in, sword, bow "
             "and staff!", "bred", "bold")
         total = 0
@@ -12446,6 +12942,7 @@ def _cerb_take_turn(p, m):
 
 
 def _thermy_take_turn(p, m):
+    animate(_fx_smoke(), delay=0.13, center=True)
     say("The smoke itself attacks — there is nowhere it isn't.",
         "grey", "bold")
     dmg = random.randint(2, 16)
@@ -12472,34 +12969,34 @@ def _sire_miasma(p, m, dmg):
 
 CERB_ATTACKS = [
     {"label": "a lunge of three sets of jaws", "verb": "snaps with",
-     "color": ("bred", "bold"), "builder": lambda: [],
+     "color": ("bred", "bold"), "builder": _fx_jaws,
      "mult": 1.15, "w": 3, "atype": "slash"},
     {"label": "a lash of hellfire", "verb": "breathes",
-     "color": ("orange", "bold"), "builder": lambda: [],
+     "color": ("orange", "bold"), "builder": _fx_hellfire,
      "mult": 1.0, "w": 2, "atype": "magic"},
 ]
 KRAKEN_ATTACKS = [
     {"label": "a pillar of crushing water", "verb": "hurls",
-     "color": ("bblue", "bold"), "builder": lambda: [],
+     "color": ("bblue", "bold"), "builder": _fx_pillar,
      "mult": 1.15, "w": 3, "atype": "magic"},
     {"label": "a flailing tentacle", "verb": "sweeps",
-     "color": ("teal",), "builder": lambda: [],
+     "color": ("teal",), "builder": _fx_tentacle,
      "mult": 0.9, "w": 2, "atype": "crush"},
 ]
 SIRE_ATTACKS = [
     {"label": "a scythe of abyssal tentacles", "verb": "lashes out",
-     "color": ("purple", "bold"), "builder": lambda: [],
+     "color": ("purple", "bold"), "builder": _fx_lash,
      "mult": 1.15, "w": 3, "atype": "crush", "effect": _sire_miasma},
     {"label": "a wave of choking miasma", "verb": "vents",
-     "color": ("green",), "builder": lambda: [],
+     "color": ("green",), "builder": _fx_miasma,
      "mult": 0.9, "w": 2, "atype": "magic"},
 ]
 GROTESQUE_ATTACKS = [
     {"label": "a wrecking swing of stone fists", "verb": "hammers down",
-     "color": ("grey", "bold"), "builder": lambda: [],
+     "color": ("grey", "bold"), "builder": _fx_smash,
      "mult": 1.1, "w": 3, "atype": "crush"},
     {"label": "a volley of molten slag", "verb": "rains",
-     "color": ("orange",), "builder": lambda: [],
+     "color": ("orange",), "builder": _fx_slag,
      "mult": 1.0, "w": 2, "atype": "ranged"},
 ]
 

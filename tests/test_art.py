@@ -96,6 +96,33 @@ with contextlib.redirect_stdout(io.StringIO()):
     a.dispatch(p, "flee")
     a.dispatch(p, "flee")
 
+# 8. the boss spectacle: bespoke intro/death sequences actually animate
+SPECTACLE = ["kraken", "cerberus", "thermonuclear smoke devil",
+             "abyssal sire", "grotesque guardians", "corporeal beast",
+             "callisto", "venenatis", "vet'ion", "chaos elemental",
+             "scorpia"]
+import re
+bad = []
+for b in SPECTACLE:
+    for kind, reg in (("intro", a.BOSS_INTRO), ("death", a.BOSS_DEATH)):
+        frames = reg[b](b)
+        if len(frames) < 3:
+            bad.append(f"{b} {kind}: only {len(frames)} frames")
+        for f in frames:
+            plain = re.sub(r"\x1b\[[0-9;]*m", "", f)
+            if max((len(l) for l in plain.splitlines()), default=0) > 64:
+                bad.append(f"{b} {kind}: frame too wide")
+check("all 11 spectacle bosses have multi-frame intro AND death",
+      not bad, str(bad[:4]))
+
+# 9. every boss attack in the tables has animation frames
+tables = [a.CERB_ATTACKS, a.KRAKEN_ATTACKS, a.SIRE_ATTACKS,
+          a.GROTESQUE_ATTACKS] + [atk for (_s, _d, atk)
+                                  in a._WARLORDS.values()]
+empty = [atk["label"] for t in tables for atk in t if not atk["builder"]()]
+check("every boss attack animates (no empty builders left)", not empty,
+      str(empty))
+
 print()
 print("FAILURES:", len(FAILS), FAILS if FAILS else "")
 sys.exit(1 if FAILS else 0)
