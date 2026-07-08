@@ -51,7 +51,7 @@ check("canifis locked pre-quest", p.location == "paterdomus", out)
 check("lock names the quest", "Priest in Peril" in out, out)
 out = run(a.cmd_talk, p, "")
 check("drezel spawns guardian", a._q(p, "priest_in_peril") == "guardian"
-      and "temple guardian" in a.ROOMS["paterdomus"]["monsters"], out)
+      and "temple guardian" in a._room_monsters(p, "paterdomus"), out)
 
 random.seed(9)
 prayer0 = p.skills["prayer"]
@@ -62,7 +62,7 @@ while p.combat is not None and p.hp > 0 and n < 200:
     n += 1
 check("guardian slain -> cleansed", a._q(p, "priest_in_peril") == "cleansed")
 check("guardian removed from room",
-      "temple guardian" not in a.ROOMS["paterdomus"]["monsters"])
+      "temple guardian" not in a._room_monsters(p, "paterdomus"))
 out = run(a.cmd_talk, p, "")
 check("quest complete", a._q(p, "priest_in_peril") == "complete", out)
 check("1406 prayer xp", p.skills["prayer"] - prayer0 >= 1406 * 2)  # XP_RATE 2

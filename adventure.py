@@ -3230,8 +3230,9 @@ def cmd_look(p, _a):
         else:
             services.append(paint(f"{ptype} patch: empty — 'plant <seed>'",
                                   "green"))
-    if r.get("monsters"):
-        services.append(paint("monsters: " + ", ".join(r["monsters"]), "bred"))
+    mons = _room_monsters(p)
+    if mons:
+        services.append(paint("monsters: " + ", ".join(mons), "bred"))
     if r.get("npc"):
         services.append(paint("someone to 'talk' to", "byellow"))
     if services:
@@ -4616,8 +4617,7 @@ def _auto_finish(p, outcome):
 
 
 def cmd_fight(p, arg):
-    r = ROOMS[p.location]
-    monsters = r.get("monsters", [])
+    monsters = _room_monsters(p)
     if not monsters:
         say("There's nothing to fight here.")
         return
@@ -4886,10 +4886,7 @@ def talk_morgan(p):
         say("Morgan: \"Count Draynor, a vampyre, terrorises us! Take this STAKE "
             "and a HAMMER, and slay him in the manor to the north!\"")
         p.add("stake")
-        p.quests["vampyre_slayer"] = "started"
-        # add the count to the manor
-        if "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
-            ROOMS["draynor_manor"]["monsters"].append("count draynor")
+        p.quests["vampyre_slayer"] = "started"   # the count now stalks the manor
     elif stage == "complete":
         say("Morgan: \"You saved us all!\"")
     else:
@@ -5059,6 +5056,33 @@ QUEST_TALK = {
 }
 
 
+# Quest-story monsters exist FOR YOU, derived from your quest state — the
+# shared world map is never mutated per player. This keeps saves honest (no
+# respawn-on-load bookkeeping) and the engine ready for many players in one
+# world. Entries: (room, monster, alive(p)). Content blocks append to it.
+QUEST_SPAWNS = [
+    ("draynor_manor", "count draynor",
+     lambda p: _q(p, "vampyre_slayer") == "started"),
+    ("paterdomus", "temple guardian",
+     lambda p: _q(p, "priest_in_peril") == "guardian"),
+    ("rock_crab_coast", "the draugen",
+     lambda p: _q(p, "fremennik_trials") == "hunt"),
+    ("fenkenstrain_castle", "the experiment",
+     lambda p: _q(p, "fenkenstrain") == "creature"),
+]
+
+
+def _room_monsters(p, room=None):
+    """The monsters THIS player finds in a room: the room's own list plus
+    any quest-story spawns their journal conjures. Always read monsters
+    through here — never ROOMS[...]["monsters"] directly."""
+    room = room or p.location
+    base = ROOMS[room].get("monsters", [])
+    extra = [m for rm, m, alive in QUEST_SPAWNS
+             if rm == room and m not in base and alive(p)]
+    return base + extra if extra else base
+
+
 def _quest_on_kill(p, target):
     if target == "count draynor" and _q(p, "vampyre_slayer") == "started":
         show_art(ART_QUEST, "gold", center=True)
@@ -5067,7 +5091,6 @@ def _quest_on_kill(p, target):
             "4825 attack xp awarded.")
         p.gain_xp("attack", 4825)
         p.quests["vampyre_slayer"] = "complete"
-        ROOMS["draynor_manor"]["monsters"].remove("count draynor")
     if target == "goblin" and _q(p, "dragon_slayer") == "maps" \
             and not p.has("wormbrain's map piece"):
         p.add("wormbrain's map piece")
@@ -5085,14 +5108,10 @@ def _quest_on_kill(p, target):
         p.quests["dragon_slayer"] = "complete"
     if target == "temple guardian" and _q(p, "priest_in_peril") == "guardian":
         p.quests["priest_in_peril"] = "cleansed"
-        if "temple guardian" in ROOMS["paterdomus"]["monsters"]:
-            ROOMS["paterdomus"]["monsters"].remove("temple guardian")
         say("The guardian collapses into grave-dust. Tell Drezel the crypt "
             "is safe!", "bgreen")
     if target == "the draugen" and _q(p, "fremennik_trials") == "hunt":
         p.quests["fremennik_trials"] = "hunted"
-        if "the draugen" in ROOMS["rock_crab_coast"]["monsters"]:
-            ROOMS["rock_crab_coast"]["monsters"].remove("the draugen")
         say("The Draugen unravels into cold sea-mist. Brundt will want to "
             "hear of this!", "bgreen")
     if target == "dad" and _q(p, "troll_stronghold") == "started":
@@ -5102,17 +5121,13 @@ def _quest_on_kill(p, target):
             "bgreen")
     if _q(p, "desert_treasure") == "diamonds" and \
             target in _DT_GUARDIANS:
-        gem, room, _s = _DT_GUARDIANS[target]
+        gem, _room, _s = _DT_GUARDIANS[target]
         if not p.has(gem):
             p.add(gem)
-            if target in ROOMS[room]["monsters"]:
-                ROOMS[room]["monsters"].remove(target)
             say(f"From the guardian's ashes you take the {gem.upper()}!",
                 "bmagenta", "bold")
     if target == "the experiment" and _q(p, "fenkenstrain") == "creature":
         p.quests["fenkenstrain"] = "loose"
-        if "the experiment" in ROOMS["fenkenstrain_castle"]["monsters"]:
-            ROOMS["fenkenstrain_castle"]["monsters"].remove("the experiment")
         say("The creature slumps, contained at last. The doctor will want "
             "a word.", "bgreen")
     if target == "cyclops" and random.random() < 0.20:
@@ -5446,7 +5461,8 @@ SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "savegame.j
 
 def serialize(p):
     """Return a plain-dict snapshot of a player (for file or browser saves)."""
-    return {"name": p.name, "location": p.location, "skills": p.skills,
+    return {"v": 1,     # save-format version, for future migrations
+            "name": p.name, "location": p.location, "skills": p.skills,
             "hp": p.hp, "inventory": p.inventory, "bank": p.bank,
             "equipment": p.equipment, "style": p.style,
             "train": getattr(p, "train", "shared"),
@@ -5533,23 +5549,8 @@ def deserialize(data):
                 continue
             p.seen.add(room)
     p.autoeat = data.get("autoeat", True)
-    # restore quest-spawned monsters
-    if p.quests.get("vampyre_slayer") == "started" and \
-            "count draynor" not in ROOMS["draynor_manor"]["monsters"]:
-        ROOMS["draynor_manor"]["monsters"].append("count draynor")
-    if p.quests.get("priest_in_peril") == "guardian" and \
-            "temple guardian" not in ROOMS["paterdomus"]["monsters"]:
-        ROOMS["paterdomus"]["monsters"].append("temple guardian")
-    if p.quests.get("fremennik_trials") == "hunt" and \
-            "the draugen" not in ROOMS["rock_crab_coast"]["monsters"]:
-        ROOMS["rock_crab_coast"]["monsters"].append("the draugen")
-    if p.quests.get("fenkenstrain") == "creature" and \
-            "the experiment" not in ROOMS["fenkenstrain_castle"]["monsters"]:
-        ROOMS["fenkenstrain_castle"]["monsters"].append("the experiment")
-    if p.quests.get("desert_treasure") == "diamonds":
-        for _g, (_gem, _room, _s) in _DT_GUARDIANS.items():
-            if not p.has(_gem) and _g not in ROOMS[_room]["monsters"]:
-                ROOMS[_room]["monsters"].append(_g)
+    # (quest-story monsters need no restoring: QUEST_SPAWNS derives them
+    #  from quest state whenever a room is looked at)
     return p
 
 
@@ -6475,7 +6476,7 @@ def web_room_actions(player):
                             "actions": acts}])
     r = ROOMS[player.location]
     out = []
-    for m in r.get("monsters", []):
+    for m in _room_monsters(player):
         out.append({"name": m, "kind": "monster", "actions": [
             {"label": "Attack", "cmd": f"fight {m}"},
             {"label": "Auto ×5", "cmd": f"fight {m} 5"},
@@ -8243,8 +8244,6 @@ def talk_drezel(p):
             "crypt — a GUARDIAN of grave-dust and bone. I cannot bless the "
             "Salve while it prowls. Slay it, please!\"", "byellow")
         p.quests["priest_in_peril"] = "guardian"
-        if "temple guardian" not in ROOMS["paterdomus"]["monsters"]:
-            ROOMS["paterdomus"]["monsters"].append("temple guardian")
     elif stage == "guardian":
         say("Drezel: \"The guardian still prowls the temple — 'fight temple "
             "guardian'!\"")
@@ -10200,7 +10199,7 @@ def _maybe_ambush(p):
     if getattr(p, "auto", None) is not None:
         return
     cb = p.combat_level()
-    lurkers = [m for m in r.get("monsters", [])
+    lurkers = [m for m in _room_monsters(p)
                if not MONSTERS[m].get("boss")
                and (MONSTERS[m].get("level") or 1) * 2 >= cb
                and p.lvl("slayer") >= MONSTERS[m].get("slayer_req", 0)]
@@ -10553,8 +10552,6 @@ def talk_brundt(p):
             "SONG, and the FEAST. First — a DRAUGEN, a drowned man's "
             "spite, haunts the crab coast. Slay it.\"")
         p.quests["fremennik_trials"] = "hunt"
-        if "the draugen" not in ROOMS["rock_crab_coast"]["monsters"]:
-            ROOMS["rock_crab_coast"]["monsters"].append("the draugen")
     elif stage == "hunt":
         say("Brundt: \"The Draugen still walks the coast east of here. "
             "'fight the draugen'!\"")
@@ -11700,10 +11697,6 @@ def talk_fenkenstrain(p):
             p.take("needle")
             p.take("thread")
             p.quests["fenkenstrain"] = "creature"
-            if "the experiment" not in \
-                    ROOMS["fenkenstrain_castle"]["monsters"]:
-                ROOMS["fenkenstrain_castle"]["monsters"].append(
-                    "the experiment")
             say("The doctor stitches, hums, and throws the great switch. "
                 "LIGHTNING — and the thing on the slab sits up, looks at "
                 "you both... and goes BERSERK! \"Contain it! CONTAIN "
@@ -12436,6 +12429,11 @@ _DT_GUARDIANS = {
          "drange": 55, "def": 80, "hp": 120, "maxhit": 15, "str": 130,
          "weak": "crush"}),
 }
+def _dt_guardian_alive(gem):
+    return lambda p: (_q(p, "desert_treasure") == "diamonds"
+                      and not p.has(gem))
+
+
 for _g, (_gem, _room, _st) in _DT_GUARDIANS.items():
     add_item(_gem, 5000, members=True)
     _add_mob(_g, _st, [("coins", 500, 2000, 1.0)], members=True,
@@ -12443,6 +12441,7 @@ for _g, (_gem, _room, _st) in _DT_GUARDIANS.items():
     MONSTERS[_g]["boss"] = True
     MONSTERS[_g]["rank"] = "boss"
     _BOSSES.add(_g)
+    QUEST_SPAWNS.append((_room, _g, _dt_guardian_alive(_gem)))
 
 # --- the region --------------------------------------------------------------------
 ROOMS.update({
@@ -12498,10 +12497,7 @@ def talk_archaeologist(p):
             "Bring all four to the black pyramid west of here, and the "
             "magic sealed inside is yours. I'd do it myself, but I've "
             "got a trowel.\"")
-        p.quests["desert_treasure"] = "diamonds"
-        for g, (gem, room, _s) in _DT_GUARDIANS.items():
-            if g not in ROOMS[room]["monsters"]:
-                ROOMS[room]["monsters"].append(g)
+        p.quests["desert_treasure"] = "diamonds"   # the four guardians wake
     elif stage == "diamonds":
         have = [g for g, (gem, _r, _s) in _DT_GUARDIANS.items()
                 if p.has(gem)]

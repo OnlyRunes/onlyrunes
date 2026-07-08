@@ -132,22 +132,21 @@ out = do(p, "talk")
 check("archaeologist starts the hunt",
       a._q(p, "desert_treasure") == "diamonds", out)
 for g, (gem, room, _s) in a._DT_GUARDIANS.items():
-    check(f"{g} guards {room}", g in a.ROOMS[room]["monsters"])
-# save/load respawns unbeaten guardians
+    check(f"{g} guards {room}", g in a._room_monsters(p, room))
+# save/load: guardians derive from quest state — no respawn bookkeeping,
+# and the shared map itself never holds them
 blob = a.player_to_json(p)
-for g, (gem, room, _s) in a._DT_GUARDIANS.items():
-    if g in a.ROOMS[room]["monsters"]:
-        a.ROOMS[room]["monsters"].remove(g)
 p = a.player_from_json(blob)
 check("guardians respawn on load",
-      all(g in a.ROOMS[room]["monsters"]
+      all(g in a._room_monsters(p, room)
+          and g not in a.ROOMS[room]["monsters"]
           for g, (gem, room, _s) in a._DT_GUARDIANS.items()))
 for g, (gem, room, _s) in a._DT_GUARDIANS.items():
     p.location = room
     settle(p)
     won, _ = fight(p, g, style_pray="magic")
     check(f"{g} slain, {gem} taken", won and p.has(gem)
-          and g not in a.ROOMS[room]["monsters"])
+          and g not in a._room_monsters(p, room))
     p.hp = p.max_hp
 p.location = "sophanem"
 out = do(p, "talk")

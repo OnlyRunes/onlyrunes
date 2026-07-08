@@ -103,18 +103,18 @@ print("=== 3. the trials, honestly ======================================")
 out = do(p, "talk brundt")
 check("quest starts at hunt", a._q(p, "fremennik_trials") == "hunt", out)
 check("draugen spawned on the coast",
-      "the draugen" in a.ROOMS["rock_crab_coast"]["monsters"])
-# save/load mid-hunt must respawn the draugen (module state resets)
+      "the draugen" in a._room_monsters(p, "rock_crab_coast"))
+# save/load mid-hunt: the draugen derives from quest state, no respawn code
 blob = a.player_to_json(p)
-a.ROOMS["rock_crab_coast"]["monsters"] = ["rock crab"]
 p = a.player_from_json(blob)
 check("draugen respawns on load",
-      "the draugen" in a.ROOMS["rock_crab_coast"]["monsters"])
+      "the draugen" in a._room_monsters(p, "rock_crab_coast")
+      and "the draugen" not in a.ROOMS["rock_crab_coast"]["monsters"])
 p.location = "rock_crab_coast"
 won, _, _ = fight(p, "the draugen")
 check("draugen slain", won and a._q(p, "fremennik_trials") == "hunted")
 check("draugen despawned",
-      "the draugen" not in a.ROOMS["rock_crab_coast"]["monsters"])
+      "the draugen" not in a._room_monsters(p, "rock_crab_coast"))
 p.location = "rellekka"
 do(p, "talk brundt")
 check("song trial assigned", a._q(p, "fremennik_trials") == "lyre")

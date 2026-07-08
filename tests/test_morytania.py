@@ -112,14 +112,15 @@ pf.add("needle")
 pf.add("thread")
 out = do(pf, "talk")
 check("creature stitched and loose", a._q(pf, "fenkenstrain") == "creature"
-      and "the experiment" in a.ROOMS["fenkenstrain_castle"]["monsters"],
+      and "the experiment" in a._room_monsters(pf, "fenkenstrain_castle"),
       out)
-# save/load mid-stage respawns the creature
+# save/load mid-stage: the creature derives from quest state, no respawn code
 blob = a.player_to_json(pf)
-a.ROOMS["fenkenstrain_castle"]["monsters"] = ["experiment"]
 pf = a.player_from_json(blob)
 check("creature respawns on load",
-      "the experiment" in a.ROOMS["fenkenstrain_castle"]["monsters"])
+      "the experiment" in a._room_monsters(pf, "fenkenstrain_castle")
+      and "the experiment" not in
+      a.ROOMS["fenkenstrain_castle"]["monsters"])
 won, _ = fight(pf, "the experiment")
 check("creature contained", won and a._q(pf, "fenkenstrain") == "loose")
 qp0 = a.quest_points(pf)
