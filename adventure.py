@@ -463,12 +463,15 @@ def _count_death(name):
 
 
 def _generic_boss_intro(name):
-    return [_tint(GEN_ROAR, "grey"), _tint(GEN_ROAR, "bred", "bold"),
-            _tint(GEN_ROAR, "byellow", "bold"), _tint(GEN_ROAR, "bred", "bold")]
+    # a boss with a portrait gets its own art flashed; GEN_ROAR otherwise
+    art = MONSTER_ART.get(name, GEN_ROAR)
+    return [_tint(art, "grey"), _tint(art, "bred", "bold"),
+            _tint(art, "byellow", "bold"), _tint(art, "bred", "bold")]
 
 
 def _generic_boss_death(name):
-    return [_tint(GEN_ROAR, "bred"), _tint(GEN_ROAR, "grey", "dim")]
+    art = MONSTER_ART.get(name, GEN_ROAR)
+    return [_tint(art, "bred"), _tint(art, "grey", "dim")]
 
 
 # Obor, the Hill Giant boss — a braille hill giant (image->braille via JuliaMono).
@@ -687,6 +690,259 @@ MONSTER_ART = {
       """ + '"""' + r"""
 """,
 }
+
+# The late-game rogues' gallery: superbosses, warlords and quest guardians.
+# The generic boss intro/death animations flash whichever of these exists,
+# so a new boss only ever needs one piece of art here.
+MONSTER_ART.update({
+    "kraken": r"""
+          .-''''-.
+         ( o    o )
+          \  __  /        THE KRAKEN rises
+       _/\/|/||\|\/\_      from the lightless deep!
+      / /\ | || | /\ \
+     ~~ ~~ ~ ~~ ~ ~~ ~~
+""",
+    "cerberus": r"""
+      ,_      ,_      ,_
+     (o,o)   (o,o)   (o,o)
+      )v(     )v(     )v(     CERBERUS —
+       \ \____ | ____/ /       three heads, one hunger.
+        \____ \|/ ____/
+         //   |||   \\
+""",
+    "thermonuclear smoke devil": r"""
+         (  ~~~~  )
+       (  ~~~~~~~~  )
+      ( ~~ (o)(o) ~~ )     the THERMONUCLEAR SMOKE
+       (  ~~~~~~~~  )       DEVIL billows upward!
+         \  ~~~~  /
+          '------'
+""",
+    "abyssal sire": r"""
+         .-''''''-.
+        /  -    -  \
+       |  (o)  (o)  |      the ABYSSAL SIRE heaves
+        \    __    /        out of the miasma...
+      _/|\__/||\__/|\_
+     / \|/   ||   \|/ \
+""",
+    "grotesque guardians": r"""
+      /\ /\        /\ /\
+     ( o o )      ( o o )
+     /| ^ |\      /| ^ |\     DUSK and DAWN —
+      |___|        |___|       stone takes wing!
+     _|   |_      _|   |_
+""",
+    "corporeal beast": r"""
+        __,--------.__
+       /   \      /   \
+      | (o) |    | (o) |     the CORPOREAL BEAST —
+       \____|____|____/       flesh of pure spirit.
+       /|   |||||   |\
+      ^^    |||||    ^^
+""",
+    "chaos elemental": r"""
+        .  ~  @  ~  .
+       ~  @  \|/  @  ~
+      @  ~ --(?)-- ~  @     the CHAOS ELEMENTAL
+       ~  @  /|\  @  ~       crackles into being!
+        '  ~  @  ~  '
+""",
+    "scorpia": r"""
+       /\_________/\    ,-,
+      ( _\       /_ )  ( x )
+       / |(o) (o)| \    )-(     SCORPIA — her tail
+         |__ v __|     //        arcs overhead!
+        //|     |\\ __//
+       '' |_|_|_| '''
+""",
+    "callisto": r"""
+        ,--._____,--.
+       /    '   '    \
+      |  (o)     (o)  |     CALLISTO the great bear
+       \     ___     /       rears to full height!
+       /|   '---'   |\
+      (_|           |_)
+""",
+    "venenatis": r"""
+      \\   //   \\   //
+       \\ ((     )) //
+        (( \ .. / ))        VENENATIS descends
+       //   (oo)   \\        on a dripping strand...
+      //   //  \\   \\
+           ''    ''
+""",
+    "vet'ion": r"""
+         .-------.
+        |  [x x]  |
+        |   ___   |       VET'ION, twice-risen
+       /|__|   |__|\       champion of the dead!
+      | ||       || |
+        ||_______||
+        /_/     \_\
+""",
+    "kolodion": r"""
+         _/\_       ,
+        ( o o )    /|
+        /|   |\  *  |      KOLODION raises
+       / |___| \    |       his god staff!
+         |   |     /
+        _|___|_  *
+""",
+    "dessous": r"""
+       /\_______/\
+       \  (o o)  /
+       /|  ^v^  |\        DESSOUS, vampyre lord,
+      / |_______| \        unfolds from his tomb.
+     /__|       |__\
+""",
+    "kamil": r"""
+        *   /\   .
+         __|  |__
+        | [o  o] |  *      KAMIL strides out
+      * |________|          of the blizzard!
+        /| /\/\ |\   .
+       * |/    \| *
+""",
+    "fareed": r"""
+       (  (    )  )
+        ) _)__(_ (
+       ( | (oo) | )       FAREED — the tomb
+        )|      |(         burns around him!
+       ( |______| )
+          /    \
+""",
+    "damis": r"""
+        .    .    .
+         ________
+       .| o    o |.       DAMIS coalesces
+        |    _   |         from the shadows...
+       .|________|.
+         /   .   \
+""",
+})
+
+# Family art: any monster without its own portrait gets its family's
+# silhouette (a dragon reads as a dragon), keyword-matched in order.
+_FAMILY_ART = [
+    (("dragon",), r"""
+         /\____/\
+        ( o vv o )___
+        /|  ^^  |/  /\      a DRAGON — beware
+       ( |______|  /  )      its fiery breath!
+        \|_|__|_|_/ /
+          w      w '
+"""),
+    (("demon", "devil", "imp"), r"""
+        \        /
+        (\------/)
+        ( o    o )        a DEMON of the
+        /|  \/  |\         lower planes!
+       ( |______| )
+         ^      ^
+"""),
+    (("spectre", "banshee", "ghast", "ghost", "shade", "draugen",
+      "wraith"), r"""
+        .-''''''-.
+       /  o    o  \
+       |     _    |       something COLD
+       \    '-'   /        drifts through you...
+        '~~~~~~~~'
+          ~  ~  ~
+"""),
+    (("giant", "troll", "ogre", "cyclops", "obor"), r"""
+          _______
+         /       \
+        | [o] [o] |       a hulking BRUTE
+        /|   _   |\        blocks the way!
+       d |__|_|__| b
+         |   |   |
+        _|   |   |_
+"""),
+    (("hound", "wolf", "werewolf", "dog", "jackal"), r"""
+         /\      /\
+        /  \____/  \
+       |  -      -  |     a snarling BEAST —
+        \    /\    /       all fangs and hunger!
+         \   \/  _/
+          '----''
+"""),
+    (("crab",), r"""
+       ,--.       ,--.
+      ( () )     ( () )
+       \  \_______/  /      a CRAB scuttles
+        |   o   o   |        sideways at you!
+       /|___________|\
+      '-'   '   '   '-'
+"""),
+    (("kalphite", "scarab", "locust"), r"""
+        ______________
+       / .----------. \
+      | ( (o)    (o) ) |     a KALPHITE clicks
+       \ '----++----' /       its mandibles!
+       /\/\  |  |  /\/\
+         \/  '--'  \/
+"""),
+    (("horror", "basilisk", "bloodveld", "crawling hand", "experiment",
+      "jelly", "turoth", "kurask", "cockatrice"), r"""
+        _.-''''''-._
+       /  o   o  o  \
+      |   o  __  o   |     a nameless HORROR
+       \    (__)    /       writhes toward you!
+        \|/|\--/|\|/
+         '  '  '  '
+"""),
+    (("jal-", "tz-", "tzhaar"), r"""
+         (   )   (
+        )  _)_(_  (
+       (  / (  ) \  )      a creature of LIVING
+        || ( () ) ||        FLAME crackles forth!
+        ((________))
+           /    \
+"""),
+    (("dagannoth", "wallasalki", "lobster"), r"""
+         /\______/\
+        (  o    o  )___
+        /|  ^^^^  |   /\     a DAGANNOTH slithers
+         ||||||||||  ~~       from the surf!
+        ~~~~~~~~~~~~~~
+"""),
+    (("gargoyle", "guardian", "golem", "statue"), r"""
+        /\  _____  /\
+       //  ( o o )  \\
+       \\  \ ^^^ /  //      STONE grinds
+        \ \|-----|/ /        into motion!
+         \ | | | | /
+        '  '-'-'-'  '
+"""),
+    (("yak", "bull", "bison"), r"""
+       (__)      (__)
+        \  '.__.'  /
+         (  o  o  )        a shaggy HORNED
+         |   ==   |         beast snorts!
+        /|________|\
+          ||    ||
+"""),
+    (("knight", "warrior", "duelist", "pirate", "bandit", "tribesman",
+      "brigand", "rogue", "aviansie"), r"""
+          ____        ,
+         / __ \      /|
+        | [oo] |    / |     an armed FOE
+        /|____|\   /  |      draws steel!
+       / |    | \ /
+         |____|__X
+         _|__|_
+"""),
+]
+
+
+def _fallback_art(name):
+    """Family silhouette for a monster with no portrait of its own."""
+    for keys, art in _FAMILY_ART:
+        if any(k in name for k in keys):
+            return art
+    return None
 
 
 def item_rarity_color(name):
@@ -2464,7 +2720,8 @@ def fight_auto(p, mname):
     if mname in MONSTER_ART:
         show_art(MONSTER_ART[mname], "bred")
     else:
-        show_art(ART_SWORDS, "grey")
+        fam = _fallback_art(mname)
+        show_art(fam or ART_SWORDS, "bred" if fam else "grey")
     lvl = m.get("level")
     lbl = f"{mname.upper()}" + (f"  (lvl {lvl})" if lvl else "") + "  (auto)"
     banner(lbl, color="bred", line_color="red")
@@ -2538,7 +2795,8 @@ def _start_combat(p, mname):
     elif mname in MONSTER_ART:
         show_art(MONSTER_ART[mname], "bred")
     else:
-        show_art(ART_SWORDS, "grey")
+        fam = _fallback_art(mname)      # family silhouette beats bare swords
+        show_art(fam or ART_SWORDS, "bred" if fam else "grey")
     lvl = p.combat.get("level")
     title = f"{mname.upper()}" + (f"  (lvl {lvl})" if lvl else "")
     banner(title, color="bred", line_color="red")
