@@ -5,7 +5,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-python3 build.py                       # src/*.py -> adventure.py
+# Assemble adventure.py from src/ fragments. The committed adventure.py is
+# always kept in sync, so if python3 isn't available (some CI images) we
+# fall back to it rather than failing the deploy.
+if command -v python3 >/dev/null 2>&1; then
+  python3 build.py
+else
+  echo "python3 not found — using the committed adventure.py as-is"
+fi
 cp adventure.py site/adventure.py
 echo "Copied adventure.py -> site/adventure.py"
 echo "Deployable folder is ready: ./site"
