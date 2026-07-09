@@ -21,7 +21,7 @@ The web version runs the same `adventure.py` client-side via Pyodide
 (Python→WebAssembly) with an xterm.js terminal.
 
 ```bash
-./build_site.sh                       # copies adventure.py into site/
+./build_site.sh                       # builds adventure.py from src/, copies to site/
 cd site && python3 -m http.server 8000
 # open http://localhost:8000
 ```
@@ -29,14 +29,30 @@ cd site && python3 -m http.server 8000
 (You can't just open the file — Pyodide needs to `fetch()` `adventure.py`, so
 serve it over http.)
 
+## Source layout — edit `src/`, not `adventure.py`
+
+The game ships and runs as a single module, but the source lives in ordered
+fragments under **`src/`** (named by system: `30_combat.py`, `50_quests.py`,
+`60_content_*` … the 2-digit prefix is the load order). `build.py`
+concatenates them into `adventure.py`:
+
+```bash
+python3 build.py        # src/*.py -> adventure.py   (build_site.sh runs this too)
+```
+
+`adventure.py` is generated — don't hand-edit it (a test enforces it stays in
+sync with `src/`). To add a new region, add a new `src/9N_content_*.py`.
+
 ## Project layout
 
 | Path | What it is |
 |------|------------|
-| `adventure.py` | The whole game (source of truth) — CLI + a web API |
+| `src/*.py` | The game source, split into ordered fragments (edit here) |
+| `build.py` | Concatenates `src/` → `adventure.py` |
+| `adventure.py` | Generated single-file game (CLI + web API); runnable, tracked |
 | `site/index.html` | Browser front-end (Pyodide + xterm.js) |
 | `site/adventure.py` | Generated copy for deploy (tracked; rebuilt by `build_site.sh`) |
-| `build_site.sh` | Copies `adventure.py` → `site/` |
+| `build_site.sh` | Builds `adventure.py` from `src/`, copies it → `site/` |
 | `deploy.sh` | Build + deploy to Cloudflare |
 | `wrangler.jsonc` | Cloudflare Worker config (static assets) |
 | `DEPLOY.md` | Hosting / domain guide |
