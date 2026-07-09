@@ -1,0 +1,3 @@
+# OnlyRunes Discord bot. The game engine itself is pure stdlib; only the
+# Discord transport needs a dependency.
+discord.py>=2.3,<3
