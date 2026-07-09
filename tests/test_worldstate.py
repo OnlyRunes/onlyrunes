@@ -103,8 +103,17 @@ strays = [(rm, m) for rm, m, _fn in a.QUEST_SPAWNS
           if m in a.ROOMS[rm].get("monsters", [])]
 check("no quest-story monster baked into the static map", not strays,
       str(strays))
-check("QUEST_SPAWNS covers all five quest stories",
-      len(a.QUEST_SPAWNS) == 8, str([(r, m) for r, m, _f in a.QUEST_SPAWNS]))
+# every QUEST_SPAWNS entry names a real room + a real monster, and the
+# roster covers the known quest-story spawns (grows as content is added)
+bad_spawns = [(rm, m) for rm, m, _f in a.QUEST_SPAWNS
+              if rm not in a.ROOMS or m not in a.MONSTERS]
+check("every QUEST_SPAWNS entry is a real room+monster", not bad_spawns,
+      str(bad_spawns))
+spawn_mons = {m for _r, m, _f in a.QUEST_SPAWNS}
+check("QUEST_SPAWNS covers the quest-story monsters",
+      {"count draynor", "temple guardian", "the draugen", "the experiment",
+       "galvek"} <= spawn_mons and len(a.QUEST_SPAWNS) >= 9,
+      str(sorted(spawn_mons)))
 
 print()
 print("FAILURES:", len(FAILS), FAILS if FAILS else "")

@@ -129,6 +129,10 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
             and p.equipment.get("head") in ("slayer helmet", "black mask"):
         att_roll = int(att_roll * 1.15)
         max_hit = max(1, int(max_hit * 1.15))
+    wpn = p.equipment.get("weapon")            # dragon-hunter gear vs dragons
+    if m.get("dragon") and ITEMS.get(wpn, {}).get("equip", {}).get("dragon_bane"):
+        att_roll = int(att_roll * 1.2)
+        max_hit = max(1, int(max_hit * 1.25))
     if m.get("flying") and kind == "melee":   # airborne foes shrug off melee
         max_hit = max(1, max_hit // 2)
     def_bonus = m.get("dbonus", {}).get(atype, 0)     # monster's defence vs this type
@@ -325,9 +329,10 @@ def _apply_kbd_effect(p, key):
 
 
 def _dragonfire_adjust(p, dmg):
-    """Dragonfire burns through armour — unless an anti-dragon shield soaks it."""
-    if p.equipment.get("shield") == "anti-dragon shield":
-        print("  " + paint("Your anti-dragon shield deflects the worst of the "
+    """Dragonfire burns through armour — unless a dragon shield soaks it."""
+    shield = p.equipment.get("shield")
+    if shield in ("anti-dragon shield", "dragonfire ward"):
+        print("  " + paint(f"Your {shield} deflects the worst of the "
                            "flames!", "bcyan"))
         return dmg // 3
     print("  " + paint("The dragonfire sears you — an anti-dragon shield "

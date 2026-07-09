@@ -232,7 +232,7 @@ q.bosses = ["obor", "tztok-jad", "general graardor", "kree'arra",
 g = a._next_goal(q)
 check("slayer 99 sees the five lairs", "five lairs" in g, g)
 q.bosses += ["kraken", "cerberus", "abyssal sire", "grotesque guardians",
-             "thermonuclear smoke devil"]
+             "thermonuclear smoke devil", "vorkath"]
 g = a._next_goal(q)
 check("then the inferno", "INFERNO" in g, g)
 

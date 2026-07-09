@@ -35,6 +35,9 @@ ACHIEVEMENTS = {
                     "superbosses."),
     "snake_charmer": ("Snake Charmer", "Defeat Zulrah, the serpent of "
                       "Zul-Andra."),
+    "dragonkin_bane": ("Dragonkin's Bane", "Complete Dragon Slayer II."),
+    "vorkath":      ("Vorkath", "Slay Vorkath, the undead dragon of "
+                     "Ungael."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -97,6 +100,10 @@ def _earned_achievements(p):
         got.add("apex_slayer")
     if "zulrah" in bosses:
         got.add("snake_charmer")
+    if _q(p, "dragon_slayer_2") == "complete":
+        got.add("dragonkin_bane")
+    if "vorkath" in bosses:
+        got.add("vorkath")
     if p.coins >= 100000:
         got.add("rich")
     return got

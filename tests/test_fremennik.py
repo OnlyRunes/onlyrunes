@@ -169,7 +169,7 @@ g = a._next_goal(q)
 check("goal points at the Kings", "Waterbirth" in g, g)
 q.bosses += ["dagannoth rex", "dagannoth prime", "dagannoth supreme",
              "tzkal-zuk", "the nightmare", "callisto", "venenatis",
-             "vet'ion", "corporeal beast"]
+             "vet'ion", "corporeal beast", "vorkath"]
 g = a._next_goal(q)
 check("then the 99 chase", "99" in g, g)
 

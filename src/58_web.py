@@ -140,6 +140,14 @@ def _next_goal(p):
                 "cove, Cerberus' gate, Pollnivneach's smoking well, the "
                 "tower's rift and its roof. Trident, boots and the occult "
                 "await.")
+    if _q(p, "dragon_slayer_2") != "complete":
+        return ("DRAGON SLAYER II calls \u2014 Dallas Jones digs at Fossil "
+                "Island (sail from Port Phasmatys). Hunt the metal dragons "
+                "of Lithkren, then face Galvek on the shore of Ungael.")
+    if "vorkath" not in getattr(p, "bosses", []):
+        return ("VORKATH, the undead dragon, waits in the crater on Ungael "
+                "\u2014 a dragonfire ward and a dragon-hunter weapon turn the "
+                "fight. Mind the zombified spawn.")
     if "tzkal-zuk" not in getattr(p, "bosses", []):
         return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
                 "volcano) \u2014 wear your fire cape in, survive eight waves, "

@@ -173,6 +173,12 @@ g = a._next_goal(q)
 check("then the warlords", "WARLORDS" in g, g)
 q.bosses += ["callisto", "venenatis", "vet'ion", "corporeal beast"]
 g = a._next_goal(q)
+check("then Dragon Slayer II", "DRAGON SLAYER II" in g, g)
+q.quests["dragon_slayer_2"] = "complete"
+g = a._next_goal(q)
+check("then Vorkath", "VORKATH" in g, g)
+q.bosses += ["vorkath"]
+g = a._next_goal(q)
 check("then the Inferno", "INFERNO" in g, g)
 q.bosses += ["tzkal-zuk"]
 g = a._next_goal(q)
