@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# ===========================================================================
+#  GENERATED FILE — do not hand-edit.  Edit the fragments in src/ and run
+#  `python3 build.py` (build_site.sh does this automatically).  See src/.
+# ===========================================================================
 """
 OnlyRunes  —  A Text Adventure in Gielinor
 ==========================================

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Build the deployable static site by copying the game into site/.
-# Run this whenever adventure.py changes, then deploy the site/ folder.
+# Build the deployable static site.
+# 1) assemble adventure.py from the src/ fragments, 2) copy it into site/.
+# Run this whenever anything in src/ changes, then deploy the site/ folder.
 set -euo pipefail
 cd "$(dirname "$0")"
 
+python3 build.py                       # src/*.py -> adventure.py
 cp adventure.py site/adventure.py
 echo "Copied adventure.py -> site/adventure.py"
 echo "Deployable folder is ready: ./site"

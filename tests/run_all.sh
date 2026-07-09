@@ -1,6 +1,7 @@
 #!/bin/bash
 # Run every suite + the audit. Usage: ./tests/run_all.sh
 cd "$(dirname "$0")"
+python3 ../build.py >/dev/null   # assemble adventure.py from src/ first
 fails=0
 for t in test_*.py; do
   r=$(python3 "$t" 2>&1 | tail -1)
