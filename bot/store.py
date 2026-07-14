@@ -40,3 +40,9 @@ def delete(discord_id):
 
 def exists(discord_id):
     return load(discord_id) is not None
+
+
+def all_players():
+    """Every (discord_id, data) pair — for the leaderboard."""
+    with _conn() as c:
+        return c.execute("SELECT discord_id, data FROM players").fetchall()

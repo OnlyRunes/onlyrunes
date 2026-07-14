@@ -7,6 +7,8 @@ a serialized-player string, so state lives in the store between turns.
 NOTE: the engine captures stdout globally while running a command, so callers
 must never run two of these concurrently — the bot serialises them with a lock.
 """
+import contextlib
+import io
 import json
 import os
 import sys
@@ -17,29 +19,89 @@ if _ROOT not in sys.path:
 
 import adventure as game   # noqa: E402  (path set above)
 
-# Emit ANSI so we can colour Discord output; keep WEB False so animations fall
-# back to their final frame (and no browser sentinel blocks leak through).
-game.COLOR = True
+# Web mode: ANSI colour on. Boss animations arrive as sentinel blocks, which
+# _deanimate() collapses to their final frame for Discord.
 # Beta/dev cheats (spawn/god/maxme) stay locked — enable_beta() is NOT called.
+game.enable_web()
 
 
-def _snapshot(p):
-    return (game.player_to_json(p),
-            json.loads(game.web_status(p)),
-            json.loads(game.web_room_actions(p)))
+def _deanimate(text):
+    """Replace each animation sentinel block with just its final frame."""
+    op, cl = game.ANIM_OPEN, game.ANIM_CLOSE
+    out = []
+    while True:
+        i = text.find(op)
+        if i < 0:
+            out.append(text)
+            break
+        out.append(text[:i])
+        j = text.find(cl, i)
+        if j < 0:
+            break
+        try:
+            frames = json.loads(text[i + len(op):j]).get("frames", [])
+            if frames:
+                out.append(frames[-1] + "\n")
+        except Exception:
+            pass
+        text = text[j + len(cl):].lstrip("\n")
+    return "".join(out)
+
+
+def _result(p, text, killed=None, alive=True):
+    return {
+        "json": game.player_to_json(p),
+        "text": _deanimate(text),
+        "status": json.loads(game.web_status(p)),
+        "actions": json.loads(game.web_room_actions(p)),
+        "killed": killed,
+        "alive": alive,
+    }
 
 
 def start(name):
-    """Create a fresh character. Returns (json, welcome_text, status, actions)."""
+    """Create a fresh character. Returns a turn dict."""
     p = game.Player((name or "Adventurer").strip()[:20] or "Adventurer")
-    text = game.web_welcome(p)
-    j, status, actions = _snapshot(p)
-    return j, text, status, actions
+    return _result(p, game.web_welcome(p))
 
 
 def run(player_json, command):
-    """Run one command. Returns (json, text, status, actions)."""
+    """Run one command. Returns a turn dict."""
     p = game.player_from_json(player_json)
     res = json.loads(game.web_command(p, command))
-    j, status, actions = _snapshot(p)
-    return j, res["text"], status, actions
+    return _result(p, res["text"], alive=res.get("alive", True))
+
+
+def autokill(player_json, target):
+    """Fight `target` and resolve the whole fight — one kill, hands-free.
+    Uses interactive combat (which auto-eats), so it's stateless across the
+    bot's save/reload (p.combat serialises; the transient p.auto does not).
+    'killed' is True only if a monster actually went down."""
+    p = game.player_from_json(player_json)
+    opener = io.StringIO()
+    with contextlib.redirect_stdout(opener):
+        game.dispatch(p, f"fight {target}")
+    if getattr(p, "combat", None) is None:      # refused / nothing to fight
+        return _result(p, opener.getvalue(), killed=False, alive=p.hp > 0)
+    if p.combat.get("boss"):                    # engine rule: no auto-bossing
+        text = (opener.getvalue()
+                + "\n(Bosses can't be auto-fought — face it yourself: "
+                  "tap Attack.)")
+        return _result(p, text, killed=False, alive=True)
+    parts, guard = [], 0
+    while getattr(p, "combat", None) is not None and p.hp > 0 and guard < 100:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            game.dispatch(p, "attack")
+        parts.append(buf.getvalue())
+        guard += 1
+    killed = p.hp > 0 and getattr(p, "combat", None) is None
+    return _result(p, parts[-1] if parts else opener.getvalue(),
+                   killed=killed, alive=p.hp > 0)
+
+
+def summary(player_json):
+    """Lightweight card for leaderboards — no command run."""
+    st = json.loads(game.web_status(game.player_from_json(player_json)))
+    return {"name": st["name"], "total": st["total"],
+            "combat": st["combat"], "location": st["location"]}

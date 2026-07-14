@@ -18,7 +18,13 @@ Discord slash command / button
 - `/rs start [name]` — create a character (defaults to your Discord name).
 - `/rs play <command>` — run any game command: `fight cow`, `chop tree`,
   `travel varrock`, `bank`, `quests`, `goal`, `gear melee`, …
+- `/rs autofight <monster> [count]` — hands-free grinding: the bot resolves
+  one kill at a time and live-edits the message (also triggered by
+  `fight <monster> <n|all>`). Bosses refuse auto, as in the game.
+- `/rs top` — server leaderboard by total level.
 - `/rs look`, `/rs help`, `/rs delete`.
+- **Status embed** on every reply — HP-coloured card with hitpoints, prayer,
+  combat, total, coins, run energy, the enemy's HP, and poison/frozen flags.
 - **Buttons** under every reply: the room's actions (Attack, Chop, Bank,
   Talk…) plus Look / Inventory / Stats / Map. Combat is tapping **Attack**.
 - Rich colour via Discord `ansi` code blocks (the game's palette is mapped
