@@ -105,3 +105,43 @@ def summary(player_json):
     st = json.loads(game.web_status(game.player_from_json(player_json)))
     return {"name": st["name"], "total": st["total"],
             "combat": st["combat"], "location": st["location"]}
+
+
+# ---- item transfer primitives (for the shared market / gifting) --------------
+def item_lookup(name):
+    """Resolve a (possibly partial) item name against the game's catalogue.
+    Returns (canonical_name_or_None, suggestions)."""
+    want = (name or "").strip().lower()
+    if want in game.ITEMS:
+        return want, []
+    near = sorted(i for i in game.ITEMS if want and want in i)
+    if len(near) == 1:
+        return near[0], []
+    return None, near[:6]
+
+
+def tradeable(item):
+    """Only real, valued items move between players (quest tokens don't)."""
+    info = game.ITEMS.get(item)
+    return bool(info and info.get("value", 0) > 0)
+
+
+def take_items(player_json, item, qty):
+    """Remove qty of item (or coins) from a player.
+    Returns updated json, or None if they don't have enough."""
+    p = game.player_from_json(player_json)
+    if not p.has(item, qty):
+        return None
+    p.take(item, qty)
+    return game.player_to_json(p)
+
+
+def grant_items(player_json, item, qty):
+    """Add qty of item to a player. Returns updated json."""
+    p = game.player_from_json(player_json)
+    p.add(item, qty)
+    return game.player_to_json(p)
+
+
+def count_item(player_json, item):
+    return game.player_from_json(player_json).count(item)

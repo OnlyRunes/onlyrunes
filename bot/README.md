@@ -21,7 +21,17 @@ Discord slash command / button
 - `/rs autofight <monster> [count]` — hands-free grinding: the bot resolves
   one kill at a time and live-edits the message (also triggered by
   `fight <monster> <n|all>`). Bosses refuse auto, as in the game.
-- `/rs top` — server leaderboard by total level.
+- **The shared world** — every player is in ONE world (one database across
+  every server the bot is in):
+  - `/rs ge sell <item> <qty> <price>` — list on the player Grand Exchange
+    (items are escrowed until sold or cancelled; 8 open listings max).
+  - `/rs ge market [item]` / `/rs ge buy <listing> [qty]` /
+    `/rs ge cancel <listing>` — browse, buy (partial fills fine — the
+    seller is paid instantly, even offline), take back.
+  - `/rs send @friend <item> [qty]` — gift items directly.
+  - The status card shows who else is standing where you are
+    ("🧭 Also here").
+- `/rs top` — leaderboard by total level.
 - `/rs look`, `/rs help`, `/rs delete`.
 - **Status embed** on every reply — HP-coloured card with hitpoints, prayer,
   combat, total, coins, run energy, the enemy's HP, and poison/frozen flags.
