@@ -1,4 +1,6 @@
 # Root requirements exist ONLY so a bot host (Railway, Fly, etc.) auto-installs
 # the Discord transport. The GAME engine (adventure.py) is pure stdlib and
 # needs nothing — this just pulls in the bot's dependency.
--r bot/requirements.txt
+# (The Dockerfile installs bot/requirements.txt directly; this mirrors it for
+# non-Docker builders.)
+discord.py>=2.3,<3
