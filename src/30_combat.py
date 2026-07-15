@@ -156,6 +156,11 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
             dmg = max(1, dmg // 2)
             print("  " + paint("Its hide swallows the blow — only SPEARS "
                                "pierce the Corporeal Beast!", "byellow"))
+        if m.get("pick_only") and dmg > 1 and not p.find_tool("pickaxe"):
+            m["cur"] += dmg - max(1, dmg // 2)
+            dmg = max(1, dmg // 2)
+            print("  " + paint("Stone shrugs off steel — bring a PICKAXE "
+                               "to crack Zalcano!", "byellow"))
         if m.get("mage_only") and kind != "magic" and dmg > 0:
             m["cur"] += dmg
             dmg = 0

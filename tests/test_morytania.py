@@ -235,7 +235,7 @@ q.bosses += ["the nightmare"]
 g = a._next_goal(q)
 check("then the warlords", "WARLORDS" in g, g)
 q.bosses += ["callisto", "venenatis", "vet'ion", "corporeal beast",
-             "vorkath"]
+             "vorkath", "crystalline hunllef"]
 g = a._next_goal(q)
 check("then the inferno", "INFERNO" in g, g)
 

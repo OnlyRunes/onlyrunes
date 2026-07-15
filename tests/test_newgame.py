@@ -179,6 +179,12 @@ g = a._next_goal(q)
 check("then Vorkath", "VORKATH" in g, g)
 q.bosses += ["vorkath"]
 g = a._next_goal(q)
+check("then Song of the Elves", "SONG OF THE ELVES" in g, g)
+q.quests["song_of_the_elves"] = "complete"
+g = a._next_goal(q)
+check("then the Gauntlet", "GAUNTLET" in g, g)
+q.bosses += ["crystalline hunllef"]
+g = a._next_goal(q)
 check("then the Inferno", "INFERNO" in g, g)
 q.bosses += ["tzkal-zuk"]
 g = a._next_goal(q)

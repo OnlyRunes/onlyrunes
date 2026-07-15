@@ -148,6 +148,14 @@ def _next_goal(p):
         return ("VORKATH, the undead dragon, waits in the crater on Ungael "
                 "\u2014 a dragonfire ward and a dragon-hunter weapon turn the "
                 "fight. Mind the zombified spawn.")
+    if _q(p, "song_of_the_elves") != "complete":
+        return ("SONG OF THE ELVES \u2014 brave the Underground Pass west of "
+                "Ardougne ('pass'): Eluned waits in Isafdar, and the "
+                "Fragment of Seren bars the crystal city.")
+    if "crystalline hunllef" not in getattr(p, "bosses", []):
+        return ("Prifddinas is open \u2014 descend into THE GAUNTLET and face "
+                "the Crystalline Hunllef for the blade of saeldor. "
+                "(Zalcano's mine pays miners too.)")
     if "tzkal-zuk" not in getattr(p, "bosses", []):
         return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
                 "volcano) \u2014 wear your fire cape in, survive eight waves, "

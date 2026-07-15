@@ -38,6 +38,10 @@ ACHIEVEMENTS = {
     "dragonkin_bane": ("Dragonkin's Bane", "Complete Dragon Slayer II."),
     "vorkath":      ("Vorkath", "Slay Vorkath, the undead dragon of "
                      "Ungael."),
+    "crystal_singer": ("Crystal Singer", "Complete Song of the Elves and "
+                       "open Prifddinas."),
+    "gauntleted":   ("Gauntleted", "Defeat the Crystalline Hunllef."),
+    "stonebreaker": ("Stonebreaker", "Crack Zalcano with a pickaxe."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -104,6 +108,12 @@ def _earned_achievements(p):
         got.add("dragonkin_bane")
     if "vorkath" in bosses:
         got.add("vorkath")
+    if _q(p, "song_of_the_elves") == "complete":
+        got.add("crystal_singer")
+    if "crystalline hunllef" in bosses:
+        got.add("gauntleted")
+    if "zalcano" in bosses:
+        got.add("stonebreaker")
     if p.coins >= 100000:
         got.add("rich")
     return got
