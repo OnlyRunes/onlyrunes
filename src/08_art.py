@@ -701,6 +701,14 @@ _FAMILY_ART = [
          \ | | | | /
         '  '-'-'-'  '
 """),
+    (("monkey", "ape", "gorilla", "chimp"), r"""
+         .--------.
+        (  o    o  )
+        /|    ..   |\        a MONKEY shrieks
+       ( |   '--'  | )        from the trees!
+        \|_________|/
+        _/_/    \_\_
+"""),
     (("yak", "bull", "bison"), r"""
        (__)      (__)
         \  '.__.'  /

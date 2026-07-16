@@ -40,6 +40,8 @@ ACHIEVEMENTS = {
                      "Ungael."),
     "crystal_singer": ("Crystal Singer", "Complete Song of the Elves and "
                        "open Prifddinas."),
+    "monkey_business": ("Monkey Business", "Complete Monkey Madness and "
+                        "avenge the 10th squad."),
     "gauntleted":   ("Gauntleted", "Defeat the Crystalline Hunllef."),
     "stonebreaker": ("Stonebreaker", "Crack Zalcano with a pickaxe."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
@@ -110,6 +112,8 @@ def _earned_achievements(p):
         got.add("vorkath")
     if _q(p, "song_of_the_elves") == "complete":
         got.add("crystal_singer")
+    if _q(p, "monkey_madness") == "complete":
+        got.add("monkey_business")
     if "crystalline hunllef" in bosses:
         got.add("gauntleted")
     if "zalcano" in bosses:
