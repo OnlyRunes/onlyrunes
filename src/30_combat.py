@@ -402,6 +402,12 @@ def _boss_take_turn(p, m, attacks):
             print("  " + paint(f"It hits you for {dmg}.", "bred") + hpbar)
             if p.hp > 0:
                 _player_recoil(p, m, dmg)
+                if getattr(p, "venge", False) and m["cur"] > 0:
+                    p.venge = False          # Vengeance works on bosses too
+                    vd = max(1, int(dmg * 0.75))
+                    m["cur"] -= vd
+                    print("  " + paint(f"\"Taste vengeance!\" — {vd} damage "
+                                       "rebounds!", "bmagenta", "bold"))
                 if atk.get("effect"):
                     atk["effect"](p, m, dmg)
     else:
@@ -509,6 +515,12 @@ def _resolve_monster_hit(p, m):
                   + hpbar)
         if p.hp > 0:
             _player_recoil(p, m, dmg)
+            if dmg > 0 and getattr(p, "venge", False) and m["cur"] > 0:
+                p.venge = False              # Vengeance: one rebound per cast
+                vd = max(1, int(dmg * 0.75))
+                m["cur"] -= vd
+                print("  " + paint(f"\"Taste vengeance!\" — {vd} damage "
+                                   "rebounds!", "bmagenta", "bold"))
             eff = MONSTER_EFFECTS.get(m["name"])
             if eff:
                 eff(p, m, dmg)

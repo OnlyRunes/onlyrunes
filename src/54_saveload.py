@@ -36,7 +36,8 @@ def serialize(p):
             "potions_made": getattr(p, "potions_made", 0),
             "tips_seen": list(getattr(p, "tips_seen", [])),
             "seen": sorted(getattr(p, "seen", [])),
-            "autoeat": getattr(p, "autoeat", True)}
+            "autoeat": getattr(p, "autoeat", True),
+            "kingdom": getattr(p, "kingdom", None)}
 
 
 def deserialize(data):
@@ -94,6 +95,7 @@ def deserialize(data):
                 continue
             p.seen.add(room)
     p.autoeat = data.get("autoeat", True)
+    p.kingdom = data.get("kingdom", None)
     # (quest-story monsters need no restoring: QUEST_SPAWNS derives them
     #  from quest state whenever a room is looked at)
     return p

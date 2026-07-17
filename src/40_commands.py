@@ -158,6 +158,8 @@ def cmd_pray(p, arg):
                     "poison and weariness, all gone.", "bcyan")
             if p.location == "jaldraocht":
                 _jaldraocht_altar(p)
+            if p.location == "lunar_isle":
+                _astral_altar(p)
         else:
             say("You need a prayer altar (e.g. Lumbridge Church) to recharge.")
         return
@@ -1524,8 +1526,19 @@ def cmd_cast(p, arg):
         say("Known spells: " + ", ".join(SPELLS))
         return
     s = SPELLS[spell]
+    if s.get("book", "standard") != getattr(p, "spellbook", "standard"):
+        say(f"{spell.title()} belongs to the {s.get('book')} spellbook — "
+            "swap books at its altar.", "byellow")
+        return
     if p.lvl("magic") < s["lvl"]:
         say(f"You need magic level {s['lvl']} to cast {spell}.")
+        return
+    if s["type"] == "lunar":            # moonclan utility magic
+        if not _consume_runes(p, s["runes"]):
+            say("You don't have the runes.")
+            return
+        s["effect"](p)
+        p.gain_xp("magic", s["xp"])
         return
     if s["type"] == "combat":
         cmd_autocast(p, spell)

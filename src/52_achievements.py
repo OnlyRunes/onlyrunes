@@ -42,6 +42,9 @@ ACHIEVEMENTS = {
                        "open Prifddinas."),
     "monkey_business": ("Monkey Business", "Complete Monkey Madness and "
                         "avenge the 10th squad."),
+    "regent": ("Regent", "Be crowned regent of Miscellania."),
+    "dreamer": ("Dreamer", "Out-dream yourself and earn the lunar "
+                "spellbook."),
     "gauntleted":   ("Gauntleted", "Defeat the Crystalline Hunllef."),
     "stonebreaker": ("Stonebreaker", "Crack Zalcano with a pickaxe."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
@@ -114,6 +117,10 @@ def _earned_achievements(p):
         got.add("crystal_singer")
     if _q(p, "monkey_madness") == "complete":
         got.add("monkey_business")
+    if _q(p, "throne_of_miscellania") == "complete":
+        got.add("regent")
+    if _q(p, "lunar_diplomacy") == "complete":
+        got.add("dreamer")
     if "crystalline hunllef" in bosses:
         got.add("gauntleted")
     if "zalcano" in bosses:
