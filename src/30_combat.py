@@ -161,6 +161,12 @@ def _resolve_player_hit(p, m, acc_mult=1.0, dmg_mult=1.0):
             dmg = max(1, dmg // 2)
             print("  " + paint("Stone shrugs off steel — bring a PICKAXE "
                                "to crack Zalcano!", "byellow"))
+        if m.get("needs_water") and dmg > 1 and not p.has("bucket of water"):
+            m["cur"] += dmg - max(1, dmg // 2)
+            dmg = max(1, dmg // 2)
+            print("  " + paint("His heat softens your blade mid-swing — a "
+                               "BUCKET OF WATER would keep it cool!",
+                               "orange"))
         if m.get("mage_only") and kind != "magic" and dmg > 0:
             m["cur"] += dmg
             dmg = 0

@@ -185,6 +185,9 @@ g = a._next_goal(q)
 check("then the Gauntlet", "GAUNTLET" in g, g)
 q.bosses += ["crystalline hunllef"]
 g = a._next_goal(q)
+check("then Recipe for Disaster", "RECIPE FOR DISASTER" in g, g)
+q.quests["recipe_for_disaster"] = "complete"
+g = a._next_goal(q)
 check("then the Inferno", "INFERNO" in g, g)
 q.bosses += ["tzkal-zuk"]
 g = a._next_goal(q)

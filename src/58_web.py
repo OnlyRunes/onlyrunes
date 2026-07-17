@@ -156,6 +156,10 @@ def _next_goal(p):
         return ("Prifddinas is open \u2014 descend into THE GAUNTLET and face "
                 "the Crystalline Hunllef for the blade of saeldor. "
                 "(Zalcano's mine pays miners too.)")
+    if _q(p, "recipe_for_disaster") != "complete":
+        return ("RECIPE FOR DISASTER \u2014 the Culinaromancer has frozen the "
+                "Duke's banquet. Gypsy Aris waits at Lumbridge Castle "
+                "(40 QP required); the BARROWS GLOVES wait at dessert.")
     if "tzkal-zuk" not in getattr(p, "bosses", []):
         return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
                 "volcano) \u2014 wear your fire cape in, survive eight waves, "

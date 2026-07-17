@@ -1088,6 +1088,8 @@ def cmd_cook(p, arg):
         p.add(raw)
         return
     burn_chance = clamp(0.55 - (p.lvl("cooking") - req) * 0.03, 0.02, 0.55)
+    if p.equipment.get("gloves") == "cooking gauntlets":
+        burn_chance = max(0.02, burn_chance - 0.15)   # steady, heatproof hands
     if random.random() > burn_chance:
         p.add(cooked)
         say(f"You cook the {raw} into {cooked}.")

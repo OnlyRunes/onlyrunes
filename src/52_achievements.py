@@ -43,6 +43,8 @@ ACHIEVEMENTS = {
     "monkey_business": ("Monkey Business", "Complete Monkey Madness and "
                         "avenge the 10th squad."),
     "regent": ("Regent", "Be crowned regent of Miscellania."),
+    "gloved": ("Gloved", "Defeat the Culinaromancer and claim the "
+               "barrows gloves."),
     "dreamer": ("Dreamer", "Out-dream yourself and earn the lunar "
                 "spellbook."),
     "gauntleted":   ("Gauntleted", "Defeat the Crystalline Hunllef."),
@@ -119,6 +121,8 @@ def _earned_achievements(p):
         got.add("monkey_business")
     if _q(p, "throne_of_miscellania") == "complete":
         got.add("regent")
+    if _q(p, "recipe_for_disaster") == "complete":
+        got.add("gloved")
     if _q(p, "lunar_diplomacy") == "complete":
         got.add("dreamer")
     if "crystalline hunllef" in bosses:
