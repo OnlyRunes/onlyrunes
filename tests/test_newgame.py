@@ -191,6 +191,12 @@ g = a._next_goal(q)
 check("then the Inferno", "INFERNO" in g, g)
 q.bosses += ["tzkal-zuk"]
 g = a._next_goal(q)
+check("then Nex", "NEX" in g, g)
+q.bosses += ["nex"]
+g = a._next_goal(q)
+check("then the Theatre of Blood", "THEATRE OF BLOOD" in g, g)
+q.quests["theatre_of_blood"] = "complete"
+g = a._next_goal(q)
 check("then the 99 chase", "99" in g, g)
 
 # 'goal' command + resume summary carry it

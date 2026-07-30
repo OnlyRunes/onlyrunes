@@ -49,6 +49,10 @@ ACHIEVEMENTS = {
                 "spellbook."),
     "gauntleted":   ("Gauntleted", "Defeat the Crystalline Hunllef."),
     "stonebreaker": ("Stonebreaker", "Crack Zalcano with a pickaxe."),
+    "deaths_end":   ("Death's End", "Slay Nex, the Zarosian angel of "
+                     "death."),
+    "final_boss":   ("The Final Boss", "Defeat Verzik Vitur and claim the "
+                     "scythe of vitur."),
     "rich":         ("Wealthy", "Hold 100,000 coins."),
 }
 
@@ -123,6 +127,10 @@ def _earned_achievements(p):
         got.add("regent")
     if _q(p, "recipe_for_disaster") == "complete":
         got.add("gloved")
+    if "nex" in bosses:
+        got.add("deaths_end")
+    if "verzik vitur" in bosses:
+        got.add("final_boss")
     if _q(p, "lunar_diplomacy") == "complete":
         got.add("dreamer")
     if "crystalline hunllef" in bosses:

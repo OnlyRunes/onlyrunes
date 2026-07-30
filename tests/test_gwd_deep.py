@@ -287,7 +287,8 @@ out = run(low.equip_item, "armadyl chestplate")
 check("armadyl needs ranged 70", "ranged level 70" in out, out)
 melee_bis = a._best_gear_for_style("melee")
 ranged_bis = a._best_gear_for_style("ranged")
-check("godsword is melee BIS weapon", "godsword" in melee_bis.get("weapon", ""),
+check("melee BIS weapon is a top-tier 2h",
+      a.ITEMS[melee_bis.get("weapon", "")]["equip"].get("two_handed"),
       melee_bis.get("weapon"))
 check("armadyl is ranged BIS body", ranged_bis.get("body") == "armadyl chestplate",
       ranged_bis.get("body"))

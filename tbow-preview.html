@@ -1,0 +1,534 @@
+<title>Twisted Bow Forge · Chambers of Xeric</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#0c0e09; --bg-2:#12160d; --panel:#12150d; --panel-2:#191d10;
+    --ink:#e9edd4; --ink-dim:#a6b088; --ink-faint:#6d7850;
+    --line:rgba(167,186,23,0.18); --line-strong:rgba(167,186,23,0.4);
+    --lime:#a7ba17; --lime-bright:#cfe23a; --lime-deep:#5f6c12; --bone:#d7d7d1;
+    --stage-a:#1b260f; --stage-b:#05060a; --swatch-ring:rgba(0,0,0,0.5);
+    --font-display:"Trajan Pro","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#e4e2d2; --bg-2:#d8d6c2; --panel:#efeddd; --panel-2:#e6e3cd;
+      --ink:#2b2e1c; --ink-dim:#5c603f; --ink-faint:#8a8c6a;
+      --line:rgba(95,108,18,0.24); --line-strong:rgba(95,108,18,0.42);
+      --lime:#6b7a10; --lime-bright:#8ba017; --lime-deep:#47510a; --bone:#7a6f52;
+      --stage-a:#d9d8c0; --stage-b:#9fa585; --swatch-ring:rgba(255,255,255,0.55);
+    }
+  }
+  :root[data-theme="dark"]{color-scheme:dark;--bg:#0c0e09;--bg-2:#12160d;--panel:#12150d;--panel-2:#191d10;--ink:#e9edd4;--ink-dim:#a6b088;--ink-faint:#6d7850;--line:rgba(167,186,23,0.18);--line-strong:rgba(167,186,23,0.4);--lime:#a7ba17;--lime-bright:#cfe23a;--lime-deep:#5f6c12;--bone:#d7d7d1;--stage-a:#1b260f;--stage-b:#05060a;--swatch-ring:rgba(0,0,0,0.5);}
+  :root[data-theme="light"]{color-scheme:light;--bg:#e4e2d2;--bg-2:#d8d6c2;--panel:#efeddd;--panel-2:#e6e3cd;--ink:#2b2e1c;--ink-dim:#5c603f;--ink-faint:#8a8c6a;--line:rgba(95,108,18,0.24);--line-strong:rgba(95,108,18,0.42);--lime:#6b7a10;--lime-bright:#8ba017;--lime-deep:#47510a;--bone:#7a6f52;--stage-a:#d9d8c0;--stage-b:#9fa585;--swatch-ring:rgba(255,255,255,0.55);}
+
+  *{box-sizing:border-box;} html,body{margin:0;}
+  body{
+    background:radial-gradient(1100px 640px at 82% -12%,var(--bg-2),transparent 62%),var(--bg);
+    color:var(--ink); font-family:var(--font-ui); -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:clamp(18px,3vw,40px) clamp(16px,3vw,32px) 56px;}
+
+  header.masthead{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    padding-bottom:18px; margin-bottom:clamp(18px,2.4vw,28px); border-bottom:1px solid var(--line);}
+  .eyebrow{font-size:12px; letter-spacing:0.28em; text-transform:uppercase; color:var(--lime); margin:0 0 10px; display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:""; width:26px; height:1px; background:linear-gradient(90deg,var(--lime),transparent);}
+  .title-block h1{font-family:var(--font-display); font-weight:700; font-size:clamp(30px,5.4vw,52px); line-height:0.98; margin:0; letter-spacing:0.015em; text-wrap:balance; color:var(--ink); text-shadow:0 0 26px rgba(167,186,23,0.14);}
+  .title-block p{margin:10px 0 0; color:var(--ink-dim); font-size:clamp(13px,1.5vw,15px); max-width:46ch; line-height:1.55; font-style:italic;}
+  .theme-toggle{flex:none; border:1px solid var(--line-strong); background:var(--panel); color:var(--ink-dim); font-family:var(--font-ui); font-size:13px; padding:8px 14px; border-radius:999px; cursor:pointer; transition:color .15s,border-color .15s;}
+  .theme-toggle:hover{color:var(--lime-bright); border-color:var(--lime);}
+
+  .layout{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(300px,360px); gap:clamp(18px,2.4vw,30px); align-items:start;}
+  @media (max-width:860px){.layout{grid-template-columns:1fr;}}
+
+  .stage{position:relative; border:1px solid var(--line-strong); border-radius:16px; overflow:hidden;
+    background:radial-gradient(120% 92% at 50% 46%,var(--stage-a),var(--stage-b) 80%);
+    box-shadow:inset 0 0 60px rgba(0,0,0,0.5),0 24px 60px -34px #000; aspect-ratio:4/3; min-height:320px; touch-action:none; cursor:grab;}
+  @media (min-width:861px){.stage{position:sticky; top:24px;}}
+  .stage:active{cursor:grabbing;}
+  .stage canvas{display:block; width:100%; height:100%;}
+  .stage .vignette{position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 120px 20px rgba(0,0,0,0.55); border-radius:16px;}
+  .stage .hint{position:absolute; left:0; right:0; bottom:12px; text-align:center; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); pointer-events:none; transition:opacity .4s;}
+  .stage-tools{position:absolute; top:12px; right:12px; display:flex; gap:8px;}
+  .icon-btn{width:38px; height:38px; display:grid; place-items:center; border-radius:10px; border:1px solid var(--line-strong); background:color-mix(in srgb,var(--panel) 74%,transparent); backdrop-filter:blur(4px); color:var(--ink-dim); cursor:pointer; font-size:17px; transition:color .15s,border-color .15s,background .15s;}
+  .icon-btn:hover{color:var(--lime-bright); border-color:var(--lime);}
+  .icon-btn[aria-pressed="true"]{color:var(--lime-bright); border-color:var(--lime); background:color-mix(in srgb,var(--lime) 18%,var(--panel));}
+
+  .panel{border:1px solid var(--line); border-radius:16px; background:linear-gradient(180deg,var(--panel),var(--panel-2)); padding:18px; display:flex; flex-direction:column; gap:20px;}
+  .section-label{font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 12px; display:flex; align-items:center; gap:10px;}
+  .section-label::after{content:""; flex:1; height:1px; background:var(--line);}
+
+  /* sliders */
+  .ctrl{display:flex; flex-direction:column; gap:6px; margin-bottom:13px;}
+  .ctrl:last-child{margin-bottom:0;}
+  .ctrl .row{display:flex; justify-content:space-between; align-items:baseline; font-size:13px;}
+  .ctrl .row .name{color:var(--ink);}
+  .ctrl .row .val{font-family:var(--font-mono); font-size:12px; color:var(--lime); }
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:999px; background:color-mix(in srgb,var(--ink-faint) 40%,transparent); outline:none; accent-color:var(--lime);}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%; background:var(--lime); border:2px solid var(--panel); cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+  input[type=range]::-moz-range-thumb{width:16px; height:16px; border-radius:50%; background:var(--lime); border:2px solid var(--panel); cursor:pointer;}
+
+  /* part pills */
+  .parts{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .pill{display:flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink-dim); border-radius:10px; padding:9px 11px; cursor:pointer; font-size:13px; text-align:left; transition:border-color .15s,color .15s,background .15s;}
+  .pill .dot{width:9px; height:9px; border-radius:50%; border:1px solid var(--line-strong); flex:none; transition:background .15s,box-shadow .15s;}
+  .pill .lbl{flex:1;}
+  .pill:hover{border-color:var(--lime); color:var(--ink);}
+  .pill[aria-pressed="true"]{color:var(--ink); border-color:var(--lime); background:color-mix(in srgb,var(--lime) 12%,var(--panel));}
+  .pill[aria-pressed="true"] .dot{background:var(--lime); box-shadow:0 0 8px var(--lime);}
+
+  .channels{display:flex; flex-direction:column; gap:9px;}
+  .channel{display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:12px; padding:5px; border-radius:10px; transition:background .15s;}
+  .channel:hover{background:color-mix(in srgb,var(--lime) 8%,transparent);}
+  .swatch{width:42px; height:42px; border-radius:9px; padding:0; border:none; cursor:pointer; box-shadow:inset 0 0 0 2px var(--swatch-ring),0 2px 6px -1px rgba(0,0,0,0.4); overflow:hidden;}
+  .swatch::-webkit-color-swatch-wrapper{padding:0;} .swatch::-webkit-color-swatch{border:none; border-radius:9px;} .swatch::-moz-color-swatch{border:none; border-radius:9px;}
+  .channel .meta{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .channel .meta .name{font-size:14px; color:var(--ink); font-weight:500;}
+  .channel .meta .desc{font-size:12px; color:var(--ink-faint);}
+  .channel .code{font-family:var(--font-mono); font-size:12px; color:var(--ink-dim); text-transform:uppercase; justify-self:end;}
+
+  .presets{display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px;}
+  .preset{border:1px solid var(--line); background:var(--panel); color:var(--ink-dim); border-radius:9px; padding:7px 4px 6px; cursor:pointer; font-size:11px; display:flex; flex-direction:column; align-items:center; gap:6px; transition:border-color .15s,color .15s,transform .1s;}
+  .preset:hover{border-color:var(--lime); color:var(--ink); transform:translateY(-1px);}
+  .preset[aria-pressed="true"]{border-color:var(--lime); color:var(--ink);}
+  .preset .chip{width:100%; height:16px; border-radius:5px; box-shadow:inset 0 0 0 1px var(--swatch-ring);}
+
+  .actions{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .btn{border:1px solid var(--line-strong); background:var(--panel); color:var(--ink); border-radius:10px; padding:10px 12px; cursor:pointer; font-family:var(--font-ui); font-size:13px; display:flex; align-items:center; justify-content:center; gap:7px; transition:border-color .15s,background .15s,color .15s;}
+  .btn:hover{border-color:var(--lime);}
+  .btn.primary{grid-column:1/-1; background:linear-gradient(180deg,var(--lime-bright),var(--lime)); color:#14170a; border-color:var(--lime-deep); font-weight:600;}
+  .btn.primary:hover{filter:brightness(1.06);}
+  .btn .ico{font-size:15px;}
+
+  .foot{margin-top:26px; text-align:center; color:var(--ink-faint); font-size:12px; line-height:1.6;}
+  .foot code{font-family:var(--font-mono); color:var(--ink-dim);}
+
+  .toast{position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px); background:var(--lime); color:#14170a; font-size:13px; font-weight:600; padding:10px 18px; border-radius:999px; box-shadow:0 10px 30px -8px rgba(0,0,0,0.6); opacity:0; pointer-events:none; transition:opacity .25s,transform .25s; z-index:20;}
+  .toast.show{opacity:1; transform:translate(-50%,0);}
+  :focus-visible{outline:2px solid var(--lime-bright); outline-offset:2px;}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="title-block">
+      <p class="eyebrow">Chambers of Xeric · Forge</p>
+      <h1>Twisted Bow Forge</h1>
+      <p>Bend it, twist it, arm it. Shape the serpent bow into a weapon of your own &mdash; then take the design with you.</p>
+    </div>
+    <button class="theme-toggle" id="themeBtn" type="button">◐ Theme</button>
+  </header>
+
+  <div class="layout">
+    <div class="stage" id="stage" role="img" aria-label="Rotatable 3D custom bow. Drag to turn it.">
+      <canvas id="canvas"></canvas>
+      <div class="vignette"></div>
+      <div class="stage-tools">
+        <button class="icon-btn" id="spinBtn" type="button" aria-pressed="true" title="Toggle idle motion">↻</button>
+        <button class="icon-btn" id="resetViewBtn" type="button" title="Reset view">⤾</button>
+      </div>
+      <div class="hint" id="hint">Drag to turn · scroll to zoom</div>
+    </div>
+
+    <div class="panel">
+      <div><p class="section-label">Shape</p><div id="shape"></div></div>
+      <div><p class="section-label">Parts</p><div class="parts" id="parts"></div></div>
+      <div><p class="section-label">Recolour</p><div class="channels" id="channels"></div></div>
+      <div><p class="section-label">Themes</p><div class="presets" id="presets"></div></div>
+      <div>
+        <p class="section-label">Save &amp; share</p>
+        <div class="actions">
+          <button class="btn primary" id="shareBtn" type="button"><span class="ico">🔗</span> Copy share link</button>
+          <button class="btn" id="pngBtn" type="button"><span class="ico">🖼️</span> Download PNG</button>
+          <button class="btn" id="mtlBtn" type="button"><span class="ico">📦</span> Export .obj</button>
+          <button class="btn" id="randomBtn" type="button"><span class="ico">🎲</span> Forge random</button>
+          <button class="btn" id="resetBtn" type="button" style="grid-column:1/-1"><span class="ico">↺</span> Reset to Twisted Bow</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">
+    Software-rendered · geometry morphs the original 194-vertex model, parts are generated to match.<br>
+    <code>Export .obj</code> bakes your shape, parts and colours into a model you can open anywhere.
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+  const DATA = {"VERTS":[[-35,3,-49],[50,3,35],[44,1,26],[-27,1,-44],[-31,1,-42],[42,1,30],[4,2,5],[-1,3,19],[-4,2,16],[-3,2,5],[4,6,5],[5,5,14],[5,3,14],[9,3,20],[4,3,24],[-1,5,19],[-4,6,16],[-5,6,9],[-5,2,9],[21,1,43],[26,1,38],[28,2,46],[21,7,43],[13,6,38],[13,2,38],[18,2,34],[26,7,38],[33,2,40],[35,2,47],[35,6,47],[28,6,46],[18,6,34],[9,5,31],[9,3,31],[13,2,27],[13,6,27],[4,5,24],[-3,6,5],[9,5,20],[13,5,22],[15,5,19],[15,3,19],[13,3,22],[-1,2,25],[-1,6,25],[0,5,31],[0,3,31],[-5,2,3],[-5,6,3],[33,6,40],[30,6,36],[30,2,36],[45,2,39],[43,2,46],[43,6,46],[45,6,39],[33,6,34],[23,6,29],[23,2,29],[25,2,26],[33,2,34],[52,3,41],[52,2,41],[49,2,47],[49,6,47],[52,6,41],[53,3,41],[52,3,38],[55,2,43],[55,2,45],[57,2,50],[57,6,50],[55,6,45],[55,6,43],[52,5,38],[53,3,38],[55,3,37],[55,3,36],[57,3,42],[60,3,47],[60,2,47],[64,2,54],[60,2,55],[60,6,55],[64,6,54],[60,6,47],[55,5,37],[58,5,58],[61,5,62],[61,3,62],[56,4,58],[54,4,62],[54,3,62],[58,3,58],[49,3,54],[56,3,58],[-3,5,23],[-6,4,26],[-3,3,23],[-8,3,18],[-6,3,26],[25,6,26],[-5,2,-4],[-16,2,5],[-19,3,1],[-15,3,-5],[-15,5,-5],[-5,6,-4],[-9,2,5],[-16,6,5],[-19,5,1],[-24,3,-4],[-21,3,-9],[-19,3,-15],[-19,5,-15],[-21,5,-9],[-24,5,-4],[-44,1,-20],[-47,2,-27],[-39,1,-25],[-35,2,-17],[-38,2,-13],[-38,6,-13],[-44,7,-20],[-47,6,-27],[-48,2,-34],[-41,2,-32],[-41,6,-32],[-39,7,-25],[-35,6,-17],[-28,2,-13],[-31,3,-8],[-31,5,-8],[-28,6,-13],[-48,6,-34],[-47,6,-42],[-47,2,-42],[-41,2,-44],[-35,2,-32],[-37,2,-29],[-37,6,-29],[-35,6,-32],[-41,6,-44],[-49,6,-48],[-49,2,-48],[-43,2,-51],[-43,3,-51],[-27,6,-25],[-27,2,-25],[-30,2,-22],[-30,6,-22],[-22,5,-13],[-22,3,-13],[-25,6,1],[-25,2,1],[-31,3,1],[-31,5,1],[-9,6,5],[-45,6,-53],[-43,6,-51],[-39,5,-53],[-38,3,-54],[-44,3,-55],[-49,3,-59],[-49,6,-59],[-47,6,-53],[-51,6,-55],[-51,2,-55],[-49,2,-59],[-47,2,-53],[-45,2,-53],[-39,3,-53],[-40,3,-51],[-40,3,-52],[-43,3,-52],[-57,6,-58],[-56,6,-62],[-64,5,-59],[-60,5,-57],[-60,3,-57],[-57,2,-58],[-56,2,-62],[-60,4,-54],[-64,4,-52],[-56,3,-47],[-60,3,-54],[-64,3,-59],[-64,3,-52],[-40,5,-51],[-26,4,6],[-23,5,4],[-23,3,4],[-26,3,6],[-18,3,8]],"FACES":[[0,1,2,8],[0,2,3,8],[1,0,4,8],[1,4,5,8],[6,7,8,2],[6,8,9,1],[6,9,10,1],[6,10,11,2],[6,11,12,2],[6,12,7,2],[7,12,13,3],[7,13,14,3],[7,14,15,3],[7,15,16,2],[7,16,8,2],[8,16,17,1],[8,17,18,1],[8,18,9,1],[19,20,21,3],[19,21,22,3],[19,22,23,3],[19,23,24,3],[19,24,20,3],[20,24,25,3],[20,25,26,3],[20,26,27,4],[20,27,21,4],[21,27,28,4],[21,28,29,4],[21,29,30,4],[21,30,22,3],[22,30,26,3],[22,26,23,3],[23,26,31,3],[23,31,32,4],[23,32,24,4],[24,32,33,4],[24,33,25,4],[25,33,34,4],[25,34,31,4],[25,31,26,3],[31,35,32,4],[32,35,36,3],[32,36,33,3],[33,36,14,3],[33,14,34,3],[34,14,13,3],[34,13,35,3],[34,35,31,4],[10,37,16,1],[10,16,15,2],[10,15,11,2],[11,15,38,3],[11,38,39,6],[11,39,40,6],[11,40,12,6],[12,40,41,6],[12,41,42,6],[12,42,13,6],[13,42,38,6],[13,38,35,3],[35,38,36,3],[36,38,15,3],[36,15,14,3],[36,14,43,2],[36,43,44,2],[36,44,32,2],[32,44,45,2],[32,45,33,2],[33,45,46,2],[33,46,43,2],[33,43,14,2],[10,9,37,1],[37,9,47,4],[37,47,48,4],[37,48,17,4],[37,17,16,1],[30,29,49,4],[30,49,26,4],[26,49,27,4],[27,49,50,6],[27,50,51,6],[27,51,52,6],[27,52,53,5],[27,53,28,5],[28,53,54,5],[28,54,29,5],[29,54,55,5],[29,55,49,5],[49,55,50,6],[50,55,56,6],[50,56,57,7],[50,57,51,7],[51,57,58,7],[51,58,59,7],[51,59,60,7],[51,60,52,6],[52,60,55,6],[52,55,61,3],[52,61,62,2],[52,62,63,3],[52,63,53,4],[53,63,64,4],[53,64,54,4],[54,64,55,4],[55,64,65,3],[55,65,61,2],[61,65,66,0],[61,66,62,0],[62,66,67,9],[62,67,68,8],[62,68,63,1],[63,68,69,2],[63,69,70,3],[63,70,64,3],[64,70,71,3],[64,71,72,3],[64,72,73,2],[64,73,65,1],[65,73,74,8],[65,74,66,9],[66,74,75,9],[66,75,67,9],[67,75,1,9],[67,1,76,8],[67,76,68,8],[68,76,77,8],[68,77,78,9],[68,78,79,1],[68,79,80,2],[68,80,69,2],[69,80,70,3],[70,80,81,3],[70,81,82,3],[70,82,83,3],[70,83,71,3],[71,83,84,3],[71,84,85,3],[71,85,72,3],[72,85,73,2],[73,85,79,2],[73,79,78,1],[73,78,77,9],[73,77,86,8],[73,86,74,8],[74,86,1,8],[74,1,75,9],[84,83,87,2],[84,87,88,2],[84,88,89,2],[84,89,81,2],[84,81,79,3],[84,79,85,3],[87,90,91,1],[87,91,88,1],[88,91,92,1],[88,92,89,1],[89,92,93,1],[89,93,81,2],[81,93,82,2],[82,93,87,2],[82,87,83,2],[94,91,90,0],[94,90,95,0],[94,95,92,0],[94,92,91,0],[93,95,90,1],[93,90,87,1],[93,92,95,1],[1,77,76,8],[77,1,86,8],[81,80,79,3],[96,97,45,1],[96,45,44,1],[96,44,98,1],[96,98,99,8],[96,99,97,8],[97,99,100,8],[97,100,46,1],[97,46,45,1],[100,98,43,1],[100,43,46,1],[98,44,43,1],[100,99,98,8],[55,60,56,6],[56,60,59,7],[56,59,101,7],[56,101,57,7],[57,101,39,7],[57,39,58,7],[58,39,42,7],[58,42,41,7],[58,41,59,7],[59,41,101,7],[101,41,40,7],[101,40,39,7],[38,42,39,6],[102,103,104,2],[102,104,105,2],[102,105,106,2],[102,106,107,2],[102,107,47,1],[102,47,103,1],[103,47,108,1],[103,108,109,1],[103,109,104,2],[104,109,110,2],[104,110,111,3],[104,111,105,3],[105,111,112,3],[105,112,113,6],[105,113,106,6],[106,113,114,6],[106,114,115,6],[106,115,116,3],[106,116,110,3],[106,110,107,2],[107,110,109,2],[107,109,48,1],[107,48,47,1],[117,118,119,3],[117,119,120,3],[117,120,121,3],[117,121,122,3],[117,122,123,3],[117,123,118,3],[118,123,124,3],[118,124,125,4],[118,125,126,4],[118,126,119,4],[119,126,127,4],[119,127,128,4],[119,128,120,3],[120,128,129,3],[120,129,130,4],[120,130,121,4],[121,130,131,4],[121,131,132,4],[121,132,122,4],[122,132,133,4],[122,133,129,4],[122,129,123,3],[123,129,128,3],[123,128,124,3],[124,128,127,4],[124,127,134,4],[124,134,125,4],[125,134,135,5],[125,135,136,5],[125,136,126,5],[126,136,137,5],[126,137,138,6],[126,138,139,6],[126,139,127,6],[127,139,140,6],[127,140,141,6],[127,141,142,6],[127,142,134,5],[134,142,135,5],[135,142,143,4],[135,143,136,4],[136,143,144,4],[136,144,137,4],[137,144,145,3],[137,145,146,2],[137,146,142,3],[137,142,141,6],[137,141,138,6],[138,141,147,7],[138,147,148,7],[138,148,149,7],[138,149,139,7],[139,149,140,7],[140,149,150,7],[140,150,147,7],[140,147,141,7],[112,111,131,3],[112,131,130,3],[112,130,133,3],[112,133,115,3],[112,115,151,6],[112,151,152,6],[112,152,113,6],[113,152,148,7],[113,148,114,7],[114,148,147,7],[114,147,150,7],[114,150,151,7],[114,151,115,6],[116,131,111,3],[116,111,110,3],[111,116,153,2],[111,153,154,2],[111,154,155,2],[111,155,131,2],[131,155,132,2],[132,155,156,2],[132,156,116,2],[132,116,115,3],[132,115,133,3],[109,157,48,1],[48,157,17,4],[17,157,18,4],[18,157,108,4],[108,157,109,1],[116,132,131,3],[129,133,130,4],[158,143,159,1],[158,159,160,8],[158,160,161,8],[158,161,162,9],[158,162,163,1],[158,163,164,2],[158,164,165,2],[158,165,143,2],[143,165,164,3],[143,164,166,3],[143,166,144,3],[144,166,167,3],[144,167,168,3],[144,168,169,3],[144,169,170,2],[144,170,145,1],[145,170,171,8],[145,171,172,8],[145,172,173,9],[145,173,174,9],[145,174,146,0],[146,174,159,0],[146,159,142,2],[142,159,143,3],[175,166,164,3],[175,164,176,3],[175,176,177,2],[175,177,178,2],[175,178,179,2],[175,179,180,2],[175,180,166,3],[166,180,167,3],[167,180,168,3],[168,180,181,3],[168,181,163,3],[168,163,170,2],[168,170,169,2],[182,178,177,1],[182,177,183,1],[182,183,184,0],[182,184,185,0],[182,185,178,1],[178,185,179,1],[179,185,186,1],[179,186,180,2],[180,186,181,2],[181,186,177,2],[181,177,176,2],[181,176,163,3],[163,176,164,3],[186,187,183,1],[186,183,177,1],[187,184,183,0],[184,187,185,0],[185,187,186,1],[160,159,188,8],[160,188,0,8],[160,0,161,8],[161,0,171,8],[161,171,170,8],[161,170,162,9],[162,170,163,1],[159,174,173,9],[159,173,188,9],[188,173,0,9],[0,173,172,9],[0,172,171,8],[156,153,116,2],[153,156,189,1],[153,189,190,1],[153,190,154,1],[154,190,191,1],[154,191,155,1],[155,191,192,1],[155,192,156,1],[156,192,189,1],[189,192,193,8],[189,193,190,8],[190,193,191,8],[191,193,192,8],[148,152,149,7],[149,152,150,7],[150,152,151,7]],"MATERIALS":[{"name":"hsl_0","hex":"#000000","ch":2},{"name":"hsl_8","hex":"#322e2e","ch":2},{"name":"hsl_16","hex":"#4c4646","ch":2},{"name":"hsl_24","hex":"#615a5a","ch":2},{"name":"hsl_33","hex":"#756d6d","ch":2},{"name":"hsl_41","hex":"#867c7c","ch":2},{"name":"hsl_10318","hex":"#c2c2b9","ch":1},{"name":"hsl_10334","hex":"#d7d7d1","ch":1},{"name":"hsl_13223","hex":"#a7ba17","ch":0},{"name":"hsl_14236","hex":"#7f9813","ch":0}],"CENTER":[0,4,0],"RADIUS":87.052};
+
+  const BASE_VERTS = DATA.VERTS, BASE_FACES = DATA.FACES, MATERIALS = DATA.MATERIALS;
+  const CENTER = DATA.CENTER, RADIUS = DATA.RADIUS;
+  const TRIM_MAT = MATERIALS.length; // 10
+  const TRIM_REP = "#c7a13a";
+  MATERIALS.push({ name:"trim", hex:TRIM_REP, ch:3 });
+
+  const CHANNELS = [
+    { name:"Limbs", desc:"the corrupted vine", rep:"#a7ba17" },
+    { name:"Bone",  desc:"carved ivory",       rep:"#d7d7d1" },
+    { name:"Stave", desc:"twisted shadow",     rep:"#867c7c" },
+    { name:"Trim",  desc:"blades · gem · thorns", rep:TRIM_REP },
+  ];
+
+  // ---- colour helpers ----
+  const clamp=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
+  const hexToRgb=h=>{const n=parseInt(h.slice(1),16);return [(n>>16)&255,(n>>8)&255,n&255];};
+  const rgbToHex=(r,g,b)=>"#"+[r,g,b].map(v=>clamp(Math.round(v),0,255).toString(16).padStart(2,"0")).join("");
+  function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0,l=(mx+mn)/2;if(mx!==mn){const d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);if(mx===r)h=(g-b)/d+(g<b?6:0);else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h/=6;}return [h,s,l];}
+  function hslToRgb(h,s,l){const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h*12)%12;return l-a*Math.max(-1,Math.min(k-3,9-k,1));};return [f(0)*255,f(8)*255,f(4)*255];}
+  MATERIALS.forEach(m=>{m.rgb=hexToRgb(m.hex);m.hsl=rgbToHsl(...m.rgb);});
+
+  // ---- frame: tip-to-tip axis & grip ----
+  let Ux,Uz,Px,Pz,Gx,Gz,halfLen,staveSide,tipA,tipB;
+  (function computeFrame(){
+    let best=-1,ai=0,bi=0;
+    for(let i=0;i<BASE_VERTS.length;i++)for(let j=i+1;j<BASE_VERTS.length;j++){
+      const dx=BASE_VERTS[i][0]-BASE_VERTS[j][0], dz=BASE_VERTS[i][2]-BASE_VERTS[j][2];
+      const d=dx*dx+dz*dz; if(d>best){best=d;ai=i;bi=j;}
+    }
+    const A=BASE_VERTS[ai], B=BASE_VERTS[bi];
+    Gx=(A[0]+B[0])/2; Gz=(A[2]+B[2])/2;
+    let ux=B[0]-A[0], uz=B[2]-A[2]; const ul=Math.hypot(ux,uz)||1; Ux=ux/ul; Uz=uz/ul;
+    Px=-Uz; Pz=Ux;
+    halfLen=0; let sp=0;
+    for(const v of BASE_VERTS){
+      const a=(v[0]-Gx)*Ux+(v[2]-Gz)*Uz; halfLen=Math.max(halfLen,Math.abs(a));
+      sp+=(v[0]-Gx)*Px+(v[2]-Gz)*Pz;
+    }
+    staveSide=sp>=0?1:-1;   // which perp side the stave mass sits on
+    tipA=A; tipB=B;
+  })();
+  const pt=(a,p,y)=>[Gx+Ux*a+Px*p, 4+y, Gz+Uz*a+Pz*p];
+
+  // string verts (touched by green ch0 faces)
+  const baseIsString=new Array(BASE_VERTS.length).fill(false);
+  for(const f of BASE_FACES){ if(MATERIALS[f[3]].ch===0){ baseIsString[f[0]]=baseIsString[f[1]]=baseIsString[f[2]]=true; } }
+
+  // ---- part generators (model space, anchored to frame) ----
+  function genTips(){
+    const V=[],F=[]; const bl=halfLen*0.20, bw=5.5;
+    for(const s of [1,-1]){
+      const o=V.length, tipa=s*halfLen;
+      V.push(pt(s*(halfLen+bl),0,0));           // apex
+      V.push(pt(tipa,bw,0),pt(tipa,0,bw),pt(tipa,-bw,0),pt(tipa,0,-bw));
+      F.push([o,o+1,o+2],[o,o+2,o+3],[o,o+3,o+4],[o,o+4,o+1],[o+1,o+2,o+3],[o+1,o+3,o+4]);
+    }
+    return {V,F};
+  }
+  function genOrb(){
+    const V=[],F=[]; const r=8, oa=0, op=staveSide*2, oy=6;
+    const c=[oa,op,oy];
+    V.push(pt(c[0]+r,c[1],c[2]),pt(c[0]-r,c[1],c[2]),pt(c[0],c[1]+r,c[2]),pt(c[0],c[1]-r,c[2]),pt(c[0],c[1],c[2]+r),pt(c[0],c[1],c[2]-r));
+    const [Ap,Am,Pp,Pm,Yp,Ym]=[0,1,2,3,4,5];
+    F.push([Ap,Pp,Yp],[Pp,Am,Yp],[Am,Pm,Yp],[Pm,Ap,Yp],[Pp,Ap,Ym],[Am,Pp,Ym],[Pm,Am,Ym],[Ap,Pm,Ym]);
+    return {V,F};
+  }
+  function genThorns(){
+    const V=[],F=[]; const w0=7, tl=11, tb=3.5;
+    const spots=[0.34,0.58,0.8];
+    let side=1;
+    for(const s of [1,-1]) for(const f of spots){
+      const a=s*f*halfLen, sp=side*staveSide; side*=-1;
+      const o=V.length;
+      V.push(pt(a-tb, sp*w0,1),pt(a+tb, sp*w0,1),pt(a, sp*w0,1+tb),pt(a, sp*(w0+tl),1));
+      F.push([o+3,o,o+1],[o+3,o+1,o+2],[o+3,o+2,o],[o,o+2,o+1]);
+    }
+    return {V,F};
+  }
+  function genArrow(){
+    const V=[],F=[]; const front=staveSide, // point toward stave-facing? arrow crosses perpendicular
+      shaftHalf=1.6, back=-front*(halfLen*0.55), tip=front*(halfLen*0.62), yy=7;
+    // shaft: box from p=back..tip, cross-section 2*shaftHalf in a and y
+    const p0=back, p1=front*(halfLen*0.5);
+    function box(pa,pb,hw,hy,base){
+      V.push(pt(-hw,pa,-hy+yy),pt(hw,pa,-hy+yy),pt(hw,pa,hy+yy),pt(-hw,pa,hy+yy),
+             pt(-hw,pb,-hy+yy),pt(hw,pb,-hy+yy),pt(hw,pb,hy+yy),pt(-hw,pb,hy+yy));
+      const o=base;
+      F.push([o,o+1,o+2],[o,o+2,o+3],[o+4,o+6,o+5],[o+4,o+7,o+6],
+             [o,o+4,o+5],[o,o+5,o+1],[o+1,o+5,o+6],[o+1,o+6,o+2],
+             [o+2,o+6,o+7],[o+2,o+7,o+3],[o+3,o+7,o+4],[o+3,o+4,o]);
+    }
+    box(p0,p1,shaftHalf,shaftHalf,V.length);
+    // head pyramid at p1..tip
+    const oh=V.length;
+    V.push(pt(0,tip,yy)); // apex
+    V.push(pt(-4,p1,-4+yy),pt(4,p1,-4+yy),pt(4,p1,4+yy),pt(-4,p1,4+yy));
+    F.push([oh,oh+1,oh+2],[oh,oh+2,oh+3],[oh,oh+3,oh+4],[oh,oh+4,oh+1]);
+    // fletching: two flat fins near back
+    const of=V.length; const fp=p0+front*6;
+    V.push(pt(-9,p0,yy),pt(0,fp,yy),pt(0,p0,-6+yy)); F.push([of,of+1,of+2]);
+    V.push(pt(9,p0,yy),pt(0,fp,yy),pt(0,p0,6+yy)); F.push([of+3,of+4,of+5]);
+    return {V,F};
+  }
+  const PART_GEN={ tips:genTips, orb:genOrb, thorns:genThorns, arrow:genArrow };
+
+  // ---- state ----
+  const SHAPE=[
+    {key:"curve", name:"Curve", min:-0.55,max:0.55,step:0.01,def:0, fmt:v=>(v>0?"+":"")+v.toFixed(2)},
+    {key:"twist", name:"Twist", min:-1.3,max:1.3,step:0.02,def:0, fmt:v=>(v>0?"+":"")+v.toFixed(2)},
+    {key:"length",name:"Limb length", min:0.7,max:1.45,step:0.01,def:1, fmt:v=>v.toFixed(2)+"×"},
+    {key:"thick", name:"Thickness", min:0.5,max:2.2,step:0.02,def:1, fmt:v=>v.toFixed(2)+"×"},
+    {key:"pull",  name:"String pull", min:0,max:1,step:0.02,def:0, fmt:v=>Math.round(v*100)+"%"},
+  ];
+  const params={}; SHAPE.forEach(s=>params[s.key]=s.def);
+  const partsOn={ tips:false, orb:false, thorns:false, arrow:false };
+  let chOverride=[null,null,null,null];
+
+  // combined geometry
+  let geoVerts=[], geoFaces=[], geoIsString=[], deformed=[], matRGB=[];
+
+  function buildGeometry(){
+    geoVerts=BASE_VERTS.map(v=>v.slice());
+    geoFaces=BASE_FACES.map(f=>f.slice());
+    geoIsString=baseIsString.slice();
+    for(const key of Object.keys(PART_GEN)){
+      if(!partsOn[key]) continue;
+      const g=PART_GEN[key](); const off=geoVerts.length;
+      for(const v of g.V){ geoVerts.push(v); geoIsString.push(false); }
+      for(const f of g.F){ geoFaces.push([f[0]+off,f[1]+off,f[2]+off,TRIM_MAT]); }
+    }
+    computeDeform();
+  }
+
+  function deform(v,isStr){
+    let a=(v[0]-Gx)*Ux+(v[2]-Gz)*Uz;
+    let p=(v[0]-Gx)*Px+(v[2]-Gz)*Pz;
+    let y=v[1]-4;
+    a*=params.length;
+    const norm=a/(halfLen*params.length||1);
+    if(isStr && params.pull>0){
+      const w=Math.max(0,1-norm*norm);
+      p+= -staveSide * params.pull * (halfLen*0.28) * w;
+    }
+    y*=params.thick;
+    const ang=params.twist*norm;
+    const ca=Math.cos(ang), sa=Math.sin(ang);
+    const p2=p*ca - y*sa, y2=p*sa + y*ca;
+    let wx=Gx+Ux*a+Px*p2, wz=Gz+Uz*a+Pz*p2, wy=4+y2;
+    const th=params.curve*norm;
+    const cc=Math.cos(th), ss=Math.sin(th);
+    const rx=wx-Gx, rz=wz-Gz;
+    wx=Gx+rx*cc-rz*ss; wz=Gz+rx*ss+rz*cc;
+    return [wx,wy,wz];
+  }
+  function computeDeform(){ deformed=geoVerts.map((v,i)=>deform(v,geoIsString[i])); }
+
+  function resolveColors(){
+    matRGB=MATERIALS.map(m=>{
+      const ov=chOverride[m.ch];
+      if(!ov) return m.rgb;
+      return hslToRgb(ov[0],ov[1],m.hsl[2]);
+    });
+  }
+  function channelDisplayHex(ch){
+    const ov=chOverride[ch]; if(!ov) return CHANNELS[ch].rep;
+    const mats=MATERIALS.filter(m=>m.ch===ch);
+    const mid=mats.reduce((x,z)=>Math.abs(z.hsl[2]-0.5)<Math.abs(x.hsl[2]-0.5)?z:x);
+    return rgbToHex(...hslToRgb(ov[0],ov[1],mid.hsl[2]));
+  }
+  function setChannel(ch,hex){ const [h,s]=rgbToHsl(...hexToRgb(hex)); chOverride[ch]=[h,s]; }
+
+  // ---- view ----
+  let yaw=-0.35,pitch=1.5,zoom=1; const DEF={yaw:-0.35,pitch:1.5,zoom:1};
+  let idle=true; const reduceMotion=matchMedia("(prefers-reduced-motion:reduce)").matches; if(reduceMotion) idle=false;
+
+  const stage=document.getElementById("stage"), canvas=document.getElementById("canvas"), ctx=canvas.getContext("2d");
+  let W=0,H=0,dpr=1;
+  function resize(){ dpr=Math.min(window.devicePixelRatio||1,2); const r=stage.getBoundingClientRect(); W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height)); canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr); }
+  const LIGHT=(()=>{const l=[-0.45,0.7,0.78],m=Math.hypot(...l);return [l[0]/m,l[1]/m,l[2]/m];})();
+  const CAM_DIST=RADIUS*5.2;
+  function getTheme(){ const s=document.documentElement.getAttribute("data-theme"); return s||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"); }
+  function stageColors(){ return getTheme()==="dark"?["#1b260f","#05060a"]:["#d9d8c0","#9fa585"]; }
+
+  function renderTo(g,cw,ch2,t,paintBg){
+    const [sa,sb]=stageColors();
+    if(paintBg){ const bg=g.createRadialGradient(cw/2,ch2*0.46,0,cw/2,ch2*0.46,Math.max(cw,ch2)*0.62); bg.addColorStop(0,sa); bg.addColorStop(1,sb); g.fillStyle=bg; g.fillRect(0,0,cw,ch2); }
+    else g.clearRect(0,0,cw,ch2);
+    const base=(Math.min(cw,ch2)/(RADIUS*2.5))*zoom;
+    const eYaw=yaw+(idle&&!dragging?Math.sin(t*0.00045)*0.30:0);
+    const ePit=pitch+(idle&&!dragging?Math.sin(t*0.0007)*0.05:0);
+    const cy=Math.cos(eYaw),sy=Math.sin(eYaw),cp=Math.cos(ePit),sp=Math.sin(ePit);
+    const cx=cw/2, cyc=ch2*0.5;
+    drawSigil(g,cx,cyc,base*RADIUS*1.02,t);
+    const P=new Array(deformed.length),R=new Array(deformed.length);
+    for(let i=0;i<deformed.length;i++){
+      const d=deformed[i]; const x=d[0]-CENTER[0],y=d[1]-CENTER[1],z=d[2]-CENTER[2];
+      const x1=x*cy+z*sy, z1=-x*sy+z*cy, y2=y*cp-z1*sp, z2=y*sp+z1*cp;
+      R[i]=[x1,y2,z2]; const persp=CAM_DIST/(CAM_DIST-z2); P[i]=[cx+x1*base*persp, cyc-y2*base*persp, z2];
+    }
+    const tris=[];
+    for(const f of geoFaces){
+      const A=R[f[0]],B=R[f[1]],C=R[f[2]];
+      let nx=(B[1]-A[1])*(C[2]-A[2])-(B[2]-A[2])*(C[1]-A[1]);
+      let ny=(B[2]-A[2])*(C[0]-A[0])-(B[0]-A[0])*(C[2]-A[2]);
+      let nz=(B[0]-A[0])*(C[1]-A[1])-(B[1]-A[1])*(C[0]-A[0]);
+      const nl=Math.hypot(nx,ny,nz)||1; nx/=nl;ny/=nl;nz/=nl; if(nz<0){nx=-nx;ny=-ny;nz=-nz;}
+      const diff=Math.max(0,nx*LIGHT[0]+ny*LIGHT[1]+nz*LIGHT[2]);
+      tris.push({f,shade:0.46+0.66*diff,depth:(A[2]+B[2]+C[2])/3});
+    }
+    tris.sort((a,b)=>a.depth-b.depth);
+    for(const tr of tris){
+      const rgb=matRGB[tr.f[3]];
+      const fill=`rgb(${clamp(rgb[0]*tr.shade,0,255)|0},${clamp(rgb[1]*tr.shade,0,255)|0},${clamp(rgb[2]*tr.shade,0,255)|0})`;
+      const A=P[tr.f[0]],B=P[tr.f[1]],C=P[tr.f[2]];
+      g.beginPath(); g.moveTo(A[0],A[1]); g.lineTo(B[0],B[1]); g.lineTo(C[0],C[1]); g.closePath();
+      g.fillStyle=fill; g.fill(); g.lineWidth=paintBg?1.1:0.7; g.strokeStyle=fill; g.stroke();
+    }
+    drawEmbers(g,cw,ch2,t);
+  }
+  function drawSigil(g,cx,cy,r,t){
+    const rot=reduceMotion?0:t*0.00018; const lime=getTheme()==="dark"?"rgba(167,186,23,0.4)":"rgba(107,122,16,0.5)";
+    g.save(); g.globalCompositeOperation="lighter"; g.translate(cx,cy); g.strokeStyle=lime; g.lineWidth=1.2;
+    g.beginPath(); g.arc(0,0,r*0.98,0,Math.PI*2); g.stroke(); g.globalAlpha=0.7; g.beginPath(); g.arc(0,0,r*0.78,0,Math.PI*2); g.stroke();
+    g.rotate(rot); g.globalAlpha=0.5;
+    for(let i=0;i<24;i++){ const ang=(i/24)*Math.PI*2, inr=r*0.98, out=r*1.06+(i%2?4:0); g.beginPath(); g.moveTo(Math.cos(ang)*inr,Math.sin(ang)*inr); g.lineTo(Math.cos(ang)*out,Math.sin(ang)*out); g.stroke(); }
+    g.rotate(-rot*2.4); g.globalAlpha=0.35; g.lineWidth=0.8; g.beginPath(); g.arc(0,0,r*0.6,0,Math.PI*2); g.stroke(); g.restore();
+  }
+  const EMBERS=Array.from({length:26},(_,i)=>({x:(i*0.618)%1,y:(i*0.321+0.1)%1,r:0.6+(i%5)*0.35,spd:0.012+(i%7)*0.004,ph:i*1.7}));
+  function drawEmbers(g,cw,ch2,t){
+    const dark=getTheme()==="dark"; g.save(); g.globalCompositeOperation="lighter";
+    for(const e of EMBERS){
+      const prog=reduceMotion?e.y:(e.y-(t*0.00004*e.spd*20))%1; const yy=((prog%1)+1)%1;
+      const drift=reduceMotion?0:Math.sin(t*0.0006+e.ph)*0.02; const px=((e.x+drift)%1)*cw, py=yy*ch2, rr=e.r*(cw/500+0.5);
+      const grd=g.createRadialGradient(px,py,0,px,py,rr*4); const a=0.5*(0.4+0.6*Math.abs(Math.sin(t*0.0008+e.ph)));
+      grd.addColorStop(0,dark?`rgba(207,226,58,${a})`:`rgba(120,130,40,${a*0.7})`); grd.addColorStop(1,"rgba(0,0,0,0)");
+      g.fillStyle=grd; g.beginPath(); g.arc(px,py,rr*4,0,Math.PI*2); g.fill();
+    }
+    g.restore();
+  }
+  function frame(now){ ctx.setTransform(dpr,0,0,dpr,0,0); renderTo(ctx,W,H,now||0,false); requestAnimationFrame(frame); }
+
+  // ---- interaction ----
+  let dragging=false,lastX=0,lastY=0;
+  stage.addEventListener("pointerdown",e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;stage.setPointerCapture(e.pointerId);});
+  stage.addEventListener("pointermove",e=>{ if(!dragging)return; yaw+=(e.clientX-lastX)*0.01; pitch=clamp(pitch+(e.clientY-lastY)*0.01,-Math.PI,Math.PI); lastX=e.clientX;lastY=e.clientY; hideHint(); });
+  const endDrag=()=>{dragging=false;}; stage.addEventListener("pointerup",endDrag); stage.addEventListener("pointercancel",endDrag);
+  stage.addEventListener("wheel",e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.08:0.926),0.5,2.6);hideHint();},{passive:false});
+  let hintHidden=false; function hideHint(){ if(hintHidden)return; hintHidden=true; document.getElementById("hint").style.opacity="0"; }
+
+  // ---- build UI ----
+  const shapeEl=document.getElementById("shape"), shapeVals={};
+  SHAPE.forEach(s=>{
+    const wrap=document.createElement("div"); wrap.className="ctrl";
+    const row=document.createElement("div"); row.className="row";
+    const name=document.createElement("span"); name.className="name"; name.textContent=s.name;
+    const val=document.createElement("span"); val.className="val"; val.textContent=s.fmt(s.def);
+    row.append(name,val);
+    const input=document.createElement("input"); input.type="range"; input.min=s.min; input.max=s.max; input.step=s.step; input.value=s.def;
+    input.setAttribute("aria-label",s.name);
+    input.addEventListener("input",()=>{ params[s.key]=parseFloat(input.value); val.textContent=s.fmt(params[s.key]); computeDeform(); writeHash(); markPreset(); });
+    wrap.append(row,input); shapeEl.appendChild(wrap); shapeVals[s.key]={input,val,fmt:s.fmt};
+  });
+
+  const PART_META=[{key:"tips",label:"Tip blades"},{key:"orb",label:"Grip gem"},{key:"thorns",label:"Thorns"},{key:"arrow",label:"Nocked arrow"}];
+  const partsEl=document.getElementById("parts"), partBtns={};
+  PART_META.forEach(pm=>{
+    const b=document.createElement("button"); b.className="pill"; b.type="button"; b.setAttribute("aria-pressed","false");
+    const dot=document.createElement("span"); dot.className="dot"; const lbl=document.createElement("span"); lbl.className="lbl"; lbl.textContent=pm.label;
+    b.append(dot,lbl); partsEl.appendChild(b); partBtns[pm.key]=b;
+    b.addEventListener("click",()=>{ partsOn[pm.key]=!partsOn[pm.key]; b.setAttribute("aria-pressed",String(partsOn[pm.key])); buildGeometry(); writeHash(); });
+  });
+
+  const channelsEl=document.getElementById("channels"), chInputs=[],chCodes=[];
+  CHANNELS.forEach((c,i)=>{
+    const row=document.createElement("div"); row.className="channel";
+    const input=document.createElement("input"); input.type="color"; input.className="swatch"; input.value=c.rep; input.setAttribute("aria-label",c.name+" colour");
+    const meta=document.createElement("div"); meta.className="meta";
+    const name=document.createElement("span"); name.className="name"; name.textContent=c.name;
+    const desc=document.createElement("span"); desc.className="desc"; desc.textContent=c.desc;
+    meta.append(name,desc);
+    const code=document.createElement("span"); code.className="code"; code.textContent=c.rep.toUpperCase();
+    row.append(input,meta,code); channelsEl.appendChild(row); chInputs.push(input); chCodes.push(code);
+    input.addEventListener("input",()=>{ setChannel(i,input.value); code.textContent=input.value.toUpperCase(); resolveColors(); syncChannels(); writeHash(); markPreset(); });
+  });
+  function syncChannels(){ for(let i=0;i<CHANNELS.length;i++){ const hx=channelDisplayHex(i); chInputs[i].value=hx; chCodes[i].textContent=hx.toUpperCase(); } }
+
+  const THEMES=[
+    {name:"Xeric",    ov:[null,null,null,null]},
+    {name:"Shadow",   ov:["#7d3fd6","#c7b6e8","#241d33","#8f6ad6"]},
+    {name:"Sanguine", ov:["#c0271f","#e7cdc2","#361d1d","#d1a24a"]},
+    {name:"Frozen",   ov:["#34b7d8","#dff1fb","#26333d","#bfe6f2"]},
+    {name:"Molten",   ov:["#e8791f","#f2d9a3","#33261a","#f0b43a"]},
+    {name:"Corrupt",  ov:["#57d038","#b7e6b0","#12210f","#9adf5a"]},
+  ];
+  const presetsEl=document.getElementById("presets"), presetBtns=[];
+  THEMES.forEach(th=>{
+    const btn=document.createElement("button"); btn.className="preset"; btn.type="button";
+    const chip=document.createElement("span"); chip.className="chip";
+    const cc=th.ov.map((o,ci)=>o||CHANNELS[ci].rep);
+    chip.style.background=`linear-gradient(90deg,${cc[0]} 0 30%,${cc[1]} 30% 52%,${cc[2]} 52% 74%,${cc[3]} 74% 100%)`;
+    const label=document.createElement("span"); label.textContent=th.name;
+    btn.append(chip,label); presetsEl.appendChild(btn); presetBtns.push(btn);
+    btn.addEventListener("click",()=>{ chOverride=th.ov.map(o=>o?rgbToHsl(...hexToRgb(o)).slice(0,2):null); resolveColors(); syncChannels(); writeHash(); markPreset(); });
+  });
+  function markPreset(){ const cur=JSON.stringify(chOverride); presetBtns.forEach((b,ti)=>{ const t=THEMES[ti].ov.map(o=>o?rgbToHsl(...hexToRgb(o)).slice(0,2):null); b.setAttribute("aria-pressed",String(JSON.stringify(t)===cur)); }); }
+
+  // ---- actions ----
+  document.getElementById("randomBtn").addEventListener("click",()=>{
+    SHAPE.forEach(s=>{ params[s.key]=s.min+Math.random()*(s.max-s.min); if(s.key==="pull")params[s.key]*=0.7; shapeVals[s.key].input.value=params[s.key]; shapeVals[s.key].val.textContent=s.fmt(params[s.key]); });
+    Object.keys(partsOn).forEach(k=>{ partsOn[k]=Math.random()<0.5; partBtns[k].setAttribute("aria-pressed",String(partsOn[k])); });
+    chOverride=chOverride.map(()=>[Math.random(),0.35+Math.random()*0.5]);
+    buildGeometry(); resolveColors(); syncChannels(); writeHash(); markPreset();
+  });
+  document.getElementById("resetBtn").addEventListener("click",()=>{
+    SHAPE.forEach(s=>{ params[s.key]=s.def; shapeVals[s.key].input.value=s.def; shapeVals[s.key].val.textContent=s.fmt(s.def); });
+    Object.keys(partsOn).forEach(k=>{ partsOn[k]=false; partBtns[k].setAttribute("aria-pressed","false"); });
+    chOverride=[null,null,null,null]; buildGeometry(); resolveColors(); syncChannels(); writeHash(); markPreset();
+  });
+  document.getElementById("shareBtn").addEventListener("click",()=>{ writeHash(); navigator.clipboard?.writeText(location.href).then(()=>toast("Share link copied"),()=>toast("Link is in the address bar")); });
+  document.getElementById("pngBtn").addEventListener("click",()=>{ const size=1200,off=document.createElement("canvas"); off.width=size; off.height=Math.round(size*0.75); renderTo(off.getContext("2d"),off.width,off.height,performance.now(),true); off.toBlob(b=>saveBlob(b,"twisted-bow.png")); });
+  document.getElementById("mtlBtn").addEventListener("click",exportOBJ);
+  function exportOBJ(){
+    let obj="# Twisted Bow Forge — custom design\n", mtl="# Twisted Bow Forge materials\n";
+    // one material per source material index used
+    const used=[...new Set(geoFaces.map(f=>f[3]))];
+    used.forEach(mi=>{ const [r,g,b]=matRGB[mi]; const nm=MATERIALS[mi].name; mtl+=`newmtl ${nm}\nKd ${(r/255).toFixed(6)} ${(g/255).toFixed(6)} ${(b/255).toFixed(6)}\nKa 0 0 0\nKs 0 0 0\nd 1\n\n`; });
+    obj+="mtllib twisted-bow.mtl\no custom_bow\n";
+    for(const v of deformed) obj+=`v ${v[0].toFixed(3)} ${v[1].toFixed(3)} ${v[2].toFixed(3)}\n`;
+    let curMat=null;
+    // group faces by material to reduce usemtl switches
+    const byMat={}; geoFaces.forEach(f=>{ (byMat[f[3]]=byMat[f[3]]||[]).push(f); });
+    for(const mi of used){ obj+=`usemtl ${MATERIALS[mi].name}\n`; for(const f of byMat[mi]) obj+=`f ${f[0]+1} ${f[1]+1} ${f[2]+1}\n`; }
+    saveBlob(new Blob([obj],{type:"text/plain"}),"twisted-bow.obj");
+    setTimeout(()=>saveBlob(new Blob([mtl],{type:"text/plain"}),"twisted-bow.mtl"),150);
+  }
+  function saveBlob(blob,name){ const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); toast("Saved "+name); }
+
+  const spinBtn=document.getElementById("spinBtn"); spinBtn.setAttribute("aria-pressed",String(idle));
+  spinBtn.addEventListener("click",()=>{ idle=!idle; spinBtn.setAttribute("aria-pressed",String(idle)); });
+  document.getElementById("resetViewBtn").addEventListener("click",()=>{ yaw=DEF.yaw; pitch=DEF.pitch; zoom=DEF.zoom; });
+
+  // ---- share hash ----
+  function writeHash(){
+    const sh=SHAPE.map(s=>Math.round(params[s.key]*100)).join(",");
+    const pr=PART_META.map(p=>partsOn[p.key]?"1":"0").join("");
+    const co=chOverride.map(o=>o?Math.round(o[0]*360)+"."+Math.round(o[1]*100):"n").join("_");
+    history.replaceState(null,"","#"+sh+"~"+pr+"~"+co);
+  }
+  function readHash(){
+    const m=location.hash.replace(/^#/,""); if(!m) return;
+    const [sh,pr,co]=m.split("~");
+    if(sh){ const vals=sh.split(",").map(Number); SHAPE.forEach((s,i)=>{ if(!isNaN(vals[i])) params[s.key]=clamp(vals[i]/100,s.min,s.max); }); }
+    if(pr){ PART_META.forEach((p,i)=>{ partsOn[p.key]=pr[i]==="1"; }); }
+    if(co){ const parts=co.split("_"); chOverride=CHANNELS.map((_,i)=>{ const p=parts[i]; if(!p||p==="n")return null; const [h,s]=p.split("."); const hh=parseFloat(h),ss=parseFloat(s); return (isNaN(hh)||isNaN(ss))?null:[clamp(hh/360,0,1),clamp(ss/100,0,1)]; }); }
+  }
+
+  // ---- toast / theme ----
+  const toastEl=document.getElementById("toast"); let toastTimer;
+  function toast(msg){ toastEl.textContent=msg; toastEl.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove("show"),1800); }
+  document.getElementById("themeBtn").addEventListener("click",()=>{ document.documentElement.setAttribute("data-theme",getTheme()==="dark"?"light":"dark"); });
+
+  // ---- boot ----
+  readHash();
+  SHAPE.forEach(s=>{ shapeVals[s.key].input.value=params[s.key]; shapeVals[s.key].val.textContent=s.fmt(params[s.key]); });
+  PART_META.forEach(p=>partBtns[p.key].setAttribute("aria-pressed",String(partsOn[p.key])));
+  buildGeometry(); resolveColors(); syncChannels(); markPreset();
+  new ResizeObserver(resize).observe(stage); resize();
+  requestAnimationFrame(frame);
+})();
+</script>

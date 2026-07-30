@@ -164,6 +164,14 @@ def _next_goal(p):
         return ("The INFERNO smoulders beneath Mor Ul Rek ('city' in the "
                 "volcano) \u2014 wear your fire cape in, survive eight waves, "
                 "and TzKal-Zuk guards the infernal cape at the bottom.")
+    if "nex" not in getattr(p, "bosses", []):
+        return ("NEX stirs in the frozen prison beneath the God Wars "
+                "('prison') \u2014 slay 40 Ancient followers to open her "
+                "door, then four phases for the Torva armour.")
+    if _q(p, "theatre_of_blood") != "complete":
+        return ("THE THEATRE OF BLOOD \u2014 Verzik Vitur runs three acts of "
+                "blood magic at Ver Sinhaza (east of Port Phasmatys). The "
+                "SCYTHE OF VITUR waits at the finale.")
     if not any(p.base_lvl(s) >= 99 for s in SKILLS):
         return ("Chase your first level 99 — the Wise Old Man in Draynor "
                 "sells the cape to prove it.")

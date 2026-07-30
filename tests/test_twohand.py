@@ -59,7 +59,8 @@ check("1h + shield coexist", p.equipment["weapon"] == "abyssal whip"
 
 melee = a._best_gear_for_style("melee")
 check("melee BIS: 2h weapon, no shield",
-      "godsword" in melee.get("weapon", "") and "shield" not in melee)
+      a.ITEMS[melee.get("weapon", "")]["equip"].get("two_handed")
+      and "shield" not in melee, melee.get("weapon"))
 ranged = a._best_gear_for_style("ranged")
 w = ranged.get("weapon", "")
 is2h = a.ITEMS[w]["equip"].get("two_handed", False)

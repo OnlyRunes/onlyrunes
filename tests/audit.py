@@ -42,7 +42,8 @@ while stack:
         if dest not in seen:
             seen.add(dest); stack.append(dest)
 orphans = {r for r in set(ROOMS) - seen
-           if not ROOMS[r].get("dig_entry")}   # dig-entered rooms are fine
+           if not ROOMS[r].get("dig_entry")     # dig-entered rooms are fine
+           and not ROOMS[r].get("quest_entry")}  # quest auto-advance rooms too
 if orphans:
     warn(f"{len(orphans)} room(s) unreachable from {start}: {sorted(orphans)}")
 
